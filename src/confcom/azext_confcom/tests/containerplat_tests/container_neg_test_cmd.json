@@ -1,0 +1,16 @@
+{
+    "metadata":
+    {
+        "name": "Negative_Test_Cmd"
+    },
+    "image":
+    {
+        "image":"alpine:latest"
+    },
+    "command":
+    [
+        "ash",
+        "-c",
+        "while true; do echo 'Hello World Neg'; sleep 1; done"
+    ]
+}
