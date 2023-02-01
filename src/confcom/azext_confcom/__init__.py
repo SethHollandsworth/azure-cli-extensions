@@ -13,9 +13,7 @@ class ConfcomCommandsLoader(AzCommandsLoader):
         from azure.cli.core.commands import CliCommandType
 
         confcom_custom = CliCommandType(operations_tmpl="azext_confcom.custom#{}")
-        super(ConfcomCommandsLoader, self).__init__(
-            cli_ctx=cli_ctx, custom_command_type=confcom_custom
-        )
+        super().__init__(cli_ctx=cli_ctx, custom_command_type=confcom_custom)
 
     def load_command_table(self, args):
         from azext_confcom.commands import load_command_table
