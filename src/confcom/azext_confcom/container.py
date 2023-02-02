@@ -162,12 +162,9 @@ def extract_mounts(container_json: Any):
     return _mounts
 
 
-def extract_excess_process(container_json: Any, container_image: str, debug_mode: bool):
-    if ":" in container_image:
-        base = container_image.split(":")[0]
-    else:
-        base = container_image
-        # convert to shorthand: base = containerImage.split(":")[0] if ":" in containerImage else containerImage
+def extract_exec_process(container_json: Any, container_image: str, debug_mode: bool):
+    base = container_image.split(":")[0] if ":" in container_image else container_image
+
     # get the exec_processes info used as a liveness probe
     exec_processes = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES
@@ -276,7 +273,7 @@ def extract_get_signals(container_json: Any):
         if not isinstance(signals, list):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                + '["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
                 + "can only be a list."
             )
 
@@ -284,7 +281,7 @@ def extract_get_signals(container_json: Any):
             if not isinstance(signals_item, int):
                 eprint(
                     f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + '["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
                     + "can only be an integer."
                 )
     return signals
@@ -305,7 +302,7 @@ class ContainerImage:
         working_dir = extract_working_dir(container_json)
         mounts = extract_mounts(container_json)
         allow_elevated = extract_allow_elevated(container_json)
-        exec_processes = extract_excess_process(
+        exec_processes = extract_exec_process(
             container_json, container_image, debug_mode
         )
         signals = extract_get_signals(container_json)
@@ -404,8 +401,8 @@ class ContainerImage:
             if rule[config.ACI_FIELD_CONTAINERS_ENVS_NAME] not in env_var_names:
                 out_rules.append(
                     {
-                        # pylint: disable=line-too-long
-                        config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE: f"{rule[config.ACI_FIELD_CONTAINERS_ENVS_NAME]}="
+                        config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE:
+                        f"{rule[config.ACI_FIELD_CONTAINERS_ENVS_NAME]}="
                         + f"{rule[config.ACI_FIELD_CONTAINERS_ENVS_VALUE]}",
                         config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY: rule[
                             config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY
