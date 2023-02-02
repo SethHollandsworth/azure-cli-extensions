@@ -11,7 +11,7 @@ helps[
     "confcom"
 ] = """
     type: group
-    short-summary: Commands to manage Confidential Container Security Policy Generators.
+    short-summary: Commands to generate security policies for confidential containers in Azure.
 """
 
 helps[
