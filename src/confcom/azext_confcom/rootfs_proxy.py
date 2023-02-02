@@ -61,13 +61,17 @@ class SecurityPolicyProxy:  # pylint disable=too-few-public-methods
         # add the image to the end of the parameter list
         arg_list += ["roothash", "-i", f"{img}"]
 
-        layers = subprocess.Popen(
+        outputlines = None
+        err = None
+
+        with subprocess.Popen(
             arg_list,
             executable=policy_bin_str,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-        )
-        outputlines, err = layers.communicate()
+        ) as layers:
+            outputlines, err = layers.communicate()
+
         output = []
         if outputlines is None:
             eprint("Null pointer detected.")
