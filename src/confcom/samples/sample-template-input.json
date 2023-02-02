@@ -8,7 +8,7 @@
   "resources": [
     {
       "type": "Microsoft.ContainerInstance/containerGroups",
-      "apiVersion": "2022-04-01-preview",
+      "apiVersion": "2022-10-01-preview",
       "name": "secret-volume-demo",
       "location": "[resourceGroup().location]",
       "properties": {

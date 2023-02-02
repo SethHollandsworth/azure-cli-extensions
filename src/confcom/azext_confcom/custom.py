@@ -56,31 +56,8 @@ def acipolicygen_confcom(
         sys.exit(1)
 
     tar_mapping = tar_mapping_validation(tar_mapping_location)
-    # if tar_mapping_location:
-    #     if not os.path.isfile(tar_mapping_location):
-    #         print(
-    #             "--tar input must either be a path to a json file with "
-    #             + "image to tar location mappings or the location to a single tar file."
-    #         )
-    #         sys.exit(2)
-    #     # file is mapping images to tar file locations
-    #     elif tar_mapping_location.endswith(".json"):
-    #         tar_mapping = os_util.load_tar_mapping_from_file(tar_mapping_location)
-    #     # passing in a single tar location for a single image policy
-    #     else:
-    #         tar_mapping = tar_mapping_location
-    # else:
-    #     # only need to do the docker checks if we're not grabbing image info from tar files
-    #     error_msg = run_initial_docker_checks()
-    #     if error_msg:
-    #         logger.warning(error_msg)
-    #         sys.exit(1)
 
-    output_type = security_policy.OutputType.DEFAULT
-    if outraw:
-        output_type = security_policy.OutputType.RAW
-    elif outraw_pretty_print:
-        output_type = security_policy.OutputType.PRETTY_PRINT
+    output_type = get_output_type(outraw, outraw_pretty_print)
 
     container_group_policies = None
 
@@ -146,28 +123,13 @@ def acipolicygen_confcom(
         )
 
         if validate_sidecar:
-            # is_valid, output = policy.validate_sidecars()
-
-            # if outraw_pretty_print:
-            #     formatted_output = pretty_print_func(output)
-            # else:
-            #     formatted_output = print_func(output)
-
-            # if is_valid:
-            #     print("Sidecar containers will pass with its generated policy")
-            #     return
-
-            # print(
-            #     f"Sidecar containers will not pass with its generated policy: {formatted_output}"
-            # )
-            # exit_code = 2
-            exit_code = validate_sidecar_in_policy(policy, outraw_pretty_print)
+            exit_code = validate_sidecar_in_policy(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
 
         elif diff:
-            exit_code = get_diff_outputs(policy, outraw_pretty_print)
+            exit_code = get_diff_outputs(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
         elif not print_policy_to_terminal and arm_template:
             output = policy.get_serialized_output(output_type, use_json)
-            result = inject_policy_into_template(arm_template, output, count)
+            result = inject_policy_into_template(arm_template, arm_template_parameters, output, count)
             count += 1
             if result:
                 print("CCE Policy successfully injected into ARM Template")
@@ -257,3 +219,12 @@ def tar_mapping_validation(tar_mapping_location: str):
             logger.warning(error_msg)
             sys.exit(1)
     return tar_mapping
+
+
+def get_output_type(outraw, outraw_pretty_print):
+    output_type = security_policy.OutputType.DEFAULT
+    if outraw:
+        output_type = security_policy.OutputType.RAW
+    elif outraw_pretty_print:
+        output_type = security_policy.OutputType.PRETTY_PRINT
+    return output_type

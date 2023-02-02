@@ -1,5 +1,6 @@
 import re
 import json
+import copy
 import tarfile
 from typing import Any, Tuple, Dict, List
 import deepdiff
@@ -202,7 +203,6 @@ def get_values_for_params(input_parameter_json: dict, all_params: dict) -> Dict[
     # parameters
     if not input_parameter_json:
         return
-    print("input_parameter_json: ", input_parameter_json)
 
     input_parameter_values_json = case_insensitive_dict_get(
         input_parameter_json, config.ACI_FIELD_TEMPLATE_PARAMETERS
@@ -561,11 +561,27 @@ def compare_env_vars(
 
 
 def inject_policy_into_template(
-    arm_template_path: str, policy: str, count: int
+    arm_template_path: str, parameter_data: str, policy: str, count: int
 ) -> bool:
     write_flag = False
     input_arm_json = os_util.load_json_from_file(arm_template_path)
-    print("policy: ", policy)
+    original_input_arm_json = copy.deepcopy(input_arm_json)
+    # extract variables and parameters in case we need to do substitutions
+    # while searching for image names
+    all_params = (
+        case_insensitive_dict_get(input_arm_json, config.ACI_FIELD_TEMPLATE_PARAMETERS)
+        or {}
+    )
+
+    input_parameter_json = {}
+    if parameter_data:
+        input_parameter_json = os_util.load_json_from_file(parameter_data)
+
+    get_values_for_params(input_parameter_json, all_params)
+
+    input_arm_json = parse_template(all_params,
+                                    case_insensitive_dict_get(input_arm_json, config.ACI_FIELD_TEMPLATE_VARIABLES)
+                                    or {}, input_arm_json)
 
     # find the image names and extract them from the template
     arm_resources = case_insensitive_dict_get(
@@ -601,8 +617,8 @@ def inject_policy_into_template(
 
     if confidential_compute_properties is None:
         eprint(
-            f"""Field ["{config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES}"]
-            not found in ["{config.ACI_FIELD_TEMPLATE_PROPERTIES}"]"""
+            f'Field ["{config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES}"] ' +
+            f'not found in ["{config.ACI_FIELD_TEMPLATE_PROPERTIES}"]'
         )
 
     cce_policy = case_insensitive_dict_get(
@@ -614,8 +630,8 @@ def inject_policy_into_template(
         write_flag = True
     else:
         user_input = input(
-            f"""Do you want to overwrite the CCE Policy currently in container group
-             "{container_group_name}" in the ARM Template? (y/n) """
+            "Do you want to overwrite the CCE Policy currently in container group " +
+            f'"{container_group_name}" in the ARM Template? (y/n) '
         )
         if user_input.lower() == "y":
             confidential_compute_properties[
@@ -623,6 +639,6 @@ def inject_policy_into_template(
             ] = policy
             write_flag = True
     if write_flag:
-        os_util.write_json_to_file(arm_template_path, input_arm_json)
+        os_util.write_json_to_file(arm_template_path, original_input_arm_json)
         return True
     return False
