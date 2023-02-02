@@ -1,8 +1,10 @@
 import re
 import json
+import tarfile
 from typing import Any, Tuple, Dict, List
 import deepdiff
 import yaml
+import docker
 from azext_confcom.errors import (
     eprint,
 )
@@ -11,6 +13,8 @@ from azext_confcom import config
 
 
 def case_insensitive_dict_get(dictionary, search_key) -> Any:
+    if not isinstance(dictionary, dict):
+        return None
     # if the cases happen to match, immediately return .get() result
     possible_match = dictionary.get(search_key)
     if possible_match:
@@ -20,6 +24,231 @@ def case_insensitive_dict_get(dictionary, search_key) -> Any:
         if key.lower() == search_key.lower():
             return dictionary[key]
     return None
+
+
+def get_image_info(progress, message_queue, client, tar_mapping, image):
+    image_info = None
+    raw_image = None
+    image_name = f"{image.base}:{image.tag}"
+    # only try to grab the info locally if that's absolutely what
+    # we want to do
+    if tar_mapping:
+        tar_location = get_tar_location_from_mapping(tar_mapping, image_name)
+        with tarfile.open(tar_location) as tar:
+            # get all the info out of the tarfile
+            image_info = os_util.map_image_from_tar(
+                image_name, tar, tar_location
+            )
+        message_queue.append("read from local tar file")
+    else:
+        # see if we have the image locally so we can have a
+        # 'clean-room'
+        if not image_info:
+            try:
+                raw_image = client.images.get(image_name)
+                image_info = raw_image.attrs.get("Config")
+                message_queue.append(
+                    f"Using local version of {image_name}. It may differ from the remote image"
+                )
+            except docker.errors.ImageNotFound:
+                message_queue.append(
+                    f"{image_name} is not found locally. Attempting to pull from remote..."
+                )
+
+        if not image_info:
+            try:
+                # pull image to local daemon (if not in local
+                # daemon)
+                if not raw_image:
+                    raw_image = client.images.pull(image.base, image.tag)
+                    image_info = raw_image.attrs.get("Config")
+            except (docker.errors.ImageNotFound, docker.errors.NotFound):
+                progress.close()
+                eprint(
+                    f"{image_name} is not found remotely. "
+                    + "Please check to make sure the image and repository exist"
+                )
+        # warn if the image is the "latest"
+        if image.tag == "latest":
+            message_queue.append(
+                'Using image tag "latest" is not recommended'
+            )
+
+    progress.update()
+
+    # error out if we're attempting to build for an unsupported
+    # architecture
+    if (
+        raw_image and
+        raw_image.attrs.get(
+            config.ACI_FIELD_CONTAINERS_ARCHITECTURE_KEY
+        ) !=
+        config.ACI_FIELD_CONTAINERS_ARCHITECTURE_VALUE
+    ) or (
+        not raw_image and image_info.get(config.ACI_FIELD_CONTAINERS_ARCHITECTURE_KEY) !=
+        config.ACI_FIELD_CONTAINERS_ARCHITECTURE_VALUE
+    ):
+        progress.close()
+        eprint(
+            f"{image_name} is attempting to build for unsupported architecture: " +
+            f"{raw_image.attrs.get(config.ACI_FIELD_CONTAINERS_ARCHITECTURE_KEY)}. "
+            + f"Only {config.ACI_FIELD_CONTAINERS_ARCHITECTURE_VALUE} is supported by Confidential ACI"
+        )
+
+    return image_info
+
+
+def get_tar_location_from_mapping(tar_mapping: dict | str, image_name: str) -> str:
+    # tar location can either be a dict mapping images to paths to tarfiles or a string to the tarfile
+    tar_location = None
+    if isinstance(tar_mapping, dict):
+        # make it so the user can either put "latest" or infer it
+        if image_name.endswith(":latest"):
+            alternate_key = image_name.split(":")[0]
+        else:
+            alternate_key = None
+        tar_location = tar_mapping.get(image_name) or tar_mapping.get(
+            alternate_key
+        )
+    else:
+        tar_location = tar_mapping
+    # this needs to exist to continue
+    if not tar_location:
+        eprint(
+            f"The image {image_name} is not present in the tarball mapping file"
+        )
+    return tar_location
+
+
+def process_env_vars_from_template(image_properties: dict) -> List[Dict[str, str]]:
+    env_vars = []
+    # add in the env vars from the template
+    template_env_vars = case_insensitive_dict_get(
+        image_properties, config.ACI_FIELD_TEMPLATE_ENVS
+    )
+
+    if template_env_vars:
+        env_vars = [
+            {
+                config.ACI_FIELD_CONTAINERS_ENVS_NAME: case_insensitive_dict_get(
+                    x, "name"
+                ),
+                config.ACI_FIELD_CONTAINERS_ENVS_VALUE: case_insensitive_dict_get(
+                    x, "value"
+                ),
+                config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
+            }
+            for x in template_env_vars
+        ]
+    return env_vars
+
+
+def process_mounts(image_properties: dict, volumes: list[dict]) -> List[Dict[str, str]]:
+    mount_source_table_keys = config.MOUNT_SOURCE_TABLE.keys()
+    # initialize empty array of mounts
+    mounts = []
+    # get the mount types from the mounts section of the ARM template
+    volume_mounts = (
+        case_insensitive_dict_get(
+            image_properties, config.ACI_FIELD_TEMPLATE_VOLUME_MOUNTS
+        )
+        or []
+    )
+
+    if volume_mounts and not isinstance(volume_mounts, list):
+        # parameter definition is in parameter file but not arm
+        # template
+        eprint(
+            f'Parameter ["{config.ACI_FIELD_TEMPLATE_VOLUME_MOUNTS}"] must be a list'
+        )
+
+    # get list of mount information based on mount name
+    for mount in volume_mounts:
+        mount_name = case_insensitive_dict_get(mount, "name")
+
+        filtered_volume = [
+            x
+            for x in volumes
+            if case_insensitive_dict_get(x, "name") == mount_name
+        ]
+
+        if not filtered_volume:
+            eprint(f'Volume ["{mount_name}"] not found in volume declarations')
+        else:
+            filtered_volume = filtered_volume[0]
+
+        # figure out mount type
+        mount_type_value = ""
+        for i in filtered_volume.keys():
+            if i in mount_source_table_keys:
+                mount_type_value = i
+
+        mounts.append(
+            {
+                config.ACI_FIELD_CONTAINERS_MOUNTS_TYPE: mount_type_value,
+                config.ACI_FIELD_CONTAINERS_MOUNTS_PATH: case_insensitive_dict_get(
+                    mount, config.ACI_FIELD_TEMPLATE_MOUNTS_PATH
+                ),
+                config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY: case_insensitive_dict_get(
+                    mount, config.ACI_FIELD_TEMPLATE_MOUNTS_READONLY
+                ),
+            }
+        )
+    return mounts
+
+
+def get_values_for_params(input_parameter_json: dict, all_params: dict) -> Dict[str, Any]:
+    # combine the parameter file into a single dictionary with the template
+    # parameters
+    if not input_parameter_json:
+        return
+    print("input_parameter_json: ", input_parameter_json)
+
+    input_parameter_values_json = case_insensitive_dict_get(
+        input_parameter_json, config.ACI_FIELD_TEMPLATE_PARAMETERS
+    )
+
+    # parameter file is missing field "parameters"
+    if input_parameter_json and not input_parameter_values_json:
+        eprint(
+            f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found in Parameter file'
+        )
+
+    for key in input_parameter_values_json.keys():
+        if case_insensitive_dict_get(all_params, key):
+            all_params[key]["value"] = case_insensitive_dict_get(
+                case_insensitive_dict_get(input_parameter_values_json, key), "value"
+            )
+        else:
+            # parameter definition is in parameter file but not arm
+            # template
+            eprint(
+                f'Parameter ["{key}"] is empty or cannot be found in ARM template'
+            )
+
+
+def extract_probe(exec_processes: list[dict], image_properties: dict, probe: str):
+
+    # get the readiness probe if it exists and is an exec command
+    probe = case_insensitive_dict_get(
+        image_properties, probe
+    )
+
+    if probe:
+        probe_exec = case_insensitive_dict_get(
+            probe, config.ACI_FIELD_CONTAINERS_PROBE_ACTION
+        )
+        if probe_exec:
+            probe_command = case_insensitive_dict_get(
+                probe_exec,
+                config.ACI_FIELD_CONTAINERS_PROBE_COMMAND,
+            )
+            if not probe_command:
+                eprint("Probes must have a 'command' declaration")
+            exec_processes.append({
+                config.ACI_FIELD_CONTAINERS_PROBE_COMMAND: probe_command,
+                config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
+            })
 
 
 def readable_diff(diff_dict) -> Dict[str, Any]:
@@ -237,8 +466,6 @@ def extract_confidential_properties(
 
 # making these lambda print functions looks cleaner than having "json.dumps" 6 times
 def print_func(x: dict) -> str:
-    print("x: ", x)
-
     return json.dumps(x, separators=(",", ":"), sort_keys=True)
 
 
@@ -338,6 +565,7 @@ def inject_policy_into_template(
 ) -> bool:
     write_flag = False
     input_arm_json = os_util.load_json_from_file(arm_template_path)
+    print("policy: ", policy)
 
     # find the image names and extract them from the template
     arm_resources = case_insensitive_dict_get(

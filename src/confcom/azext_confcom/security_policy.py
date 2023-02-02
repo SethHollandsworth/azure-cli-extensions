@@ -8,7 +8,6 @@ import warnings
 import copy
 from typing import Any, List, Dict, Tuple
 from enum import Enum, auto
-import tarfile
 import docker
 import deepdiff
 from knack.log import get_logger
@@ -27,7 +26,12 @@ from azext_confcom.template_util import (
     readable_diff,
     case_insensitive_dict_get,
     compare_env_vars,
-    compare_containers
+    compare_containers,
+    get_values_for_params,
+    process_mounts,
+    extract_probe,
+    process_env_vars_from_template,
+    get_image_info
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
@@ -40,7 +44,7 @@ class OutputType(Enum):
     PRETTY_PRINT = auto()
 
 
-class AciPolicy:
+class AciPolicy:  # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         deserialized_config: Any,
@@ -410,91 +414,9 @@ class AciPolicy:
             message_queue = []
             # populate regular container images(s)
             for image in container_images:
-                raw_image = None
-                image_info = None
 
                 image_name = f"{image.base}:{image.tag}"
-
-                # only try to grab the info locally if that's absolutely what
-                # we want to do
-                if tar_mapping:
-                    if isinstance(tar_mapping, dict):
-                        # make it so the user can either put "latest" or infer
-                        # it
-                        if image_name.endswith(":latest"):
-                            alternate_key = image_name.split(":")[0]
-                        else:
-                            alternate_key = None
-                        tar_location = tar_mapping.get(image_name) or tar_mapping.get(
-                            alternate_key
-                        )
-
-                        if not tar_location:
-                            eprint(
-                                f"The image {image_name} is not present in the tarball mapping file"
-                            )
-
-                    with tarfile.open(tar_location) as tar:
-                        # get all the info out of the tarfile
-                        image_info = os_util.map_image_from_tar(
-                            image_name, tar, tar_location
-                        )
-                    message_queue.append("read from local tar file")
-                else:
-
-                    # see if we have the image locally so we can have a
-                    # 'clean-room'
-                    if not image_info:
-                        try:
-                            raw_image = client.images.get(image_name)
-                            image_info = raw_image.attrs.get("Config")
-                            message_queue.append(
-                                f"Using local version of {image_name}. It may differ from the remote image"
-                            )
-                        except docker.errors.ImageNotFound:
-                            message_queue.append(
-                                f"{image_name} is not found locally. Attempting to pull from remote..."
-                            )
-
-                    if not image_info:
-                        try:
-                            # pull image to local daemon (if not in local
-                            # daemon)
-                            if not raw_image:
-                                raw_image = self.pull_image(image)
-                                image_info = raw_image.attrs.get("Config")
-                        except (docker.errors.ImageNotFound, docker.errors.NotFound):
-                            progress.close()
-                            eprint(
-                                f"{image_name} is not found remotely. "
-                                + "Please check to make sure the image and repository exist"
-                            )
-                    # warn if the image is the "latest"
-                    if image.tag == "latest":
-                        message_queue.append(
-                            'Using image tag "latest" is not recommended'
-                        )
-
-                progress.update()
-
-                # error out if we're attempting to build for an unsupported
-                # architecture
-                if (
-                    raw_image and
-                    raw_image.attrs.get(
-                        config.ACI_FIELD_CONTAINERS_ARCHITECTURE_KEY
-                    ) !=
-                    config.ACI_FIELD_CONTAINERS_ARCHITECTURE_VALUE
-                ) or (
-                    not raw_image and image_info.get(config.ACI_FIELD_CONTAINERS_ARCHITECTURE_KEY) !=
-                    config.ACI_FIELD_CONTAINERS_ARCHITECTURE_VALUE
-                ):
-                    progress.close()
-                    eprint(
-                        f"{image_name} is attempting to build for unsupported architecture: " +
-                        f"{raw_image.attrs.get(config.ACI_FIELD_CONTAINERS_ARCHITECTURE_KEY)}. "
-                        + f"Only {config.ACI_FIELD_CONTAINERS_ARCHITECTURE_VALUE} is supported by Confidential ACI"
-                    )
+                image_info = get_image_info(progress, message_queue, client, tar_mapping, image)
 
                 # verify and populate the working directory property
                 if not image.get_working_dir() and image_info:
@@ -554,6 +476,7 @@ class AciPolicy:
                     layer_cache[image_name] = image.get_layers()
                 progress.update()
             progress.close()
+            self.close()
 
             # unload the message queue
             for message in message_queue:
@@ -574,7 +497,6 @@ def load_policy_from_arm_template_str(
     debug_mode: bool = False,
 ) -> List[AciPolicy]:
     """Function that converts ARM template string to an ACI Policy"""
-    input_arm_json = None
     input_arm_json = os_util.load_json_from_str(template_data)
 
     input_parameter_json = {}
@@ -602,44 +524,16 @@ def load_policy_from_arm_template_str(
 
     # extract variables and parameters in case we need to do substitutions
     # while searching for image names
-    all_vars = (
-        case_insensitive_dict_get(input_arm_json, config.ACI_FIELD_TEMPLATE_VARIABLES)
-        or {}
-    )
     all_params = (
         case_insensitive_dict_get(input_arm_json, config.ACI_FIELD_TEMPLATE_PARAMETERS)
         or {}
     )
 
-    # combine the parameter file into a single dictionary with the template
-    # parameters
-    input_parameter_values_json = case_insensitive_dict_get(
-        input_parameter_json, config.ACI_FIELD_TEMPLATE_PARAMETERS
-    )
+    get_values_for_params(input_parameter_json, all_params)
 
-    if input_parameter_values_json:
-        for key in input_parameter_values_json.keys():
-            if case_insensitive_dict_get(all_params, key):
-                all_params[key]["value"] = case_insensitive_dict_get(
-                    case_insensitive_dict_get(input_parameter_values_json, key), "value"
-                )
-            else:
-                # parameter definition is in parameter file but not arm
-                # template
-                eprint(
-                    f'Parameter ["{key}"] is empty or cannot be found in ARM template'
-                )
-    # parameter file is missing field "parameters"
-    elif input_parameter_json and not input_parameter_values_json:
-        eprint(
-            f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found in Parameter file'
-        )
-
-    input_arm_json = parse_template(all_params, all_vars, input_arm_json)
-
-    # extract all mount information from the declarations outside of the
-    # container definitions
-    mount_source_table_keys = config.MOUNT_SOURCE_TABLE.keys()
+    input_arm_json = parse_template(all_params,
+                                    case_insensitive_dict_get(input_arm_json, config.ACI_FIELD_TEMPLATE_VARIABLES)
+                                    or {}, input_arm_json)
 
     container_groups = []
 
@@ -655,6 +549,12 @@ def load_policy_from_arm_template_str(
         container_list = case_insensitive_dict_get(
             container_group_properties, config.ACI_FIELD_TEMPLATE_CONTAINERS
         )
+
+        if not container_list:
+            eprint(
+                f'Field ["{config.POLICY_FIELD_CONTAINERS}"] must be a list of {config.POLICY_FIELD_CONTAINERS}'
+            )
+
         init_container_list = case_insensitive_dict_get(
             container_group_properties, config.ACI_FIELD_TEMPLATE_INIT_CONTAINERS
         )
@@ -685,11 +585,6 @@ def load_policy_from_arm_template_str(
             # parameter definition is in parameter file but not arm template
             eprint(f'Parameter ["{config.ACI_FIELD_TEMPLATE_VOLUMES}"] must be a list')
 
-        if not container_list:
-            eprint(
-                f'Field ["{config.POLICY_FIELD_CONTAINERS}"] must be a list of {config.POLICY_FIELD_CONTAINERS}'
-            )
-
         for container in container_list:
             image_properties = case_insensitive_dict_get(
                 container, config.ACI_FIELD_TEMPLATE_PROPERTIES
@@ -703,141 +598,23 @@ def load_policy_from_arm_template_str(
                     f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found'
                 )
 
-            id_val = image_name
-            env_vars = []
-            # add in the env vars from the template
-            template_env_vars = case_insensitive_dict_get(
-                image_properties, config.ACI_FIELD_TEMPLATE_ENVS
-            )
+            env_vars = process_env_vars_from_template(image_properties)
 
-            if template_env_vars:
-                env_vars = [
-                    {
-                        config.ACI_FIELD_CONTAINERS_ENVS_NAME: case_insensitive_dict_get(
-                            x, "name"
-                        ),
-                        config.ACI_FIELD_CONTAINERS_ENVS_VALUE: case_insensitive_dict_get(
-                            x, "value"
-                        ),
-                        config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
-                    }
-                    for x in template_env_vars
-                ]
+            mounts = process_mounts(image_properties, volumes)
 
-            # get the command from the template or the docker container
-            command = (
-                case_insensitive_dict_get(
-                    image_properties, config.ACI_FIELD_TEMPLATE_COMMAND
-                )
-                or []
-            )
-
-            # initialize empty array of mounts
-            mounts = []
-            # get the mount types from the mounts section of the ARM template
-            volume_mounts = (
-                case_insensitive_dict_get(
-                    image_properties, config.ACI_FIELD_TEMPLATE_VOLUME_MOUNTS
-                )
-                or []
-            )
-
-            if volume_mounts and not isinstance(volume_mounts, list):
-                # parameter definition is in parameter file but not arm
-                # template
-                eprint(
-                    f'Parameter ["{config.ACI_FIELD_TEMPLATE_VOLUME_MOUNTS}"] must be a list'
-                )
-
-            # get list of mount information based on mount name
-            for mount in volume_mounts:
-                mount_name = case_insensitive_dict_get(mount, "name")
-
-                filtered_volume = [
-                    x
-                    for x in volumes
-                    if case_insensitive_dict_get(x, "name") == mount_name
-                ]
-
-                if not filtered_volume:
-                    # parameter definition is in parameter file but not arm
-                    # template
-                    eprint(f'Volume ["{mount_name}"] not found in volume declarations')
-                else:
-                    filtered_volume = filtered_volume[0]
-
-                # figure out mount type
-                mount_type_value = ""
-                for i in filtered_volume.keys():
-                    if i in mount_source_table_keys:
-                        mount_type_value = i
-
-                mounts.append(
-                    {
-                        config.ACI_FIELD_CONTAINERS_MOUNTS_TYPE: mount_type_value,
-                        config.ACI_FIELD_CONTAINERS_MOUNTS_PATH: case_insensitive_dict_get(
-                            mount, config.ACI_FIELD_TEMPLATE_MOUNTS_PATH
-                        ),
-                        config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY: case_insensitive_dict_get(
-                            mount, config.ACI_FIELD_TEMPLATE_MOUNTS_READONLY
-                        ),
-                    }
-                )
             exec_processes = []
-
-            # get the readiness probe if it exists and is an exec command
-            readiness_probe = case_insensitive_dict_get(
-                image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE
-            )
-
-            if readiness_probe:
-                readiness_exec = case_insensitive_dict_get(
-                    readiness_probe, config.ACI_FIELD_CONTAINERS_PROBE_ACTION
-                )
-                if readiness_exec:
-
-                    readiness_command = case_insensitive_dict_get(
-                        readiness_exec,
-                        config.ACI_FIELD_CONTAINERS_PROBE_COMMAND,
-                    )
-                    if not readiness_command:
-                        eprint("Readiness Probe must have a 'command' declaration")
-                    exec_processes.append(
-                        {
-                            config.ACI_FIELD_CONTAINERS_PROBE_COMMAND: readiness_command,
-                            config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
-                        }
-                    )
-
-            # get the readiness probe if it exists and is an exec command
-            liveness_probe = case_insensitive_dict_get(
-                image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE
-            )
-
-            if liveness_probe:
-                liveness_exec = case_insensitive_dict_get(
-                    liveness_probe, config.ACI_FIELD_CONTAINERS_PROBE_ACTION
-                )
-                if liveness_exec:
-                    liveness_command = case_insensitive_dict_get(
-                        liveness_exec,
-                        config.ACI_FIELD_CONTAINERS_PROBE_COMMAND,
-                    )
-                    if not liveness_command:
-                        eprint("Liveness Probe must have a 'command' declaration")
-                    exec_processes.append(
-                        {
-                            config.ACI_FIELD_CONTAINERS_PROBE_COMMAND: liveness_command,
-                            config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
-                        }
-                    )
+            extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
+            extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
 
             containers.append(
                 {
-                    config.ACI_FIELD_CONTAINERS_ID: id_val,
+                    config.ACI_FIELD_CONTAINERS_ID: image_name,
                     config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE: image_name,
                     config.ACI_FIELD_CONTAINERS_ENVS: env_vars,
-                    config.ACI_FIELD_CONTAINERS_COMMAND: command,
+                    config.ACI_FIELD_CONTAINERS_COMMAND: case_insensitive_dict_get(
+                        image_properties, config.ACI_FIELD_TEMPLATE_COMMAND
+                    )
+                    or [],
                     config.ACI_FIELD_CONTAINERS_MOUNTS: mounts,
                     config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED: False,
                     config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES: exec_processes

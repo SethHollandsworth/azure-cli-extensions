@@ -14,7 +14,7 @@ def is_linux():
 
 
 if is_linux():
-    import grp  # pylint disable=import-error
+    import grp  # pylint: disable=import-error
 
 
 def is_admin() -> bool:
@@ -29,16 +29,17 @@ def is_admin() -> bool:
 def is_docker_running() -> bool:
     # check to see if docker is running
     client = None
+    out = True
     try:
         client = docker.from_env()
         # need any command that will show the docker daemon is not running
         client.containers.list()
     except docker.errors.DockerException:
-        return False
+        out = False
     finally:
         if client:
             client.close()
-    return True
+    return out
 
 
 def docker_permissions() -> str:

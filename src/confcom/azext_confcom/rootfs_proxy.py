@@ -15,7 +15,7 @@ host_os = platform.system()
 arch = platform.architecture()[0]
 
 
-class SecurityPolicyProxy:  # pylint disable=too-few-public-methods
+class SecurityPolicyProxy:  # pylint: disable=too-few-public-methods
     def __init__(self):
         script_directory = os.path.dirname(os.path.realpath(__file__))
         DEFAULT_LIB = "./bin/dmverity-vhd"

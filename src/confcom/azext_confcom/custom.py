@@ -55,26 +55,26 @@ def acipolicygen_confcom(
                        )
         sys.exit(1)
 
-    tar_mapping = None
-    if tar_mapping_location:
-        if not os.path.isfile(tar_mapping_location):
-            print(
-                "--tar input must either be a path to a json file with "
-                + "image to tar location mappings or the location to a single tar file."
-            )
-            sys.exit(2)
-        # file is mapping images to tar file locations
-        elif tar_mapping_location.endswith(".json"):
-            tar_mapping = os_util.load_tar_mapping_from_file(tar_mapping_location)
-        # passing in a single tar location for a single image policy
-        else:
-            tar_mapping = tar_mapping_location
-    else:
-        # only need to do the docker checks if we're not grabbing image info from tar files
-        error_msg = run_initial_docker_checks()
-        if error_msg:
-            logger.warning(error_msg)
-            sys.exit(1)
+    tar_mapping = tar_mapping_validation(tar_mapping_location)
+    # if tar_mapping_location:
+    #     if not os.path.isfile(tar_mapping_location):
+    #         print(
+    #             "--tar input must either be a path to a json file with "
+    #             + "image to tar location mappings or the location to a single tar file."
+    #         )
+    #         sys.exit(2)
+    #     # file is mapping images to tar file locations
+    #     elif tar_mapping_location.endswith(".json"):
+    #         tar_mapping = os_util.load_tar_mapping_from_file(tar_mapping_location)
+    #     # passing in a single tar location for a single image policy
+    #     else:
+    #         tar_mapping = tar_mapping_location
+    # else:
+    #     # only need to do the docker checks if we're not grabbing image info from tar files
+    #     error_msg = run_initial_docker_checks()
+    #     if error_msg:
+    #         logger.warning(error_msg)
+    #         sys.exit(1)
 
     output_type = security_policy.OutputType.DEFAULT
     if outraw:
@@ -93,6 +93,7 @@ def acipolicygen_confcom(
             DEFAULT_REGO_FRAGMENTS[0]["minimum_svn"],
         )
 
+    # error checking for making sure an input is provided is above
     if input_path:
         logger.warning(
             "Generating security policy for input config file %s in %s",
@@ -129,9 +130,6 @@ def acipolicygen_confcom(
         container_group_policies = security_policy.load_policy_from_image_name(
             image_name, debug_mode=debug_mode
         )
-    else:
-        logger.warning("No input, ARM Template, or image name specified")
-        sys.exit(1)
 
     count = 0
     exit_code = 0
@@ -148,47 +146,25 @@ def acipolicygen_confcom(
         )
 
         if validate_sidecar:
-            is_valid, output = policy.validate_sidecars()
+            # is_valid, output = policy.validate_sidecars()
 
-            if outraw_pretty_print:
-                formatted_output = pretty_print_func(output)
-            else:
-                formatted_output = print_func(output)
+            # if outraw_pretty_print:
+            #     formatted_output = pretty_print_func(output)
+            # else:
+            #     formatted_output = print_func(output)
 
-            if is_valid:
-                print("Sidecar containers will pass with its generated policy")
-                return
+            # if is_valid:
+            #     print("Sidecar containers will pass with its generated policy")
+            #     return
 
-            print(
-                f"Sidecar containers will not pass with its generated policy: {formatted_output}"
-            )
-            exit_code = 2
+            # print(
+            #     f"Sidecar containers will not pass with its generated policy: {formatted_output}"
+            # )
+            # exit_code = 2
+            exit_code = validate_sidecar_in_policy(policy, outraw_pretty_print)
 
         elif diff:
-            is_valid, output = policy.validate_cce_policy()
-
-            if outraw_pretty_print:
-                formatted_output = pretty_print_func(output)
-            else:
-                formatted_output = print_func(output)
-
-            print(
-                "Existing policy and ARM Template match"
-                # TODO: verify this works
-                if is_valid
-                else formatted_output
-            )
-            fragment_diff = policy.compare_fragments()
-
-            if fragment_diff != {}:
-                logger.warning(
-                    "Fragments in the existing policy are not the defaults. If this is expected, ignore this warning."
-                )
-            if not is_valid:
-                logger.warning(
-                    "Existing Policy and ARM Template differ. Consider recreating the base64-encoded policy."
-                )
-                exit_code = 2
+            exit_code = get_diff_outputs(policy, outraw_pretty_print)
         elif not print_policy_to_terminal and arm_template:
             output = policy.get_serialized_output(output_type, use_json)
             result = inject_policy_into_template(arm_template, output, count)
@@ -210,3 +186,74 @@ def update_confcom(cmd, instance, tags=None):
     with cmd.update_context(instance) as c:
         c.set_param("tags", tags)
     return instance
+
+
+def validate_sidecar_in_policy(policy: security_policy.AciPolicy, outraw_pretty_print: bool):
+    is_valid, output = policy.validate_sidecars()
+
+    if outraw_pretty_print:
+        formatted_output = pretty_print_func(output)
+    else:
+        formatted_output = print_func(output)
+
+    if is_valid:
+        print("Sidecar containers will pass with its generated policy")
+        return 0
+
+    print(
+        f"Sidecar containers will not pass with its generated policy: {formatted_output}"
+    )
+    return 2
+
+
+def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: bool):
+    exit_code = 0
+    is_valid, output = policy.validate_cce_policy()
+
+    if outraw_pretty_print:
+        formatted_output = pretty_print_func(output)
+    else:
+        formatted_output = print_func(output)
+
+    print(
+        "Existing policy and ARM Template match"
+        # TODO: verify this works
+        if is_valid
+        else formatted_output
+    )
+    fragment_diff = policy.compare_fragments()
+
+    if fragment_diff != {}:
+        logger.warning(
+            "Fragments in the existing policy are not the defaults. If this is expected, ignore this warning."
+        )
+    if not is_valid:
+        logger.warning(
+            "Existing Policy and ARM Template differ. Consider recreating the base64-encoded policy."
+        )
+        exit_code = 2
+    return exit_code
+
+
+def tar_mapping_validation(tar_mapping_location: str):
+    tar_mapping = None
+    if tar_mapping_location:
+        if not os.path.isfile(tar_mapping_location):
+            print(
+                "--tar input must either be a path to a json file with "
+                + "image to tar location mappings or the location to a single tar file."
+            )
+            sys.exit(2)
+        # file is mapping images to tar file locations
+        elif tar_mapping_location.endswith(".json"):
+            tar_mapping = os_util.load_tar_mapping_from_file(tar_mapping_location)
+        # passing in a single tar location for a single image policy
+        else:
+            tar_mapping = tar_mapping_location
+    else:
+        # only need to do the docker checks if we're not grabbing image info from tar files
+        error_msg = run_initial_docker_checks()
+        if error_msg:
+            logger.warning(error_msg)
+            sys.exit(1)
+    return tar_mapping
