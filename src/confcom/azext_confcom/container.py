@@ -22,268 +22,305 @@ _INJECTED_CUSTOMER_ENV_RULES = (
 )
 
 
+def extract_container_image(container_json: Any) -> str:
+    containerImage = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE
+    )
+    if not containerImage:
+        eprint(
+            f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+            + f'["{config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE}"] is empty or can not be found.'
+        )
+    return containerImage
+
+
+def extract_env_rules(container_json: Any):
+    environmentRules = []
+    env_rules = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_ENVS
+    )
+    if env_rules is None:  # empty(no envs) is acceptable
+        eprint(
+            f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+            + f'["{config.ACI_FIELD_CONTAINERS_ENVS}"] is null or can not be found.'
+        )
+
+    # parse each environment variable pair and add it to list
+    for rule in env_rules:
+        name, value, strategy, required = (
+            case_insensitive_dict_get(rule, config.ACI_FIELD_CONTAINERS_ENVS_NAME),
+            case_insensitive_dict_get(rule, config.ACI_FIELD_CONTAINERS_ENVS_VALUE),
+            case_insensitive_dict_get(rule, config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY),
+            case_insensitive_dict_get(rule, config.ACI_FIELD_CONTAINERS_ENVS_REQUIRED),
+        )
+        if name is None or value is None or strategy is None:
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_ENVS}"] is incorrect.'
+            )
+
+        environmentRules.append(
+            {
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE: f"{name}={value}",
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY: strategy,
+                # default value for "required" is False
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_REQUIRED: required
+                if required is not None
+                else False,
+            }
+        )
+    return environmentRules
+
+
+def extract_id(container_json: Any) -> str:
+    return case_insensitive_dict_get(container_json, config.ACI_FIELD_CONTAINERS_ID)
+
+
+def extract_working_dir(container_json: Any):
+    # parse working directory
+    workingDir = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_WORKINGDIR
+    )
+    # check workingDir is an absolute path if user specified
+    if workingDir:
+        if not isinstance(workingDir, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_WORKINGDIR}"] must be a String.'
+            )
+        if not os.path.isabs(workingDir):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_WORKINGDIR}"] with value: {workingDir} is not absolute path.'
+            )
+    return workingDir
+
+
+def extract_command(container_json: Any):
+    # parse command
+    command = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_COMMAND
+    )
+    if not isinstance(command, list):
+        eprint(
+            f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+            + f'["{config.ACI_FIELD_CONTAINERS_COMMAND}"] must be list of Strings.'
+        )
+    return command
+
+
+def extract_mounts(container_json: Any):
+    # parse mounts
+    mounts = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_MOUNTS
+    )
+    _mounts = []
+    if mounts:
+        if not isinstance(mounts, list):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"] must be list of Mount configuration.'
+            )
+
+        for m in mounts:
+            mount_type = case_insensitive_dict_get(
+                m, config.ACI_FIELD_CONTAINERS_MOUNTS_TYPE
+            )
+            if mount_type not in config.MOUNT_SOURCE_TABLE:
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS_TYPE}"]'
+                    + "can only be following values:"
+                    + f'{",".join(list(config.MOUNT_SOURCE_TABLE.keys()))} .'
+                )
+
+            mount_path = case_insensitive_dict_get(
+                m, config.ACI_FIELD_CONTAINERS_MOUNTS_PATH
+            )
+            if not mount_path:
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS_PATH}"] is empty or can not be found.'
+                )
+
+            mount_readonly = case_insensitive_dict_get(
+                m, config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY
+            )
+            if mount_readonly is not None and not isinstance(mount_readonly, bool):
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY}"] can only be boolean value.'
+                )
+
+            # readonly default to False if not specified
+            if mount_readonly is None:
+                mount_readonly = False
+
+            _mounts.append(m)
+    return _mounts
+
+
+def extract_excess_process(container_json: Any, container_image: str, debug_mode: bool):
+    if ":" in container_image:
+        base = container_image.split(":")[0]
+    else:
+        base = container_image
+        # convert to shorthand: base = containerImage.split(":")[0] if ":" in containerImage else containerImage
+    # get the exec_processes info used as a liveness probe
+    exec_processes = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES
+    )
+    exec_processes_output = []
+    if exec_processes:
+        if not isinstance(exec_processes, list):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"] can only be a list.'
+            )
+
+        for exec_processes_item in exec_processes:
+
+            exec_command = case_insensitive_dict_get(
+                exec_processes_item, config.ACI_FIELD_CONTAINERS_COMMAND
+            )
+            if not isinstance(exec_command, list) and all(
+                map(lambda x: isinstance(x, str), exec_command)
+            ):
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_COMMAND}"]'
+                    + "can only be a list of strings."
+                )
+
+            exec_signals = case_insensitive_dict_get(
+                exec_processes_item,
+                config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES,
+            )
+            if not isinstance(exec_signals, list) and all(
+                map(lambda x: isinstance(x, int), exec_signals)
+            ):
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_COMMAND}"]'
+                    + "can only be a list of integers."
+                )
+
+            # can either be bool or undefined so give it a default value of False if not a sidecar
+            default_exec_stdio = (
+                True if base in config.BASELINE_SIDECAR_CONTAINERS else debug_mode
+            )
+            exec_stdio_value = case_insensitive_dict_get(
+                exec_processes_item, config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS
+            )
+            exec_stdio_access = (
+                exec_stdio_value if exec_stdio_value is not None else default_exec_stdio
+            )
+
+            if not isinstance(exec_stdio_access, bool):
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS}"]'
+                    + "can only be a boolean."
+                )
+
+            exec_processes_output.append(
+                {
+                    config.POLICY_FIELD_CONTAINERS_ELEMENTS_COMMANDS: exec_command,
+                    config.POLICY_FIELD_CONTAINER_SIGNAL_CONTAINER_PROCESSES: exec_signals,
+                    config.POLICY_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: exec_stdio_access,
+                }
+            )
+    return exec_processes_output
+
+
+# change
+def extract_allow_elevated(container_json: Any):
+    _allow_elevated = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED
+    )
+    if _allow_elevated:
+        if not isinstance(_allow_elevated, bool):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED}"] can only be boolean value.'
+            )
+    else:
+        # default is allow_elevated should be true
+        _allow_elevated = True
+    return _allow_elevated
+
+
+def extract_allow_studio_access(container_json: Any):
+    # get the field for Standard IO access, default to true
+    allow_stdio_value = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS
+    )
+    allow_stdio_access = allow_stdio_value if allow_stdio_value is not None else True
+    return allow_stdio_access
+
+
+def extract_get_signals(container_json: Any):
+    # get the signals info used as a liveness probe
+    signals = (
+        case_insensitive_dict_get(
+            container_json, config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES
+        )
+        or []
+    )
+    if signals:
+        if not isinstance(signals, list):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + '["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
+                + "can only be a list."
+            )
+
+        for signals_item in signals:
+            if not isinstance(signals_item, int):
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                    + '["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
+                    + "can only be an integer."
+                )
+    return signals
+
+
 class ContainerImage:
+    # pylint: disable=too-many-instance-attributes
+
     @classmethod
     def from_json(
         cls, container_json: Any, debug_mode: bool = False
     ) -> "ContainerImage":
-        containerImage = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE
+
+        container_image = extract_container_image(container_json)
+        id_val = extract_id(container_json)
+        environment_rules = extract_env_rules(container_json=container_json)
+        command = extract_command(container_json)
+        working_dir = extract_working_dir(container_json)
+        mounts = extract_mounts(container_json)
+        allow_elevated = extract_allow_elevated(container_json)
+        exec_processes = extract_excess_process(
+            container_json, container_image, debug_mode
         )
-        if not containerImage:
-            eprint(
-                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                + f'["{config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE}"] is empty or can not be found.'
-            )
-
-        id_val = case_insensitive_dict_get(container_json, config.ACI_FIELD_CONTAINERS_ID)
-
-        environmentRules = []
-        env_rules = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_ENVS
-        )
-        if env_rules is None:  # empty(no envs) is acceptable
-            eprint(
-                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                + f'["{config.ACI_FIELD_CONTAINERS_ENVS}"] is null or can not be found.'
-            )
-
-        # parse each environment variable pair and add it to list
-        for rule in env_rules:
-            name, value, strategy, required = (
-                case_insensitive_dict_get(rule, config.ACI_FIELD_CONTAINERS_ENVS_NAME),
-                case_insensitive_dict_get(rule, config.ACI_FIELD_CONTAINERS_ENVS_VALUE),
-                case_insensitive_dict_get(
-                    rule, config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY
-                ),
-                case_insensitive_dict_get(
-                    rule, config.ACI_FIELD_CONTAINERS_ENVS_REQUIRED
-                ),
-            )
-            if name is None or value is None or strategy is None:
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_ENVS}"] is incorrect.'
-                )
-
-            environmentRules.append(
-                {
-                    config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE: f"{name}={value}",
-                    config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY: strategy,
-                    # default value for "required" is False
-                    config.POLICY_FIELD_CONTAINERS_ELEMENTS_REQUIRED: required
-                    if required is not None
-                    else False,
-                }
-            )
-
-        # parse command
-        command = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_COMMAND
-        )
-        if not isinstance(command, list):
-            eprint(
-                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                + f'["{config.ACI_FIELD_CONTAINERS_COMMAND}"] must be list of Strings.'
-            )
-
-        # parse working directory
-        workingDir = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_WORKINGDIR
-        )
-        # check workingDir is an absolute path if user specified
-        if workingDir:
-            if not isinstance(workingDir, str):
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + f'["{config.ACI_FIELD_CONTAINERS_WORKINGDIR}"] must be a String.'
-                )
-            if not os.path.isabs(workingDir):
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + f'["{config.ACI_FIELD_CONTAINERS_WORKINGDIR}"] with value: {workingDir} is not absolute path.'
-                )
-
-        # parse mounts
-        mounts = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_MOUNTS
-        )
-        _mounts = []
-        if mounts:
-            if not isinstance(mounts, list):
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"] must be list of Mount configuration.'
-                )
-
-            for m in mounts:
-                mount_type = case_insensitive_dict_get(
-                    m, config.ACI_FIELD_CONTAINERS_MOUNTS_TYPE
-                )
-                if mount_type not in config.MOUNT_SOURCE_TABLE:
-                    eprint(
-                        f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS_TYPE}"]'
-                        + "can only be following values:"
-                        + f'{",".join(list(config.MOUNT_SOURCE_TABLE.keys()))} .'
-                    )
-
-                mount_path = case_insensitive_dict_get(
-                    m, config.ACI_FIELD_CONTAINERS_MOUNTS_PATH
-                )
-                if not mount_path:
-                    eprint(
-                        f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS_PATH}"] is empty or can not be found.'
-                    )
-
-                mount_readonly = case_insensitive_dict_get(
-                    m, config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY
-                )
-                if mount_readonly is not None and not isinstance(mount_readonly, bool):
-                    eprint(
-                        f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY}"] can only be boolean value.'
-                    )
-
-                # readonly default to False if not specified
-                if mount_readonly is None:
-                    mount_readonly = False
-
-                _mounts.append(m)
-
-        _allow_elevated = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED
-        )
-        if _allow_elevated:
-            if not isinstance(_allow_elevated, bool):
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED}"] can only be boolean value.'
-                )
-        else:
-            # default is allow_elevated should be true
-            _allow_elevated = True
-
-        if ":" in containerImage:
-            base = containerImage.split(":")[0]
-        else:
-            base = containerImage
-
-        # get the exec_processes info used as a liveness probe
-        exec_processes = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES
-        )
-        exec_processes_output = []
-        if exec_processes:
-            if not isinstance(exec_processes, list):
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"] can only be a list.'
-                )
-
-            for exec_processes_item in exec_processes:
-
-                exec_command = case_insensitive_dict_get(
-                    exec_processes_item, config.ACI_FIELD_CONTAINERS_COMMAND
-                )
-                if not isinstance(exec_command, list) and all(
-                    map(lambda x: isinstance(x, str), exec_command)
-                ):
-                    eprint(
-                        f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_COMMAND}"]'
-                        + "can only be a list of strings."
-                    )
-
-                exec_signals = case_insensitive_dict_get(
-                    exec_processes_item,
-                    config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES,
-                )
-                if not isinstance(exec_signals, list) and all(
-                    map(lambda x: isinstance(x, int), exec_signals)
-                ):
-                    eprint(
-                        f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_COMMAND}"]'
-                        + "can only be a list of integers."
-                    )
-
-                # can either be bool or undefined so give it a default value of False if not a sidecar
-                default_exec_stdio = (
-                    True if base in config.BASELINE_SIDECAR_CONTAINERS else debug_mode
-                )
-                exec_stdio_value = case_insensitive_dict_get(
-                    exec_processes_item, config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS
-                )
-                exec_stdio_access = (
-                    exec_stdio_value
-                    if exec_stdio_value is not None
-                    else default_exec_stdio
-                )
-
-                if not isinstance(exec_stdio_access, bool):
-                    eprint(
-                        f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"]'
-                        + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS}"]'
-                        + "can only be a boolean."
-                    )
-
-                exec_processes_output.append(
-                    {
-                        config.POLICY_FIELD_CONTAINERS_ELEMENTS_COMMANDS: exec_command,
-                        config.POLICY_FIELD_CONTAINER_SIGNAL_CONTAINER_PROCESSES: exec_signals,
-                        config.POLICY_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: exec_stdio_access,
-                    }
-                )
-
-        # get the signals info used as a liveness probe
-        signals = (
-            case_insensitive_dict_get(
-                container_json, config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES
-            )
-            or []
-        )
-        if signals:
-            if not isinstance(signals, list):
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + '["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
-                    + "can only be a list."
-                )
-
-            for signals_item in signals:
-                if not isinstance(signals_item, int):
-                    eprint(
-                        f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                        + '["{config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES}"]'
-                        + "can only be an integer."
-                    )
-
-        # get the field for Standard IO access, default to true
-        allow_stdio_value = case_insensitive_dict_get(
-            container_json, config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS
-        )
-        allow_stdio_access = (
-            allow_stdio_value if allow_stdio_value is not None else True
-        )
-
+        signals = extract_get_signals(container_json)
+        allow_studio_access = extract_allow_studio_access(container_json)
         return ContainerImage(
-            containerImage=containerImage,
-            environmentRules=environmentRules,
+            containerImage=container_image,
+            environmentRules=environment_rules,
             command=command,
-            workingDir=workingDir,
-            mounts=_mounts,
-            allow_elevated=_allow_elevated,
+            workingDir=working_dir,
+            mounts=mounts,
+            allow_elevated=allow_elevated,
             extraEnvironmentRules=[],
-            execProcesses=exec_processes_output,
+            execProcesses=exec_processes,
             signals=signals,
-            allowStdioAccess=allow_stdio_access,
+            allowStdioAccess=allow_studio_access,
             id_val=id_val,
         )
 
@@ -367,8 +404,8 @@ class ContainerImage:
             if rule[config.ACI_FIELD_CONTAINERS_ENVS_NAME] not in env_var_names:
                 out_rules.append(
                     {
-                        config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE:
-                        f"{rule[config.ACI_FIELD_CONTAINERS_ENVS_NAME]}="
+                        # pylint: disable=line-too-long
+                        config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE: f"{rule[config.ACI_FIELD_CONTAINERS_ENVS_NAME]}="
                         + f"{rule[config.ACI_FIELD_CONTAINERS_ENVS_VALUE]}",
                         config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY: rule[
                             config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY
