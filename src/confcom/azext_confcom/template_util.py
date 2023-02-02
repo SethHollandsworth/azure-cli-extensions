@@ -565,23 +565,6 @@ def inject_policy_into_template(
 ) -> bool:
     write_flag = False
     input_arm_json = os_util.load_json_from_file(arm_template_path)
-    original_input_arm_json = copy.deepcopy(input_arm_json)
-    # extract variables and parameters in case we need to do substitutions
-    # while searching for image names
-    all_params = (
-        case_insensitive_dict_get(input_arm_json, config.ACI_FIELD_TEMPLATE_PARAMETERS)
-        or {}
-    )
-
-    input_parameter_json = {}
-    if parameter_data:
-        input_parameter_json = os_util.load_json_from_file(parameter_data)
-
-    get_values_for_params(input_parameter_json, all_params)
-
-    input_arm_json = parse_template(all_params,
-                                    case_insensitive_dict_get(input_arm_json, config.ACI_FIELD_TEMPLATE_VARIABLES)
-                                    or {}, input_arm_json)
 
     # find the image names and extract them from the template
     arm_resources = case_insensitive_dict_get(
@@ -639,6 +622,6 @@ def inject_policy_into_template(
             ] = policy
             write_flag = True
     if write_flag:
-        os_util.write_json_to_file(arm_template_path, original_input_arm_json)
+        os_util.write_json_to_file(arm_template_path, input_arm_json)
         return True
     return False
