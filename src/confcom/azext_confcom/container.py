@@ -34,7 +34,7 @@ def extract_container_image(container_json: Any) -> str:
     return containerImage
 
 
-def extract_env_rules(container_json: Any):
+def extract_env_rules(container_json: Any) -> List[Dict]:
     environmentRules = []
     env_rules = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_ENVS
@@ -75,7 +75,7 @@ def extract_id(container_json: Any) -> str:
     return case_insensitive_dict_get(container_json, config.ACI_FIELD_CONTAINERS_ID)
 
 
-def extract_working_dir(container_json: Any):
+def extract_working_dir(container_json: Any) -> str:
     # parse working directory
     workingDir = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_WORKINGDIR
@@ -95,7 +95,7 @@ def extract_working_dir(container_json: Any):
     return workingDir
 
 
-def extract_command(container_json: Any):
+def extract_command(container_json: Any) -> List[str]:
     # parse command
     command = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_COMMAND
@@ -108,7 +108,7 @@ def extract_command(container_json: Any):
     return command
 
 
-def extract_mounts(container_json: Any):
+def extract_mounts(container_json: Any) -> List:
     # parse mounts
     mounts = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_MOUNTS
@@ -162,7 +162,7 @@ def extract_mounts(container_json: Any):
     return _mounts
 
 
-def extract_exec_process(container_json: Any, container_image: str, debug_mode: bool):
+def extract_exec_process(container_json: Any, container_image: str, debug_mode: bool) -> List:
     base = container_image.split(":")[0] if ":" in container_image else container_image
 
     # get the exec_processes info used as a liveness probe
@@ -235,8 +235,7 @@ def extract_exec_process(container_json: Any, container_image: str, debug_mode: 
     return exec_processes_output
 
 
-# change
-def extract_allow_elevated(container_json: Any):
+def extract_allow_elevated(container_json: Any) -> bool:
     _allow_elevated = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED
     )
@@ -252,7 +251,7 @@ def extract_allow_elevated(container_json: Any):
     return _allow_elevated
 
 
-def extract_allow_studio_access(container_json: Any):
+def extract_allow_studio_access(container_json: Any) -> bool:
     # get the field for Standard IO access, default to true
     allow_stdio_value = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS
@@ -261,7 +260,7 @@ def extract_allow_studio_access(container_json: Any):
     return allow_stdio_access
 
 
-def extract_get_signals(container_json: Any):
+def extract_get_signals(container_json: Any) -> List:
     # get the signals info used as a liveness probe
     signals = (
         case_insensitive_dict_get(
