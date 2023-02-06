@@ -1,3 +1,8 @@
+# --------------------------------------------------------------------------------------------
+# Copyright (c) Microsoft Corporation. All rights reserved.
+# Licensed under the MIT License. See License.txt in the project root for license information.
+# --------------------------------------------------------------------------------------------
+
 import re
 import json
 import tarfile
@@ -98,7 +103,7 @@ def get_image_info(progress, message_queue, client, tar_mapping, image):
     return image_info
 
 
-def get_tar_location_from_mapping(tar_mapping: dict | str, image_name: str) -> str:
+def get_tar_location_from_mapping(tar_mapping: Any, image_name: str) -> str:
     # tar location can either be a dict mapping images to paths to tarfiles or a string to the tarfile
     tar_location = None
     if isinstance(tar_mapping, dict):
