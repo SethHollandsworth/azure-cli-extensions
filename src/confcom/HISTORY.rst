@@ -2,6 +2,15 @@
 
 Release History
 ===============
+0.2.7
+* adding default mounts field for sidecars
+
+0.2.6
+* updating secretSource mount source to "plan9"
+
+0.2.5
+* removing default mounts and updating mount type to "bind"
+
 0.2.4
 * updating sidecar package name and svn
 
