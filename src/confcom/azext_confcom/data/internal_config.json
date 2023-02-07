@@ -1,5 +1,5 @@
 {
-    "version": "0.2.7",
+    "version": "0.2.4",
     "hcsshim_config": {
         "maxVersion": "1.0.0",
         "minVersion": "0.0.1"
@@ -126,7 +126,7 @@
             },
             {
                 "mountType": "secretsSource",
-                "source": "plan9://"
+                "source": "/run/gcs/c/.+"
             },
             {
                 "mountType": "emptyDir",
@@ -165,9 +165,7 @@
         "mcr.microsoft.com/aci/atlas-netstats",
         "mcr.microsoft.com/aci/atlas-mount-resolv-conf",
         "mcr.microsoft.com/aci/atlas-mount-gitrepo-volume",
-        "k8s.gcr.io/pause",
-        "mcr.microsoft.com/aci/sc-proxy",
-        "mcr.microsoft.com/aci/vk-metrics-sidecar"
+        "k8s.gcr.io/pause"
     ],
     "default_rego_fragments": [
         {

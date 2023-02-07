@@ -415,9 +415,9 @@ class ContainerImage:
         return out_rules
 
     def _get_mounts_json(self) -> Dict[str, Any]:
-        # if mount is empty, return []
+        # if mount is empty, return None
         if not self._mounts:
-            return []
+            return None
 
         mounts = []
 
@@ -440,6 +440,7 @@ class ContainerImage:
                 mount[
                     config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_OPTIONS
                 ] = case_insensitive_dict_get(m, "options")
+            # TODO: figure out what type of mount it is for secretsSource. For now, assume it is a bind mount
             mount[
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_TYPE
             ] = config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_TYPE_BIND
@@ -454,12 +455,15 @@ class ContainerImage:
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_COMMANDS: self._command,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS: self._get_environment_rules(),
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_WORKINGDIR: self._workingDir,
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS: self._get_mounts_json(),
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_ELEVATED: self._allow_elevated,
             config.POLICY_FIELD_CONTAINER_EXEC_PROCESSES: self._exec_processes,
             config.POLICY_FIELD_CONTAINER_SIGNAL_CONTAINER_PROCESSES: self._signals,
             config.POLICY_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: self._allow_stdio_access,
         }
+        mounts = self._get_mounts_json()
+        # mounts are optional, if it is None, remove it from the policy
+        if mounts:
+            elements[config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS] = mounts
 
         self._policy_json = elements
         return self._policy_json

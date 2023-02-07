@@ -8,7 +8,7 @@ from typing import List
 import os
 from pathlib import Path
 import platform
-from azext_confcom.errors import eprint
+from .errors import eprint
 
 
 host_os = platform.system()

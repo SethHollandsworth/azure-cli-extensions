@@ -318,10 +318,8 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             # for sidecar validation, it's fine if the policy has
             # more things defined than the image, so we can take
             # those out of the diff because it would not hinder deployment
-            if sidecar_validation:
-                for k in list(container_diff.keys()):
-                    if "removed" in k:
-                        container_diff.pop(k)
+            if sidecar_validation and "values_removed" in container_diff:
+                container_diff.pop("values_removed")
             if container_diff != {}:
                 reason_list[id_val] = container_diff
 
