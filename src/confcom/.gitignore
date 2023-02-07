@@ -23,8 +23,8 @@ ext_env/*
 
 # temporary shared libraries
 tests/outputs/**
-az_extensions/confcom/azext_confcom/bin/
-az_extensions/confcom/azext_confcom/bin/*
+azext_confcom/bin/
+azext_confcom/bin/*
 **/dmverity-vhd.exe
 **/dmverity-vhd
 # metadata file for coverage reports

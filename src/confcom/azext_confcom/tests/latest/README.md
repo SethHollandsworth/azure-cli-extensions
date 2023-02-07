@@ -34,7 +34,7 @@ test_arm_template_with_parameter_file_clean_room | mcr.microsoft.com/azure-funct
 test_policy_diff | rust:1.52.1 | See if the diff functionality outputs `True` when diffs match completely
 test_incorrect_policy_diff | rust:1.52.1 | Check output formatting and functionality of diff command
 test_update_infrastructure_svn | python:3.6.14-slim-buster | Change the minimum SVN for the insfrastructure fragment
-test_multiple_policies | python:3.6.14-slim-buster & rust:1.52.1 | See if two unique policies are generated from a single ARM Template container multiple container groups. Also have an extra resource that is untouched
+test_multiple_policies | python:3.6.14-slim-buster & rust:1.52.1 | See if two unique policies are generated from a single ARM Template container multiple container groups. Also have an extra resource that is untouched. Also has a secureValue for an environment variable.
 test_arm_template_with_init_container | python:3.6.14-slim-buster & rust:1.52.1 | See if having an initContainer is picked up and added to the list of valid containers
 
 ## policy.json [test file](test_confcom_scenario.py)

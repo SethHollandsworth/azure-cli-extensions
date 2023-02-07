@@ -129,7 +129,7 @@ def acipolicygen_confcom(
             exit_code = get_diff_outputs(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
         elif not print_policy_to_terminal and arm_template:
             output = policy.get_serialized_output(output_type, use_json)
-            result = inject_policy_into_template(arm_template, output, count)
+            result = inject_policy_into_template(arm_template, arm_template_parameters, output, count)
             count += 1
             if result:
                 print("CCE Policy successfully injected into ARM Template")
@@ -179,7 +179,6 @@ def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: boo
 
     print(
         "Existing policy and ARM Template match"
-        # TODO: verify this works
         if is_valid
         else formatted_output
     )
