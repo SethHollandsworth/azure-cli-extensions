@@ -1994,7 +1994,7 @@ class MultiplePolicyTemplate(unittest.TestCase):
                                 },
                                 {
                                     "name": "TEST_REGEXP_ENV",
-                                    "value": "test_regexp_env"
+                                    "secureValue": "test_regexp_env"
                                 }
                             ]
                         }
@@ -2051,7 +2051,7 @@ class MultiplePolicyTemplate(unittest.TestCase):
                             "environmentVariables": [
                                 {
                                     "name": "PATH",
-                                    "value": "/customized/different/path/value"
+                                    "secureValue": "/customized/different/path/value"
                                 }
                             ]
                         }

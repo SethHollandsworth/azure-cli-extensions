@@ -5,6 +5,7 @@
 
 import re
 import json
+import copy
 import tarfile
 from typing import Any, Tuple, Dict, List
 import deepdiff
@@ -140,6 +141,9 @@ def process_env_vars_from_template(image_properties: dict) -> List[Dict[str, str
                 ),
                 config.ACI_FIELD_CONTAINERS_ENVS_VALUE: case_insensitive_dict_get(
                     x, "value"
+                ) or
+                case_insensitive_dict_get(
+                    x, "secureValue"
                 ),
                 config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
             }
@@ -222,6 +226,8 @@ def get_values_for_params(input_parameter_json: dict, all_params: dict) -> Dict[
         if case_insensitive_dict_get(all_params, key):
             all_params[key]["value"] = case_insensitive_dict_get(
                 case_insensitive_dict_get(input_parameter_values_json, key), "value"
+            ) or case_insensitive_dict_get(
+                case_insensitive_dict_get(input_parameter_values_json, key), "secureValue"
             )
         else:
             # parameter definition is in parameter file but not arm
@@ -565,11 +571,13 @@ def compare_env_vars(
 
 
 def inject_policy_into_template(
-    arm_template_path: str, policy: str, count: int
+    arm_template_path: str, parameter_data_path: str, policy: str, count: int
 ) -> bool:
     write_flag = False
+    parameter_data = None
     input_arm_json = os_util.load_json_from_file(arm_template_path)
-
+    if parameter_data_path:
+        parameter_data = os_util.load_json_from_file(arm_template_path)
     # find the image names and extract them from the template
     arm_resources = case_insensitive_dict_get(
         input_arm_json, config.ACI_FIELD_RESOURCES
@@ -590,9 +598,6 @@ def inject_policy_into_template(
         )
 
     resource = aci_list[count]
-    container_group_name = case_insensitive_dict_get(
-        resource, config.ACI_FIELD_RESOURCES_NAME
-    )
     container_group_properties = case_insensitive_dict_get(
         resource, config.ACI_FIELD_TEMPLATE_PROPERTIES
     )
@@ -616,6 +621,9 @@ def inject_policy_into_template(
         confidential_compute_properties[config.ACI_FIELD_TEMPLATE_CCE_POLICY] = policy
         write_flag = True
     else:
+        container_group_name = get_container_group_name(
+            input_arm_json, parameter_data, count
+        )
         user_input = input(
             "Do you want to overwrite the CCE Policy currently in container group " +
             f'"{container_group_name}" in the ARM Template? (y/n) '
@@ -629,3 +637,61 @@ def inject_policy_into_template(
         os_util.write_json_to_file(arm_template_path, input_arm_json)
         return True
     return False
+
+
+def get_container_group_name(
+    input_arm_json: dict, input_parameter_json: dict, count: int
+) -> bool:
+    arm_json = copy.deepcopy(input_arm_json)
+    # extract variables and parameters in case we need to do substitutions
+    # while searching for image names
+    all_vars = case_insensitive_dict_get(arm_json, config.ACI_FIELD_TEMPLATE_VARIABLES) or {}
+    all_params = (
+        case_insensitive_dict_get(arm_json, config.ACI_FIELD_TEMPLATE_PARAMETERS) or {}
+    )
+
+    if input_parameter_json:
+        # combine the parameter file into a single dictionary with the template parameters
+        input_parameter_values_json = case_insensitive_dict_get(
+            input_parameter_json, config.ACI_FIELD_TEMPLATE_PARAMETERS
+        )
+        for key in input_parameter_values_json.keys():
+            if case_insensitive_dict_get(all_params, key):
+                all_params[key]["value"] = case_insensitive_dict_get(
+                    case_insensitive_dict_get(input_parameter_values_json, key), "value"
+                ) or case_insensitive_dict_get(
+                    case_insensitive_dict_get(input_parameter_values_json, key),
+                    "secureValue",
+                )
+            else:
+                # parameter definition is in parameter file but not arm template
+                eprint(
+                    f'Parameter ["{key}"] is empty or cannot be found in ARM template'
+                )
+    # parameter file is missing field "parameters"
+    elif input_parameter_json and not input_parameter_values_json:
+        eprint(
+            f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found in Parameter file'
+        )
+
+    arm_json = parse_template(all_params, all_vars, arm_json)
+    # find the image names and extract them from the template
+    arm_resources = case_insensitive_dict_get(arm_json, config.ACI_FIELD_RESOURCES)
+
+    if not arm_resources:
+        eprint(f"Field [{config.ACI_FIELD_RESOURCES}] is empty or cannot be found")
+
+    aci_list = [
+        item
+        for item in arm_resources
+        if item["type"] == config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL
+    ]
+
+    if not aci_list:
+        eprint(
+            f'Field ["type"] must contain value of ["{config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL}"]'
+        )
+
+    resource = aci_list[count]
+    container_group_name = case_insensitive_dict_get(resource, config.ACI_FIELD_RESOURCES_NAME)
+    return container_group_name
