@@ -598,6 +598,7 @@ def inject_policy_into_template(
         )
 
     resource = aci_list[count]
+
     container_group_properties = case_insensitive_dict_get(
         resource, config.ACI_FIELD_TEMPLATE_PROPERTIES
     )
