@@ -16,6 +16,7 @@ from azext_confcom.security_policy import (
     load_policy_from_arm_template_str,
 )
 import azext_confcom.config as config
+from azext_confcom.custom import acipolicygen_confcom
 from azext_confcom.template_util import case_insensitive_dict_get
 
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
@@ -2308,3 +2309,453 @@ class PolicyGeneratingArmInitContainer(unittest.TestCase):
 
         # see if the remote image and the local one produce the same output
         self.assertTrue("python" in python_image_name)
+
+
+# @unittest.skip("not in use")
+@pytest.mark.run(order=11)
+class PolicyGeneratingDisableStdioAccess(unittest.TestCase):
+
+    custom_arm_json_default_value = """
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+
+
+        "parameters": {
+            "containergroupname": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container group"
+                },
+                "defaultValue":"simple-container-group"
+            },
+            "image": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container group"
+                },
+                "defaultValue":"rust:1.52.1"
+            },
+            "containername": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container"
+                },
+                "defaultValue":"simple-container"
+            },
+
+            "port": {
+                "type": "string",
+                "metadata": {
+                    "description": "Port to open on the container and the public IP address."
+                },
+                "defaultValue": "8080"
+            },
+            "cpuCores": {
+                "type": "string",
+                "metadata": {
+                    "description": "The number of CPU cores to allocate to the container."
+                },
+                "defaultValue": "1.0"
+            },
+            "memoryInGb": {
+                "type": "string",
+                "metadata": {
+                    "description": "The amount of memory to allocate to the container in gigabytes."
+                },
+                "defaultValue": "1.5"
+            },
+            "location": {
+                "type": "string",
+                "defaultValue": "[resourceGroup().location]",
+                "metadata": {
+                    "description": "Location for all resources."
+                }
+            }
+        },
+        "resources": [
+            {
+            "name": "[parameters('containergroupname')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2022-04-01-preview",
+            "location": "[parameters('location')]",
+
+            "properties": {
+                "containers": [
+                {
+                    "name": "[parameters('containername')]",
+                    "properties": {
+                    "image": "[parameters('image')]",
+                    "environmentVariables": [
+                        {
+                        "name": "PORT",
+                        "value": "80"
+                        }
+                    ],
+
+                    "ports": [
+                        {
+                        "port": "[parameters('port')]"
+                        }
+                    ],
+                    "command": [
+                        "/bin/bash",
+                        "-c",
+                        "while sleep 5; do cat /mnt/input/access.log; done"
+                    ],
+                    "resources": {
+                        "requests": {
+                        "cpu": "[parameters('cpuCores')]",
+                        "memoryInGb": "[parameters('memoryInGb')]"
+                        }
+                    }
+                    }
+                }
+                ],
+
+                "osType": "Linux",
+                "restartPolicy": "OnFailure",
+                "confidentialComputeProperties": {
+                "IsolationType": "SevSnp"
+                },
+                "ipAddress": {
+                "type": "Public",
+                "ports": [
+                    {
+                    "protocol": "Tcp",
+                    "port": "[parameters( 'port' )]"
+                    }
+                ]
+                }
+            }
+            }
+        ],
+        "outputs": {
+            "containerIPv4Address": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', parameters('containergroupname'))).ipAddress.ip]"
+            }
+        }
+    }
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.aci_arm_policy = load_policy_from_arm_template_str(
+            cls.custom_arm_json_default_value, "", disable_stdio=True
+        )[0]
+        cls.aci_arm_policy.populate_policy_content_for_all_images()
+
+    def test_arm_template_without_stdio_access(self):
+        regular_image_json = json.loads(
+            self.aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        stdio_access = regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS]
+
+        # see if the remote image and the local one produce the same output
+        self.assertFalse(stdio_access)
+
+
+# @unittest.skip("not in use")
+@pytest.mark.run(order=11)
+class PrintExistingPolicy(unittest.TestCase):
+
+    def test_printing_existing_policy(self):
+        template = """
+        {
+            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "variables": {
+                "image": "python:3.6.14-slim-buster"
+            },
+
+
+            "parameters": {
+                "containergroupname": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container group"
+                },
+                "defaultValue":"simple-container-group"
+                },
+
+                "containername": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container"
+                },
+                "defaultValue":"simple-container"
+                },
+                "port": {
+                "type": "string",
+                "metadata": {
+                    "description": "Port to open on the container and the public IP address."
+                },
+                "defaultValue": "8080"
+                },
+                "cpuCores": {
+                "type": "string",
+                "metadata": {
+                    "description": "The number of CPU cores to allocate to the container."
+                },
+                "defaultValue": "1.0"
+                },
+                "memoryInGb": {
+                "type": "string",
+                "metadata": {
+                    "description": "The amount of memory to allocate to the container in gigabytes."
+                },
+                "defaultValue": "1.5"
+                },
+                "location": {
+                "type": "string",
+                "defaultValue": "[resourceGroup().location]",
+                "metadata": {
+                    "description": "Location for all resources."
+                }
+                }
+            },
+            "resources": [
+                {
+                "name": "[parameters('containergroupname')]",
+                "type": "Microsoft.ContainerInstance/containerGroups",
+                "apiVersion": "2022-04-01-preview",
+                "location": "[parameters('location')]",
+                "properties": {
+                    "containers": [
+                    {
+                        "name": "[parameters('containername')]",
+
+                        "properties": {
+                        "image": "[variables('image')]",
+                        "command": [
+                            "python3"
+                        ],
+                        "ports": [
+                            {
+                            "port": "[parameters('port')]"
+                            }
+                        ],
+                        "resources": {
+                            "requests": {
+                            "cpu": "[parameters('cpuCores')]",
+                            "memoryInGb": "[parameters('memoryInGb')]"
+                            }
+                        },
+                        "volumeMounts": [
+                                    {
+                                        "name": "filesharevolume",
+                                        "mountPath": "/aci/logs",
+                                        "readOnly": false
+                                    },
+                                    {
+                                        "name": "secretvolume",
+                                        "mountPath": "/aci/secret",
+                                        "readOnly": true
+                                    }
+                                ]
+                        }
+                    }
+                    ],
+                    "volumes": [
+                        {
+                            "name": "filesharevolume",
+                            "azureFile": {
+                                "shareName": "shareName1",
+                                "storageAccountName": "storage-account-name",
+                                "storageAccountKey": "storage-account-key"
+                            }
+                        },
+                        {
+
+                            "name": "secretvolume",
+                            "secret": {
+                                "mysecret1": "secret1",
+                                "mysecret2": "secret2"
+                            }
+                        }
+
+                    ],
+                    "osType": "Linux",
+                    "restartPolicy": "OnFailure",
+                    "confidentialComputeProperties": {
+                    "IsolationType": "SevSnp"
+                    },
+                    "ipAddress": {
+                    "type": "Public",
+                    "ports": [
+                        {
+                        "protocol": "Tcp",
+                        "port": "[parameters( 'port' )]"
+                        }
+                    ]
+                    }
+                }
+                }
+            ],
+            "outputs": {
+                "containerIPv4Address": {
+                "type": "string",
+                "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', parameters('containergroupname'))).ipAddress.ip]"
+                }
+            }
+        }
+        """
+        template2 = """
+        {
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "variables": {
+    "image": "python:3.6.14-slim-buster"
+  },
+  "parameters": {
+    "containergroupname": {
+      "type": "string",
+      "metadata": {
+        "description": "Name for the container group"
+      },
+      "defaultValue": "simple-container-group"
+    },
+    "containername": {
+      "type": "string",
+      "metadata": {
+        "description": "Name for the container"
+      },
+      "defaultValue": "simple-container"
+    },
+    "port": {
+      "type": "string",
+      "metadata": {
+        "description": "Port to open on the container and the public IP address."
+      },
+      "defaultValue": "8080"
+    },
+    "cpuCores": {
+      "type": "string",
+      "metadata": {
+        "description": "The number of CPU cores to allocate to the container."
+      },
+      "defaultValue": "1.0"
+    },
+    "memoryInGb": {
+      "type": "string",
+      "metadata": {
+        "description": "The amount of memory to allocate to the container in gigabytes."
+      },
+      "defaultValue": "1.5"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    }
+  },
+  "resources": [
+    {
+      "name": "[parameters('containergroupname')]",
+      "type": "Microsoft.ContainerInstance/containerGroups",
+      "apiVersion": "2022-04-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "containers": [
+          {
+            "name": "[parameters('containername')]",
+            "properties": {
+              "image": "[variables('image')]",
+              "command": [
+                "python3"
+              ],
+              "ports": [
+                {
+                  "port": "[parameters('port')]"
+                }
+              ],
+              "resources": {
+                "requests": {
+                  "cpu": "[parameters('cpuCores')]",
+                  "memoryInGb": "[parameters('memoryInGb')]"
+                }
+              },
+              "volumeMounts": [
+                {
+                  "name": "filesharevolume",
+                  "mountPath": "/aci/logs",
+                  "readOnly": false
+                },
+                {
+                  "name": "secretvolume",
+                  "mountPath": "/aci/secret",
+                  "readOnly": true
+                }
+              ]
+            }
+          }
+        ],
+        "volumes": [
+          {
+            "name": "filesharevolume",
+            "azureFile": {
+              "shareName": "shareName1",
+              "storageAccountName": "storage-account-name",
+              "storageAccountKey": "storage-account-key"
+            }
+          },
+          {
+            "name": "secretvolume",
+            "secret": {
+              "mysecret1": "secret1",
+              "mysecret2": "secret2"
+            }
+          }
+        ],
+        "osType": "Linux",
+        "restartPolicy": "OnFailure",
+        "confidentialComputeProperties": {
+          "IsolationType": "SevSnp",
+          "ccePolicy": "cGFja2FnZSBwb2xpY3kKCmltcG9ydCBmdXR1cmUua2V5d29yZHMuZXZlcnkKaW1wb3J0IGZ1dHVyZS5rZXl3b3Jkcy5pbgoKYXBpX3N2biA6PSAiMC4xMC4wIgpmcmFtZXdvcmtfc3ZuIDo9ICIwLjEuMCIKCmZyYWdtZW50cyA6PSBbCiAgewogICAgImZlZWQiOiAibWNyLm1pY3Jvc29mdC5jb20vYWNpL2FjaS1jYy1pbmZyYS1mcmFnbWVudCIsCiAgICAiaW5jbHVkZXMiOiBbCiAgICAgICJjb250YWluZXJzIgogICAgXSwKICAgICJpc3N1ZXIiOiAiZGlkOng1MDk6MDpzaGEyNTY6SV9faXVMMjVvWEVWRmRUUF9hQkx4X2VUMVJQSGJDUV9FQ0JRZllacHQ5czo6ZWt1OjEuMy42LjEuNC4xLjMxMS43Ni41OS4xLjMiLAogICAgIm1pbmltdW1fc3ZuIjogIjEuMC4wIgogIH0KXQoKY29udGFpbmVycyA6PSBbeyJhbGxvd19lbGV2YXRlZCI6dHJ1ZSwiYWxsb3dfc3RkaW9fYWNjZXNzIjp0cnVlLCJjb21tYW5kIjpbInB5dGhvbjMiXSwiZW52X3J1bGVzIjpbeyJwYXR0ZXJuIjoiUEFUSD0vdXNyL2xvY2FsL2JpbjovdXNyL2xvY2FsL3NiaW46L3Vzci9sb2NhbC9iaW46L3Vzci9zYmluOi91c3IvYmluOi9zYmluOi9iaW4iLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5Ijoic3RyaW5nIn0seyJwYXR0ZXJuIjoiTEFORz1DLlVURi04IiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InN0cmluZyJ9LHsicGF0dGVybiI6IkdQR19LRVk9MEQ5NkRGNEQ0MTEwRTVDNDNGQkZCMTdGMkQzNDdFQTZBQTY1NDIxRCIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifSx7InBhdHRlcm4iOiJQWVRIT05fVkVSU0lPTj0zLjYuMTQiLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5Ijoic3RyaW5nIn0seyJwYXR0ZXJuIjoiUFlUSE9OX1BJUF9WRVJTSU9OPTIxLjIuNCIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifSx7InBhdHRlcm4iOiJQWVRIT05fR0VUX1BJUF9VUkw9aHR0cHM6Ly9naXRodWIuY29tL3B5cGEvZ2V0LXBpcC9yYXcvYzIwYjBjZmQ2NDNjZDRhMTkyNDZjY2YyMDRlMjk5N2FmNzBmNmIyMS9wdWJsaWMvZ2V0LXBpcC5weSIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifSx7InBhdHRlcm4iOiJQWVRIT05fR0VUX1BJUF9TSEEyNTY9ZmE2ZjNmYjkzY2NlMjM0Y2Q0ZThkZDJiZWI1NGE1MWFiOWMyNDc2NTNiNTI4NTVhNDhkZDQ0ZTZiMjFmZjI4YiIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifSx7InBhdHRlcm4iOiJURVJNPXh0ZXJtIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InN0cmluZyJ9LHsicGF0dGVybiI6IigoP2kpRkFCUklDKV8uKz0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifSx7InBhdHRlcm4iOiJIT1NUTkFNRT0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifSx7InBhdHRlcm4iOiJUKEUpP01QPS4rIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InJlMiJ9LHsicGF0dGVybiI6IkZhYnJpY1BhY2thZ2VGaWxlTmFtZT0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifSx7InBhdHRlcm4iOiJIb3N0ZWRTZXJ2aWNlTmFtZT0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifSx7InBhdHRlcm4iOiJJREVOVElUWV9BUElfVkVSU0lPTj0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifSx7InBhdHRlcm4iOiJJREVOVElUWV9IRUFERVI9LisiLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5IjoicmUyIn0seyJwYXR0ZXJuIjoiSURFTlRJVFlfU0VSVkVSX1RIVU1CUFJJTlQ9LisiLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5IjoicmUyIn0seyJwYXR0ZXJuIjoiYXp1cmVjb250YWluZXJpbnN0YW5jZV9yZXN0YXJ0ZWRfYnk9LisiLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5IjoicmUyIn1dLCJleGVjX3Byb2Nlc3NlcyI6W10sImlkIjoicHl0aG9uOjMuNi4xNC1zbGltLWJ1c3RlciIsImxheWVycyI6WyIyNTRjYzg1M2RhNjA4MTkwNWM5MTA5YzhiOWQ5OWM5ZmIwOTg3YmExZDg4ZjcyOTA4ODkwM2NmZmI4MGY1NWYxIiwiYTU2OGYxOTAwYmVkNjBhMDY0MWI3NmI5OTFhZDQzMTQ0NmQ5YzNhMzQ0ZDdiMjYxZjEwZGU4ZDhlNzM3NjNhYyIsImM3MGM1MzBlODQyZjY2MjE1YjBiZDk1NTg3NzE1N2JhMjRjMzc5OTMwMzU2N2MzZjU2NzNjNDU2NjNlYTRkMTUiLCIzZTg2YzNjY2YxNjQyYmY1ODRkZTMzYjQ5YzcyNDhmODdlZWNkMGY2ZDhjMDgzNTNkYWEzNmNjN2FkMGE3YjZhIiwiMWU0Njg0ZDhjN2NhYTc0YzY1MjQxNzJiNGQ1YTE1OWExMDg4NzYxM2VkNzBmMThkMGE1NWQwNWIyYWY2MWFjZCJdLCJtb3VudHMiOlt7ImRlc3RpbmF0aW9uIjoiL2FjaS9sb2dzIiwib3B0aW9ucyI6WyJyYmluZCIsInJzaGFyZWQiLCJydyJdLCJzb3VyY2UiOiJzYW5kYm94Oi8vL3RtcC9hdGxhcy9henVyZUZpbGVWb2x1bWUvLisiLCJ0eXBlIjoiYmluZCJ9LHsiZGVzdGluYXRpb24iOiIvYWNpL3NlY3JldCIsIm9wdGlvbnMiOlsicmJpbmQiLCJyc2hhcmVkIiwicm8iXSwic291cmNlIjoic2FuZGJveDovLy90bXAvYXRsYXMvc2VjcmV0c1ZvbHVtZS8uKyIsInR5cGUiOiJiaW5kIn0seyJkZXN0aW5hdGlvbiI6Ii9ldGMvcmVzb2x2LmNvbmYiLCJvcHRpb25zIjpbInJiaW5kIiwicnNoYXJlZCIsInJ3Il0sInNvdXJjZSI6InNhbmRib3g6Ly8vdG1wL2F0bGFzL3Jlc29sdmNvbmYvLisiLCJ0eXBlIjoiYmluZCJ9XSwic2lnbmFscyI6W10sIndvcmtpbmdfZGlyIjoiLyJ9LHsiYWxsb3dfZWxldmF0ZWQiOmZhbHNlLCJhbGxvd19zdGRpb19hY2Nlc3MiOnRydWUsImNvbW1hbmQiOlsiL3BhdXNlIl0sImVudl9ydWxlcyI6W3sicGF0dGVybiI6IlBBVEg9L3Vzci9sb2NhbC9zYmluOi91c3IvbG9jYWwvYmluOi91c3Ivc2JpbjovdXNyL2Jpbjovc2JpbjovYmluIiwicmVxdWlyZWQiOnRydWUsInN0cmF0ZWd5Ijoic3RyaW5nIn0seyJwYXR0ZXJuIjoiVEVSTT14dGVybSIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifV0sImV4ZWNfcHJvY2Vzc2VzIjpbXSwibGF5ZXJzIjpbIjE2YjUxNDA1N2EwNmFkNjY1ZjkyYzAyODYzYWNhMDc0ZmQ1OTc2Yzc1NWQyNmJmZjE2MzY1Mjk5MTY5ZTg0MTUiXSwibW91bnRzIjpbXSwic2lnbmFscyI6W10sIndvcmtpbmdfZGlyIjoiLyJ9XQoKYWxsb3dfcHJvcGVydGllc19hY2Nlc3MgOj0gZmFsc2UKYWxsb3dfZHVtcF9zdGFja3MgOj0gZmFsc2UKYWxsb3dfcnVudGltZV9sb2dnaW5nIDo9IGZhbHNlCmFsbG93X2Vudmlyb25tZW50X3ZhcmlhYmxlX2Ryb3BwaW5nIDo9IHRydWUKYWxsb3dfdW5lbmNyeXB0ZWRfc2NyYXRjaCA6PSBmYWxzZQoKCgptb3VudF9kZXZpY2UgOj0gZGF0YS5mcmFtZXdvcmsubW91bnRfZGV2aWNlCnVubW91bnRfZGV2aWNlIDo9IGRhdGEuZnJhbWV3b3JrLnVubW91bnRfZGV2aWNlCm1vdW50X292ZXJsYXkgOj0gZGF0YS5mcmFtZXdvcmsubW91bnRfb3ZlcmxheQp1bm1vdW50X292ZXJsYXkgOj0gZGF0YS5mcmFtZXdvcmsudW5tb3VudF9vdmVybGF5CmNyZWF0ZV9jb250YWluZXIgOj0gZGF0YS5mcmFtZXdvcmsuY3JlYXRlX2NvbnRhaW5lcgpleGVjX2luX2NvbnRhaW5lciA6PSBkYXRhLmZyYW1ld29yay5leGVjX2luX2NvbnRhaW5lcgpleGVjX2V4dGVybmFsIDo9IGRhdGEuZnJhbWV3b3JrLmV4ZWNfZXh0ZXJuYWwKc2h1dGRvd25fY29udGFpbmVyIDo9IGRhdGEuZnJhbWV3b3JrLnNodXRkb3duX2NvbnRhaW5lcgpzaWduYWxfY29udGFpbmVyX3Byb2Nlc3MgOj0gZGF0YS5mcmFtZXdvcmsuc2lnbmFsX2NvbnRhaW5lcl9wcm9jZXNzCnBsYW45X21vdW50IDo9IGRhdGEuZnJhbWV3b3JrLnBsYW45X21vdW50CnBsYW45X3VubW91bnQgOj0gZGF0YS5mcmFtZXdvcmsucGxhbjlfdW5tb3VudApnZXRfcHJvcGVydGllcyA6PSBkYXRhLmZyYW1ld29yay5nZXRfcHJvcGVydGllcwpkdW1wX3N0YWNrcyA6PSBkYXRhLmZyYW1ld29yay5kdW1wX3N0YWNrcwpydW50aW1lX2xvZ2dpbmcgOj0gZGF0YS5mcmFtZXdvcmsucnVudGltZV9sb2dnaW5nCmxvYWRfZnJhZ21lbnQgOj0gZGF0YS5mcmFtZXdvcmsubG9hZF9mcmFnbWVudApzY3JhdGNoX21vdW50IDo9IGRhdGEuZnJhbWV3b3JrLnNjcmF0Y2hfbW91bnQKc2NyYXRjaF91bm1vdW50IDo9IGRhdGEuZnJhbWV3b3JrLnNjcmF0Y2hfdW5tb3VudAoKcmVhc29uIDo9IHsiZXJyb3JzIjogZGF0YS5mcmFtZXdvcmsuZXJyb3JzfQ=="
+        },
+        "ipAddress": {
+          "type": "Public",
+          "ports": [
+            {
+              "protocol": "Tcp",
+              "port": "[parameters( 'port' )]"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "containerIPv4Address": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', parameters('containergroupname'))).ipAddress.ip]"
+    }
+  }
+}
+"""
+        # write template to file for testing
+        with open("test_template.json", "w") as f:
+            f.write(template)
+
+        with open("test_template2.json", "w") as f:
+            f.write(template2)
+        try:
+            with self.assertRaises(SystemExit) as exc_info:
+                acipolicygen_confcom(None, "test_template.json", None, None, None, None, print_existing_policy=True)
+
+            self.assertEqual(exc_info.exception.code, 1)
+
+            with self.assertRaises(SystemExit) as exc_info:
+                acipolicygen_confcom(None, "test_template2.json", None, None, None, None, print_existing_policy=True)
+
+            self.assertEqual(exc_info.exception.code, 0)
+        finally:
+            # delete test file
+            os.remove("test_template.json")
+            os.remove("test_template2.json")

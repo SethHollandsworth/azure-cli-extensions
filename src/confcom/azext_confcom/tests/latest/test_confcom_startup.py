@@ -26,13 +26,20 @@ class InitialErrors(unittest.TestCase):
                 None,
                 None,
                 None,
+                outraw=True,
                 outraw_pretty_print=True,
             )
         self.assertEqual(wrapped_exit.exception.code, 1)
 
         with self.assertRaises(SystemExit) as wrapped_exit:
             acipolicygen_confcom(
-                "fakepath/input.json", None, None, None, None, None, outraw=True
+                "fakepath/input.json", None, None, None, None, None, outraw=True, print_policy_to_terminal=True
+            )
+        self.assertEqual(wrapped_exit.exception.code, 1)
+
+        with self.assertRaises(SystemExit) as wrapped_exit:
+            acipolicygen_confcom(
+                "fakepath/input.json", None, None, None, None, None, print_policy_to_terminal=True, outraw_pretty_print=True
             )
         self.assertEqual(wrapped_exit.exception.code, 1)
 

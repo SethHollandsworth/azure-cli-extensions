@@ -4,30 +4,7 @@
 # --------------------------------------------------------------------------------------------
 
 import os
-import stat
-import requests
 from azext_confcom import os_util
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
-
-bin_folder = dir_path + "/bin"
-if not os.path.exists(bin_folder):
-    os.makedirs(bin_folder)
-
-exe_path = dir_path + "/bin/dmverity-vhd.exe"
-if not os.path.exists(exe_path):
-    r = requests.get("https://github.com/microsoft/hcsshim/releases/download/v0.10.0-rc.4/dmverity-vhd.exe")
-    with open(exe_path, "wb") as f:
-        f.write(r.content)
-
-bin_path = dir_path + "/bin/dmverity-vhd"
-if not os.path.exists(bin_path):
-    r = requests.get("https://github.com/microsoft/hcsshim/releases/download/v0.10.0-rc.4/dmverity-vhd")
-    with open(bin_path, "wb") as f:
-        f.write(r.content)
-    # add executable permissions for the current user
-    st = os.stat(bin_path)
-    os.chmod(bin_path, st.st_mode | stat.S_IEXEC)
 
 # input json values
 ACI_FIELD_VERSION = "version"

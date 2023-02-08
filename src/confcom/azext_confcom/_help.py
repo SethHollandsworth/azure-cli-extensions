@@ -45,6 +45,18 @@ helps[
           type: string
           short-summary: 'Minimum Allowed Software Version Number for Infrastructure Fragment'
 
+        - name: --debug-mode
+          type: boolean
+          short-summary: 'When enabled, the generated security policy adds the ability to use /bin/sh or /bin/bash to debug the container. It also enabled stdio access, ability to dump stack traces, and enables runtime logging. It is recommended to only use this option for debugging purposes.'
+
+        - name: --disable-stdio
+          type: boolean
+          short-summary: 'When enabled, the containers in the container group do not have access to stdio.'
+
+        - name: --print-existing-policy
+          type: boolean
+          short-summary: 'When enabled, the existing security policy that is present in the ARM Template is printed to the command line, and no new security policy is generated.'
+
         - name: --diff -d
           type: boolean
           short-summary: 'When combined with an input ARM Template, verifies the policy present in the ARM Template under "ccePolicy" and the containers within the ARM Template are compatible. If they are incompatible, a list of reasons is given and the exit status code will be 2.'

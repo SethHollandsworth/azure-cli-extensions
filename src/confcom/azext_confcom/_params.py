@@ -65,6 +65,12 @@ def load_arguments(self, _):
             help="Debug mode will enable processes in a container group that are helpful for debugging",
         )
         c.argument(
+            "disable_stdio",
+            options_list=("--disable-stdio",),
+            required=False,
+            help="Disabling container stdio will disable the ability to see the output of the container in the terminal for Confidential ACI",
+        )
+        c.argument(
             "use_json",
             options_list=("--json", "-j"),
             required=False,
@@ -81,6 +87,13 @@ def load_arguments(self, _):
             options_list=("--validate-sidecar", "-v"),
             required=False,
             help="Validate that the image used to generate the CCE Policy for a sidecar container will be allowed by its generated policy",
+        )
+        c.argument(
+            "print-existing-policy",
+            options_list=("--print-existing-policy"),
+            required=False,
+            action="store_true",
+            help="Pretty print the existing policy in the ARM Template",
         )
         c.argument(
             "outraw",

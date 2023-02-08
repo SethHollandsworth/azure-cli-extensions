@@ -162,9 +162,7 @@ def extract_mounts(container_json: Any) -> List:
     return _mounts
 
 
-def extract_exec_process(container_json: Any, container_image: str, debug_mode: bool) -> List:
-    base = container_image.split(":")[0] if ":" in container_image else container_image
-
+def extract_exec_process(container_json: Any) -> List:
     # get the exec_processes info used as a liveness probe
     exec_processes = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES
@@ -206,30 +204,10 @@ def extract_exec_process(container_json: Any, container_image: str, debug_mode: 
                     + "can only be a list of integers."
                 )
 
-            # can either be bool or undefined so give it a default value of False if not a sidecar
-            default_exec_stdio = (
-                True if base in config.BASELINE_SIDECAR_CONTAINERS else debug_mode
-            )
-            exec_stdio_value = case_insensitive_dict_get(
-                exec_processes_item, config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS
-            )
-            exec_stdio_access = (
-                exec_stdio_value if exec_stdio_value is not None else default_exec_stdio
-            )
-
-            if not isinstance(exec_stdio_access, bool):
-                eprint(
-                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                    + f'["{config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES}"]'
-                    + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS}"]'
-                    + "can only be a boolean."
-                )
-
             exec_processes_output.append(
                 {
                     config.POLICY_FIELD_CONTAINERS_ELEMENTS_COMMANDS: exec_command,
                     config.POLICY_FIELD_CONTAINER_SIGNAL_CONTAINER_PROCESSES: exec_signals,
-                    config.POLICY_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: exec_stdio_access,
                 }
             )
     return exec_processes_output
@@ -251,7 +229,7 @@ def extract_allow_elevated(container_json: Any) -> bool:
     return _allow_elevated
 
 
-def extract_allow_studio_access(container_json: Any) -> bool:
+def extract_allow_stdio_access(container_json: Any) -> bool:
     # get the field for Standard IO access, default to true
     allow_stdio_value = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS
@@ -291,7 +269,7 @@ class ContainerImage:
 
     @classmethod
     def from_json(
-        cls, container_json: Any, debug_mode: bool = False
+        cls, container_json: Any
     ) -> "ContainerImage":
 
         container_image = extract_container_image(container_json)
@@ -302,10 +280,10 @@ class ContainerImage:
         mounts = extract_mounts(container_json)
         allow_elevated = extract_allow_elevated(container_json)
         exec_processes = extract_exec_process(
-            container_json, container_image, debug_mode
+            container_json
         )
         signals = extract_get_signals(container_json)
-        allow_studio_access = extract_allow_studio_access(container_json)
+        allow_stdio_access = extract_allow_stdio_access(container_json)
         return ContainerImage(
             containerImage=container_image,
             environmentRules=environment_rules,
@@ -316,7 +294,7 @@ class ContainerImage:
             extraEnvironmentRules=[],
             execProcesses=exec_processes,
             signals=signals,
-            allowStdioAccess=allow_studio_access,
+            allowStdioAccess=allow_stdio_access,
             id_val=id_val,
         )
 
@@ -480,9 +458,9 @@ class ContainerImage:
 class UserContainerImage(ContainerImage):
     @classmethod
     def from_json(
-        cls, container_json: Any, debug_mode: bool = False
+        cls, container_json: Any
     ) -> "UserContainerImage":
-        image = super().from_json(container_json, debug_mode=debug_mode)
+        image = super().from_json(container_json)
         image.__class__ = UserContainerImage
         # inject default mounts for user container
         if image.base not in config.BASELINE_SIDECAR_CONTAINERS:

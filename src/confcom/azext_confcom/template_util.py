@@ -696,3 +696,39 @@ def get_container_group_name(
     resource = aci_list[count]
     container_group_name = case_insensitive_dict_get(resource, config.ACI_FIELD_RESOURCES_NAME)
     return container_group_name
+
+
+def print_existing_policy_from_arm_template(arm_template_path, parameter_data_path):
+    input_arm_json = os_util.load_json_from_file(arm_template_path)
+    parameter_data = None
+    if parameter_data_path:
+        parameter_data = os_util.load_json_from_file(arm_template_path)
+    # find the image names and extract them from the template
+    arm_resources = case_insensitive_dict_get(
+        input_arm_json, config.ACI_FIELD_RESOURCES
+    )
+
+    if not arm_resources:
+        eprint(f"Field [{config.ACI_FIELD_RESOURCES}] is empty or cannot be found")
+
+    aci_list = [
+        item
+        for item in arm_resources
+        if item["type"] == config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL
+    ]
+
+    if not aci_list:
+        eprint(
+            f'Field ["type"] must contain value of ["{config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL}"]'
+        )
+    for i, resource in enumerate(aci_list):
+        container_group_properties = case_insensitive_dict_get(
+            resource, config.ACI_FIELD_TEMPLATE_PROPERTIES
+        )
+        container_group_name = get_container_group_name(input_arm_json, parameter_data, i)
+
+        (containers, _) = extract_confidential_properties(container_group_properties)
+        if not containers:
+            eprint("CCE Policy is either in an supported format or not present")
+        print(f"CCE Policy for Container Group: {container_group_name}\n")
+        print(pretty_print_func(containers))

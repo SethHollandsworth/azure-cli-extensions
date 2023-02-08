@@ -36,6 +36,7 @@ test_incorrect_policy_diff | rust:1.52.1 | Check output formatting and functiona
 test_update_infrastructure_svn | python:3.6.14-slim-buster | Change the minimum SVN for the insfrastructure fragment
 test_multiple_policies | python:3.6.14-slim-buster & rust:1.52.1 | See if two unique policies are generated from a single ARM Template container multiple container groups. Also have an extra resource that is untouched. Also has a secureValue for an environment variable.
 test_arm_template_with_init_container | python:3.6.14-slim-buster & rust:1.52.1 | See if having an initContainer is picked up and added to the list of valid containers
+test_arm_template_without_stdio_access | rust:1.52.1 | See if disabling container stdio access gets passed down to individual containers
 
 ## policy.json [test file](test_confcom_scenario.py)
 
@@ -88,7 +89,7 @@ This does a series of checks to make sure the flag configuration that is attempt
 
 Test Name | Purpose
 ---|---
-test_invalid_output_flags | Makes sure that the policy is only injected if we're base64 encoded
+test_invalid_output_flags | Makes sure that the policy fails if we specify more than one output format at a time
 test_invalid_many_input_types | Makes sure we're only getting input from one source i.e. ARM Template, policy.json, or image name
 test_diff_wrong_input_type | Makes sure we're only doing the diff command if we're using a ARM Template as the input type
 test_parameters_without_template | Makes sure we error out if a parameter file is getting passed in without an ARM Template

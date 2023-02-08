@@ -495,6 +495,7 @@ LmZyYW1ld29yay5lcnJvcnN9Cg=="""
 
         with self.assertRaises(SystemExit) as exc_info:
             acipolicygen_confcom(None, "test_template.json", None, None, None, None)
+
         self.assertEqual(exc_info.exception.code, 0)
 
         with open("test_template.json", "r") as f:

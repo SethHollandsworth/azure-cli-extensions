@@ -109,9 +109,9 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         # parse and generate each container, either user or sidecar
         for c in containers:
             if not is_sidecar(c[config.POLICY_FIELD_CONTAINERS_ID]):
-                container_image = UserContainerImage.from_json(c, debug_mode=debug_mode)
+                container_image = UserContainerImage.from_json(c)
             else:
-                container_image = ContainerImage.from_json(c, debug_mode=debug_mode)
+                container_image = ContainerImage.from_json(c)
             container_results.append(container_image)
 
         self._images = container_results
@@ -495,6 +495,7 @@ def load_policy_from_arm_template_str(
     parameter_data: str,
     infrastructure_svn: str = None,
     debug_mode: bool = False,
+    disable_stdio: bool = False,
 ) -> List[AciPolicy]:
     """Function that converts ARM template string to an ACI Policy"""
     input_arm_json = os_util.load_json_from_str(template_data)
@@ -598,10 +599,6 @@ def load_policy_from_arm_template_str(
                     f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found'
                 )
 
-            env_vars = process_env_vars_from_template(image_properties)
-
-            mounts = process_mounts(image_properties, volumes)
-
             exec_processes = []
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
@@ -610,18 +607,19 @@ def load_policy_from_arm_template_str(
                 {
                     config.ACI_FIELD_CONTAINERS_ID: image_name,
                     config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE: image_name,
-                    config.ACI_FIELD_CONTAINERS_ENVS: env_vars,
+                    config.ACI_FIELD_CONTAINERS_ENVS: process_env_vars_from_template(image_properties),
                     config.ACI_FIELD_CONTAINERS_COMMAND: case_insensitive_dict_get(
                         image_properties, config.ACI_FIELD_TEMPLATE_COMMAND
                     )
                     or [],
-                    config.ACI_FIELD_CONTAINERS_MOUNTS: mounts,
+                    config.ACI_FIELD_CONTAINERS_MOUNTS: process_mounts(image_properties, volumes),
                     config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED: False,
                     config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES: exec_processes
                     + config.DEBUG_MODE_SETTINGS.get("execProcesses")
                     if debug_mode
                     else exec_processes,
                     config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
+                    config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio,
                 }
             )
 
@@ -646,6 +644,7 @@ def load_policy_from_arm_template_file(
     template_path: str,
     parameter_path: str,
     debug_mode: bool = False,
+    disable_stdio: bool = False,
 ) -> List[AciPolicy]:
     """Utility function: generate policy object from given arm template and parameter file paths"""
     input_arm_json = os_util.load_str_from_file(template_path)
@@ -653,7 +652,8 @@ def load_policy_from_arm_template_file(
     if parameter_path:
         input_parameter_json = os_util.load_str_from_file(parameter_path)
     return load_policy_from_arm_template_str(
-        input_arm_json, input_parameter_json, infrastructure_svn, debug_mode=debug_mode
+        input_arm_json, input_parameter_json, infrastructure_svn,
+        debug_mode=debug_mode, disable_stdio=disable_stdio
     )
 
 
@@ -661,11 +661,11 @@ def load_policy_from_file(path: str, debug_mode: bool = False) -> AciPolicy:
     """Utility function: generate policy object from given json file path"""
     policy_input_json = os_util.load_str_from_file(path)
 
-    return load_policy_from_str(policy_input_json, debug_mode=debug_mode)
+    return load_policy_from_str(policy_input_json, debug_mode=debug_mode, )
 
 
 def load_policy_from_image_name(
-    image_names: List[str] or str, debug_mode: bool = False
+    image_names: List[str] or str, debug_mode: bool = False, disable_stdio: bool = False
 ) -> AciPolicy:
     # can either take a list of image names or a single image name
     if isinstance(image_names, str):
@@ -685,6 +685,7 @@ def load_policy_from_image_name(
         container[config.ACI_FIELD_CONTAINERS_ID] = image_name
 
         container[config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE] = image_name
+        container[config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS] = not disable_stdio
 
         containers.append(container)
     client.close()

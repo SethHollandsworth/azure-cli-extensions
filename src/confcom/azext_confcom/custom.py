@@ -12,7 +12,7 @@ from azext_confcom.config import DEFAULT_REGO_FRAGMENTS
 from azext_confcom import os_util
 from azext_confcom.template_util import pretty_print_func, print_func
 from azext_confcom.init_checks import run_initial_docker_checks
-from azext_confcom.template_util import inject_policy_into_template
+from azext_confcom.template_util import inject_policy_into_template, print_existing_policy_from_arm_template
 from azext_confcom import security_policy
 
 
@@ -34,10 +34,15 @@ def acipolicygen_confcom(
     save_to_file: str = None,
     debug_mode: bool = False,
     print_policy_to_terminal: bool = False,
+    disable_stdio: bool = False,
+    print_existing_policy: bool = False,
 ):
 
     if sum(map(bool, [input_path, arm_template, image_name])) != 1:
         logger.warning("Can only generate CCE policy from one source at a time")
+        sys.exit(1)
+    if sum(map(bool, [print_policy_to_terminal, outraw, outraw_pretty_print])) > 1:
+        logger.warning("Can only print in one format at a time")
         sys.exit(1)
     elif (diff and input_path) or (diff and image_name):
         logger.warning("Can only diff CCE policy from ARM Template")
@@ -47,13 +52,14 @@ def acipolicygen_confcom(
             "Can only use ARM Template Parameters if ARM Template is also present"
         )
         sys.exit(1)
-    elif (outraw or outraw_pretty_print) and not print_policy_to_terminal:
-        logger.warning("%s %s %s",
-                       "Can only inject policy into ARM Template if it is ",
-                       "base64 encoded (the default output format). ",
-                       "If trying to print to the terminal, use the --print-policy flag."
-                       )
-        sys.exit(1)
+
+    if print_existing_policy:
+        if not arm_template:
+            logger.warning("Can only print existing policy from ARM Template")
+            sys.exit(1)
+        else:
+            print_existing_policy_from_arm_template(arm_template, arm_template_parameters)
+            sys.exit(0)
 
     tar_mapping = tar_mapping_validation(tar_mapping_location)
 
@@ -70,45 +76,33 @@ def acipolicygen_confcom(
             DEFAULT_REGO_FRAGMENTS[0]["minimum_svn"],
         )
 
+    # telling the user what operation we're doing
+    logger.warning(
+        "Generating security policy for %s: %s in %s",
+        "ARM Template" if arm_template else "Image" if image_name else "Input File",
+        input_path or arm_template or image_name,
+        "base64"
+        if output_type == security_policy.OutputType.DEFAULT
+        else "clear text",
+    )
     # error checking for making sure an input is provided is above
     if input_path:
-        logger.warning(
-            "Generating security policy for input config file %s in %s",
-            input_path,
-            "base64"
-            if output_type == security_policy.OutputType.DEFAULT
-            else "clear text",
-        )
         container_group_policies = security_policy.load_policy_from_file(
-            input_path, debug_mode=debug_mode
+            input_path, debug_mode=debug_mode,
         )
     elif arm_template:
-        logger.warning(
-            "Generating security policy for ARM Template file %s in %s",
-            arm_template,
-            "base64"
-            if output_type == security_policy.OutputType.DEFAULT
-            else "clear text",
-        )
         container_group_policies = security_policy.load_policy_from_arm_template_file(
             infrastructure_svn,
             arm_template,
             arm_template_parameters,
             debug_mode=debug_mode,
+            disable_stdio=disable_stdio,
         )
     elif image_name:
-        logger.warning(
-            "Generating security policy for Image %s in %s",
-            image_name,
-            "base64"
-            if output_type == security_policy.OutputType.DEFAULT
-            else "clear text",
-        )
         container_group_policies = security_policy.load_policy_from_image_name(
-            image_name, debug_mode=debug_mode
+            image_name, debug_mode=debug_mode, disable_stdio=disable_stdio
         )
 
-    count = 0
     exit_code = 0
 
     # standardize the output so we're only operating on arrays
@@ -117,26 +111,23 @@ def acipolicygen_confcom(
     if not isinstance(container_group_policies, list):
         container_group_policies = [container_group_policies]
 
-    for policy in container_group_policies:
+    for count, policy in enumerate(container_group_policies):
         policy.populate_policy_content_for_all_images(
             individual_image=bool(image_name), tar_mapping=tar_mapping
         )
 
         if validate_sidecar:
             exit_code = validate_sidecar_in_policy(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
-
         elif diff:
             exit_code = get_diff_outputs(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
-        elif not print_policy_to_terminal and arm_template:
-            output = policy.get_serialized_output(output_type, use_json)
-            result = inject_policy_into_template(arm_template, arm_template_parameters, output, count)
-            count += 1
+        elif arm_template and (not print_policy_to_terminal and not outraw and not outraw_pretty_print):
+            result = inject_policy_into_template(arm_template, arm_template_parameters,
+                                                 policy.get_serialized_output(output_type, use_json), count)
             if result:
                 print("CCE Policy successfully injected into ARM Template")
         else:
-            output = policy.get_serialized_output(output_type, use_json)
             # output to terminal
-            print(f"{output}\n\n")
+            print(f"{policy.get_serialized_output(output_type, use_json)}\n\n")
             # output to file
             if save_to_file:
                 policy.save_to_file(save_to_file, output_type, use_json)
