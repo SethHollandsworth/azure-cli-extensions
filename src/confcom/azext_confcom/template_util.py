@@ -138,21 +138,31 @@ def process_env_vars_from_template(image_properties: dict) -> List[Dict[str, str
     )
 
     if template_env_vars:
-        env_vars = [
-            {
-                config.ACI_FIELD_CONTAINERS_ENVS_NAME: case_insensitive_dict_get(
-                    x, "name"
-                ),
-                config.ACI_FIELD_CONTAINERS_ENVS_VALUE: case_insensitive_dict_get(
-                    x, "value"
-                ) or
-                case_insensitive_dict_get(
-                    x, "secureValue"
-                ),
-                config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
-            }
-            for x in template_env_vars
-        ]
+        for env_var in template_env_vars:
+            if case_insensitive_dict_get(env_var, "value") or case_insensitive_dict_get(env_var, "secureValue"):
+                env_vars.append({
+                    config.ACI_FIELD_CONTAINERS_ENVS_NAME: case_insensitive_dict_get(
+                        env_var, "name"
+                    ),
+                    config.ACI_FIELD_CONTAINERS_ENVS_VALUE: case_insensitive_dict_get(
+                        env_var, "value"
+                    ) or
+                    case_insensitive_dict_get(
+                        env_var, "secureValue"
+                    ),
+                    config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
+                })
+            else:
+                response = input(f'Create a wildcard policy for the environment variable {case_insensitive_dict_get(env_var, "name" )} (y/n): ')
+                if response.lower() == 'y':
+                    env_vars.append({
+                        config.ACI_FIELD_CONTAINERS_ENVS_NAME: case_insensitive_dict_get(
+                            env_var, "name"
+                        ),
+                        config.ACI_FIELD_CONTAINERS_ENVS_VALUE: ".+",
+                        config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "re2",
+                    })
+
     return env_vars
 
 
@@ -233,12 +243,12 @@ def get_values_for_params(input_parameter_json: dict, all_params: dict) -> Dict[
             ) or case_insensitive_dict_get(
                 case_insensitive_dict_get(input_parameter_values_json, key), "secureValue"
             )
-        else:
-            # parameter definition is in parameter file but not arm
-            # template
-            eprint(
-                f'Parameter ["{key}"] is empty or cannot be found in ARM template'
-            )
+        # else:
+        #     # parameter definition is in parameter file but not arm
+        #     # template
+        #     eprint(
+        #         f'Parameter ["{key}"] is empty or cannot be found in ARM template'
+        #     )
 
 
 def extract_probe(exec_processes: List[dict], image_properties: dict, probe: str):
@@ -362,11 +372,11 @@ def find_value_in_params_and_vars(params: dict, vars_dict: dict, search: str) ->
     else:
         match = case_insensitive_dict_get(vars_dict, param_name)
 
-    if not match:
-        eprint(
-            f"""Field ["{param_name}"] not found in ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"]
-             or ["{config.ACI_FIELD_TEMPLATE_VARIABLES}"]"""
-        )
+    # if not match:
+    #     eprint(
+    #         f"""Field ["{param_name}"] not found in ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"]
+    #          or ["{config.ACI_FIELD_TEMPLATE_VARIABLES}"]"""
+    #     )
 
     return match
 
