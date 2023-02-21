@@ -2764,6 +2764,62 @@ class PrintExistingPolicy(unittest.TestCase):
 # @unittest.skip("not in use")
 @pytest.mark.run(order=14)
 class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
+    custom_json = """
+        {
+            "version": "1.0",
+            "containers": [
+                {
+                    "containerImage": "python:3.6.14-slim-buster",
+                    "environmentVariables": [
+                        {
+                            "name":"PATH",
+                            "value":"/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                            "strategy":"string"
+                        },
+                        {
+                            "name":"LANG",
+                            "value":"C.UTF-8",
+                            "strategy":"string"
+                        },
+                        {
+                            "name":"GPG_KEY",
+                            "value":"0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D",
+                            "strategy":"string"
+                        },
+                        {
+                            "name":"PYTHON_VERSION",
+                            "value":"3.6.14",
+                            "strategy":"string"
+                        },
+                        {
+                            "name":"PYTHON_PIP_VERSION",
+                            "value":"21.2.4",
+                            "strategy":"string"
+                        },
+                        {
+                            "name":"PYTHON_GET_PIP_URL",
+                            "value":"https://github.com/pypa/get-pip/raw/c20b0cfd643cd4a19246ccf204e2997af70f6b21/public/get-pip.py",
+                            "strategy":"string"
+                        },
+                        {
+                            "name":"PYTHON_GET_PIP_SHA256",
+                            "value":"fa6f3fb93cce234cd4e8dd2beb54a51ab9c247653b52855a48dd44e6b21ff28b",
+                            "strategy":"string"
+                        },
+                        {
+                            "name":"TEST_WILDCARD_ENV",
+                            "value":".+",
+                            "strategy":"re2"
+                        }
+                    ],
+                    "command": ["python3"],
+                    "workingDir": "",
+                    "mounts": []
+                }
+            ]
+        }
+        """
+
     custom_arm_json = """
     {
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -2848,7 +2904,7 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
                     "environmentVariables": [
                         {
                             "name": "PATH",
-                            "value": "/customized/path/value"
+                            "value": "/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
                         },
                         {
                             "name": "TEST_WILDCARD_ENV"
@@ -2882,16 +2938,42 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
         }
     }
     """
-
+    aci_policy = None
 
     @classmethod
     def setUpClass(cls):
-        with patch('builtins.input', side_effect=['y', 'y']):
-        # with patch('builtins.input', return_value='y'):
+        with load_policy_from_str(cls.custom_json) as aci_policy:
+            aci_policy.populate_policy_content_for_all_images()
+            cls.aci_policy = aci_policy
+
+        with patch('builtins.input', return_value='y'):
             cls.aci_arm_policy = load_policy_from_arm_template_str(cls.custom_arm_json, "")[
                 0
             ]
             cls.aci_arm_policy.populate_policy_content_for_all_images()
+
+    def test_arm_template_policy_regex(self):
+        # deep diff the output policies from the regular policy.json and the ARM template
+        normalized_aci_policy = json.loads(
+            self.aci_policy.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
+        )
+
+        normalized_aci_arm_policy = json.loads(
+            self.aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW,rego_boilerplate=False
+            )
+        )
+
+        normalized_aci_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
+
+        normalized_aci_arm_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
+
+        self.assertEqual(
+            deepdiff.DeepDiff(
+                normalized_aci_policy, normalized_aci_arm_policy, ignore_order=True
+            ),
+            {},
+        )
 
     def test_wildcard_env_var(self):
         normalized_aci_arm_policy = json.loads(
