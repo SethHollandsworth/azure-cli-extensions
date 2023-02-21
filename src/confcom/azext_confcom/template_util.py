@@ -139,11 +139,10 @@ def process_env_vars_from_template(image_properties: dict) -> List[Dict[str, str
 
     if template_env_vars:
         for env_var in template_env_vars:
+            name = case_insensitive_dict_get(env_var, "name")
             if case_insensitive_dict_get(env_var, "value") or case_insensitive_dict_get(env_var, "secureValue"):
                 env_vars.append({
-                    config.ACI_FIELD_CONTAINERS_ENVS_NAME: case_insensitive_dict_get(
-                        env_var, "name"
-                    ),
+                    config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
                     config.ACI_FIELD_CONTAINERS_ENVS_VALUE: case_insensitive_dict_get(
                         env_var, "value"
                     ) or
@@ -153,12 +152,10 @@ def process_env_vars_from_template(image_properties: dict) -> List[Dict[str, str
                     config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
                 })
             else:
-                response = input(f'Create a wildcard policy for the environment variable {case_insensitive_dict_get(env_var, "name" )} (y/n): ')
+                response = input(f'Create a wildcard policy for the environment variable {name} (y/n): ')
                 if response.lower() == 'y':
                     env_vars.append({
-                        config.ACI_FIELD_CONTAINERS_ENVS_NAME: case_insensitive_dict_get(
-                            env_var, "name"
-                        ),
+                        config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
                         config.ACI_FIELD_CONTAINERS_ENVS_VALUE: ".+",
                         config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "re2",
                     })

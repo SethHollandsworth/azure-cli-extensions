@@ -139,8 +139,6 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
     def _close_docker_client(self) -> None:
         if self._docker_client:
             self._get_docker_client().close()
-        else:
-            docker.from_env().close()
 
     def close(self) -> None:
         self._close_docker_client()

@@ -58,9 +58,6 @@ if not os.path.exists(bin_path):
     r = requests.get("https://github.com/microsoft/hcsshim/releases/download/v0.10.0-rc.6/dmverity-vhd")
     with open(bin_path, "wb") as f:
         f.write(r.content)
-    # add executable permissions for the current user
-    st = os.stat(bin_path)
-    os.chmod(bin_path, st.st_mode | stat.S_IEXEC)
 
 with open("README.md", "r", encoding="utf-8") as f:
     README = f.read()
