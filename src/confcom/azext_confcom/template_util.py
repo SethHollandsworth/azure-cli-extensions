@@ -141,6 +141,12 @@ def process_env_vars_from_template(image_properties: dict) -> List[Dict[str, str
         for env_var in template_env_vars:
             name = case_insensitive_dict_get(env_var, "name")
             value = case_insensitive_dict_get(env_var, "value") or case_insensitive_dict_get(env_var, "secureValue")
+
+            if not name:
+                eprint(
+                    f"Environment variable with value: {value} is missing a name"
+                )
+
             if value:
                 if config.ACI_FIELD_TEMPLATE_PARAMETERS in value:
                     response = input(f'Create a wildcard policy for the environment variable {name} (y/n): ')
