@@ -2820,7 +2820,7 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
         }
         """
 
-    custom_arm_json = """
+    custom_arm_json_error = """
     {
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
@@ -2938,6 +2938,140 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
         }
     }
     """
+    custom_arm_json = """
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "variables": {
+            "image": "python:3.6.14-slim-buster"
+        },
+
+
+        "parameters": {
+            "containergroupname": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container group"
+            },
+            "defaultValue":"simple-container-group"
+            },
+            "wildcardParamName": {
+            "defaultValue": "TEST_WILDCARD_ENV",
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container group"
+            }
+
+            },
+            "wildcardParamValue": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container group"
+            }
+
+            },
+
+            "containername": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container"
+            },
+            "defaultValue":"simple-container"
+            },
+            "port": {
+            "type": "string",
+            "metadata": {
+                "description": "Port to open on the container and the public IP address."
+            },
+            "defaultValue": "8080"
+            },
+            "cpuCores": {
+            "type": "string",
+            "metadata": {
+                "description": "The number of CPU cores to allocate to the container."
+            },
+            "defaultValue": "1.0"
+            },
+            "memoryInGb": {
+            "type": "string",
+            "metadata": {
+                "description": "The amount of memory to allocate to the container in gigabytes."
+            },
+            "defaultValue": "1.5"
+            },
+            "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+            }
+        },
+        "resources": [
+            {
+            "name": "[parameters('containergroupname')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2022-04-01-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "containers": [
+                {
+                    "name": "[parameters('containername')]",
+
+                    "properties": {
+                    "image": "[variables('image')]",
+                    "command": [
+                        "python3"
+                    ],
+                    "ports": [
+                        {
+                        "port": "[parameters('port')]"
+                        }
+                    ],
+                    "resources": {
+                        "requests": {
+                        "cpu": "[parameters('cpuCores')]",
+                        "memoryInGb": "[parameters('memoryInGb')]"
+                        }
+                    },
+                    "environmentVariables": [
+                        {
+                            "name": "PATH",
+                            "value": "/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                        },
+                        {
+                            "name": "[parameters('wildcardParamName')]",
+                            "value": "[parameters('wildcardParamValue')]"
+                        }
+                    ]
+                    }
+                }
+                ],
+                "osType": "Linux",
+                "restartPolicy": "OnFailure",
+                "confidentialComputeProperties": {
+                "IsolationType": "SevSnp"
+                },
+                "ipAddress": {
+                "type": "Public",
+                "ports": [
+                    {
+                    "protocol": "Tcp",
+                    "port": "[parameters( 'port' )]"
+                    }
+                ]
+                }
+            }
+            }
+        ],
+        "outputs": {
+            "containerIPv4Address": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', parameters('containergroupname'))).ipAddress.ip]"
+            }
+        }
+    }
+    """
     aci_policy = None
 
     @classmethod
@@ -2993,4 +3127,10 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
                 ][1][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE],
             "TEST_WILDCARD_ENV=.+"
         )
+
+    def test_wildcard_env_var_invalid(self):
+        with self.assertRaises(SystemExit) as wrapped_exit:
+            load_policy_from_arm_template_str(self.custom_arm_json_error, "")
+        self.assertEqual(wrapped_exit.exception.code, 1)
+
 
