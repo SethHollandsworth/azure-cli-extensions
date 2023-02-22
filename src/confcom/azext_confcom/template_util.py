@@ -240,12 +240,12 @@ def get_values_for_params(input_parameter_json: dict, all_params: dict) -> Dict[
             ) or case_insensitive_dict_get(
                 case_insensitive_dict_get(input_parameter_values_json, key), "secureValue"
             )
-        # else:
-        #     # parameter definition is in parameter file but not arm
-        #     # template
-        #     eprint(
-        #         f'Parameter ["{key}"] is empty or cannot be found in ARM template'
-        #     )
+        else:
+            # parameter definition is in parameter file but not arm
+            # template
+            eprint(
+                f'Parameter ["{key}"] is empty or cannot be found in ARM template'
+            )
 
 
 def extract_probe(exec_processes: List[dict], image_properties: dict, probe: str):
@@ -369,11 +369,11 @@ def find_value_in_params_and_vars(params: dict, vars_dict: dict, search: str) ->
     else:
         match = case_insensitive_dict_get(vars_dict, param_name)
 
-    # if not match:
-    #     eprint(
-    #         f"""Field ["{param_name}"] not found in ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"]
-    #          or ["{config.ACI_FIELD_TEMPLATE_VARIABLES}"]"""
-    #     )
+    if not match:
+        eprint(
+            f"""Field ["{param_name}"] not found in ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"]
+             or ["{config.ACI_FIELD_TEMPLATE_VARIABLES}"]"""
+        )
 
     return match
 
