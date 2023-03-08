@@ -387,7 +387,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             policy += copy.deepcopy(config.DEFAULT_CONTAINERS)
             if self._disable_stdio:
                 for container in policy:
-                    container[config.POLICY_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS] = False
+                    container[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_STDIO_ACCESS] = False
 
         # default output is rego policy
         if use_json:
@@ -636,7 +636,7 @@ def load_policy_from_arm_template_str(
                     if debug_mode
                     else exec_processes,
                     config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
-                    config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio,
+                    config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio
                 }
             )
 

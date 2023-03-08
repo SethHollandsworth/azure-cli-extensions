@@ -10,6 +10,7 @@ from typing import Any, List, Dict
 from azext_confcom.template_util import case_insensitive_dict_get, replace_params_and_vars
 from azext_confcom import config
 from azext_confcom.errors import eprint
+import requests
 
 
 _DEFAULT_MOUNTS = config.DEFAULT_MOUNTS_USER
@@ -207,7 +208,7 @@ def extract_exec_process(container_json: Any) -> List:
             exec_processes_output.append(
                 {
                     config.POLICY_FIELD_CONTAINERS_ELEMENTS_COMMANDS: exec_command,
-                    config.POLICY_FIELD_CONTAINER_SIGNAL_CONTAINER_PROCESSES: exec_signals,
+                    config.POLICY_FIELD_CONTAINERS_ELEMENTS_SIGNAL_CONTAINER_PROCESSES: exec_signals,
                 }
             )
     return exec_processes_output
@@ -236,6 +237,28 @@ def extract_allow_stdio_access(container_json: Any) -> bool:
     )
     allow_stdio_access = allow_stdio_value if allow_stdio_value is not None else True
     return allow_stdio_access
+
+def extract_allow_privilege_escalation(container_json: Any) -> bool:
+    security_context = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+    ) 
+            
+    allow_privilege_escalation = True
+    # assumes that securityContext field is optional
+    if security_context:
+        # get the field for allow privilege escalation, default to true
+        allow_privilege_escalation_value = case_insensitive_dict_get(
+            security_context, config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
+        )
+
+        if not isinstance(allow_privilege_escalation_value, bool):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION}"] can only be boolean value.'
+            )
+        else:
+            allow_privilege_escalation = allow_privilege_escalation_value
+    return allow_privilege_escalation
 
 
 def extract_get_signals(container_json: Any) -> List:
@@ -284,6 +307,7 @@ class ContainerImage:
         )
         signals = extract_get_signals(container_json)
         allow_stdio_access = extract_allow_stdio_access(container_json)
+        allow_privilege_escalation = extract_allow_privilege_escalation(container_json)
         return ContainerImage(
             containerImage=container_image,
             environmentRules=environment_rules,
@@ -295,6 +319,7 @@ class ContainerImage:
             execProcesses=exec_processes,
             signals=signals,
             allowStdioAccess=allow_stdio_access,
+            allowPrivilegeEscalation=allow_privilege_escalation,
             id_val=id_val,
         )
 
@@ -309,6 +334,7 @@ class ContainerImage:
         id_val: str,
         extraEnvironmentRules: Dict,
         allowStdioAccess: bool = True,
+        allowPrivilegeEscalation: bool = True,
         execProcesses: List = None,
         signals: List = None,
     ) -> None:
@@ -324,6 +350,7 @@ class ContainerImage:
         self._mounts = mounts
         self._allow_elevated = allow_elevated
         self._allow_stdio_access = allowStdioAccess
+        self._allow_privilege_escalation = allowPrivilegeEscalation
         self._policy_json = None
         self._policy_json_str = None
         self._policy_json_str_pp = None
@@ -456,9 +483,10 @@ class ContainerImage:
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_WORKINGDIR: self._workingDir,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS: self._get_mounts_json(),
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_ELEVATED: self._allow_elevated,
-            config.POLICY_FIELD_CONTAINER_EXEC_PROCESSES: self._exec_processes,
-            config.POLICY_FIELD_CONTAINER_SIGNAL_CONTAINER_PROCESSES: self._signals,
-            config.POLICY_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: self._allow_stdio_access,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_EXEC_PROCESSES: self._exec_processes,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_SIGNAL_CONTAINER_PROCESSES: self._signals,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_STDIO_ACCESS: self._allow_stdio_access,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES: not self._allow_privilege_escalation
         }
 
         self._policy_json = elements

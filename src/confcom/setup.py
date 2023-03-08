@@ -54,7 +54,6 @@ r = requests.get("https://api.github.com/repos/microsoft/hcsshim/releases")
 # list the artifacts from each release
 bin_flag = False
 exe_flag = False
-svn_flag = False
 for release in r.json():
     # these should be newest to oldest
     for asset in release["assets"]:
@@ -71,27 +70,26 @@ for release in r.json():
             # save the file to the bin folder
             with open(bin_folder + asset["name"], "wb") as f:
                 f.write(r.content)
-        elif bin_flag and exe_flag and "tar.gz" in asset["name"]:
-            svn_flag = True
-            # get the download url for the dmverity-vhd file
-            exe_url = asset["browser_download_url"]
-            # update the url to get framework svn file
-            exe_url.replace(".tar.gz", "pkg/securitypolicy/svn_framework")
-            # download the file
-            r = requests.get(exe_url)
-            # save the file to the data folder
-            with open(data_folder + "svn_framework", "w") as f:
-                f.write(r.content)
-            # update the url to get api svn file
-            exe_url.replace("framework", "api")
-            # download the file
-            r = requests.get(exe_url)
-            # save the file to the data folder
-            with open(data_folder + "svn_api", "w") as f:
-                f.write(r.content)
     
     # break out of the loop if we have both files
-    if bin_flag and exe_flag and svn_flag:
+    if bin_flag and exe_flag:
+        # get the download url for the dmverity-vhd file
+        exe_url = release["html_url"]
+        # update the url to get framework svn file
+        exe_url = exe_url.replace("releases/tag", "raw")
+        exe_url += "/pkg/securitypolicy/svn_framework"
+        # download the file
+        r = requests.get(exe_url)
+        # save the file to the data folder
+        with open(data_folder + "svn_framework", "wb") as f:
+            f.write(r.content)
+        # update the url to get api svn file
+        exe_url = exe_url.replace("framework", "api")
+        # download the file
+        r = requests.get(exe_url)
+        # save the file to the data folder
+        with open(data_folder + "svn_api", "wb") as f:
+            f.write(r.content)
         break
 
 with open("README.md", "r", encoding="utf-8") as f:
