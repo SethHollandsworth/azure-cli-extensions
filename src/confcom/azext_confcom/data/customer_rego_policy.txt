@@ -3,8 +3,8 @@ package policy
 import future.keywords.every
 import future.keywords.in
 
-api_svn := "0.10.0"
-framework_svn := "0.1.0"
+api_svn := %s
+framework_svn := %s
 
 fragments := %s
 

@@ -2,6 +2,11 @@
 
 Release History
 ===============
+0.2.13
+* adding parsing of container security context field in ARM template
+* changing hardcoded API_SVN and FRAMEWORK_SVN to get values from HCSSHIM repo
+* bumping HCSSHIM version
+
 0.2.12
 * adding ability for mixed-mode OCI image pulling, e.g. using tar files and remote registries in the same template
 * adding option to use allow-all regex for environment variables
