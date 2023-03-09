@@ -206,5 +206,18 @@
             "allow_stdio_access": true,
             "working_dir": "/"
         }
-    ]
+    ],
+    "default_user": {
+        "user_idname": {
+            "pattern": "",
+            "strategy": "any"
+        },
+        "group_idnames": [
+            {
+                "pattern": "",
+                "strategy": "any"
+            }
+        ],
+        "umask": "0022"
+    }
 }

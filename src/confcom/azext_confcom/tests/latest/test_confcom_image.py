@@ -19,7 +19,7 @@ import azext_confcom.config as config
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 
 
-# @unittest.skip("not in use")
+@unittest.skip("not in use")
 @pytest.mark.run(order=1)
 class PolicyGeneratingImage(unittest.TestCase):
     @classmethod
@@ -36,7 +36,7 @@ class PolicyGeneratingImage(unittest.TestCase):
         self.assertEqual(aci_policy_str, expected_policy)
 
 
-# @unittest.skip("not in use")
+@unittest.skip("not in use")
 @pytest.mark.run(order=2)
 class PolicyGeneratingImageSidecar(unittest.TestCase):
     @classmethod

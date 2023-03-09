@@ -37,7 +37,6 @@ from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
 logger = get_logger()
 
-
 class OutputType(Enum):
     DEFAULT = auto()
     RAW = auto()
@@ -478,6 +477,30 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                                 }
                             )
 
+                    if deepdiff.DeepDiff(image.get_user(), config.DEFAULT_USER, ignore_order=True) == {}:
+                        # get user value from container image
+                        # valid values are "user", "user:group", "uid", "uid:gid", "user:gid", "uid:group"
+                        # "" means any user (use default)
+                        user_str = image_info.get("User")
+                        # TO-DO figure out why groups is a list and when/how the strategy can be regex
+                        user = copy.deepcopy(config.DEFAULT_USER)
+                        if user_str != "":
+                            parts = user_str.split(":", 1)
+
+                            user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN] = parts[0]
+                            if parts[0].isdigit():
+                                user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "id"
+                            else:
+                                user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "name"
+                            if len(parts) == 2:
+                                # group also specified
+                                user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN] = parts[1]
+                                if parts[1].isdigit():
+                                    user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "id"
+                                else:
+                                    user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "name"
+                        image.set_user(user)
+
                 # populate tar location
                 if isinstance(tar_mapping, dict):
                     tar_location = get_tar_location_from_mapping(tar_mapping, image_name)
@@ -611,6 +634,10 @@ def load_policy_from_arm_template_str(
                     f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found'
                 )
 
+            security_context = case_insensitive_dict_get(
+                image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+            )
+
             exec_processes = []
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
@@ -632,7 +659,8 @@ def load_policy_from_arm_template_str(
                     if debug_mode
                     else exec_processes,
                     config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
-                    config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio
+                    config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio,
+                    config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT: security_context,
                 }
             )
 

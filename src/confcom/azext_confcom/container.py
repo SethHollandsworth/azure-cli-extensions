@@ -15,6 +15,8 @@ import requests
 
 _DEFAULT_MOUNTS = config.DEFAULT_MOUNTS_USER
 
+_DEFAULT_USER = config.DEFAULT_USER
+
 _INJECTED_CUSTOMER_ENV_RULES = (
     config.OPENGCS_ENV_RULES
     + config.FABRIC_ENV_RULES
@@ -238,26 +240,67 @@ def extract_allow_stdio_access(container_json: Any) -> bool:
     allow_stdio_access = allow_stdio_value if allow_stdio_value is not None else True
     return allow_stdio_access
 
+def extract_user(container_json: Any) -> Dict:
+    security_context = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
+    ) 
+
+    user = copy.deepcopy(_DEFAULT_USER)
+    # assumes that securityContext field is optional
+    if security_context:
+        # get the field for run as user
+        run_as_user_value = case_insensitive_dict_get(
+            security_context, config.ACI_FIELD_CONTAINERS_RUN_AS_USER
+        )
+
+        if not isinstance(run_as_user_value, int):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_USER}"] can only be an integer value.'
+            )
+        else:
+            user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME] = {
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: str(run_as_user_value),
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: "id"
+            }
+
+        # get the field for run as group
+        run_as_group_value = case_insensitive_dict_get(
+            security_context, config.ACI_FIELD_CONTAINERS_RUN_AS_GROUP
+        )
+
+        if not isinstance(run_as_group_value, int):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_GROUP}"] can only be an integer value.'
+            )
+        else:
+            user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0] = {
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: str(run_as_group_value),
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: "id"
+            }
+    return user
+
+
 def extract_allow_privilege_escalation(container_json: Any) -> bool:
     security_context = case_insensitive_dict_get(
-        container_json, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+        container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
     ) 
             
     allow_privilege_escalation = True
     # assumes that securityContext field is optional
     if security_context:
-        # get the field for allow privilege escalation, default to true
-        allow_privilege_escalation_value = case_insensitive_dict_get(
-            security_context, config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
-        )
-
-        if not isinstance(allow_privilege_escalation_value, bool):
-            eprint(
-                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT}"]'
-                + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION}"] can only be boolean value.'
-            )
-        else:
+        try: 
+            # get the field for allow privilege escalation, default to true
+            allow_privilege_escalation_value = bool(case_insensitive_dict_get(
+                security_context, config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
+            ))
             allow_privilege_escalation = allow_privilege_escalation_value
+        except ValueError:
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION}"] can only be a boolean value.'
+            )
     return allow_privilege_escalation
 
 
@@ -306,6 +349,7 @@ class ContainerImage:
             container_json
         )
         signals = extract_get_signals(container_json)
+        user = extract_user(container_json)
         allow_stdio_access = extract_allow_stdio_access(container_json)
         allow_privilege_escalation = extract_allow_privilege_escalation(container_json)
         return ContainerImage(
@@ -318,6 +362,7 @@ class ContainerImage:
             extraEnvironmentRules=[],
             execProcesses=exec_processes,
             signals=signals,
+            user=user,
             allowStdioAccess=allow_stdio_access,
             allowPrivilegeEscalation=allow_privilege_escalation,
             id_val=id_val,
@@ -333,6 +378,7 @@ class ContainerImage:
         allow_elevated: bool,
         id_val: str,
         extraEnvironmentRules: Dict,
+        user: Dict = copy.deepcopy(_DEFAULT_USER),
         allowStdioAccess: bool = True,
         allowPrivilegeEscalation: bool = True,
         execProcesses: List = None,
@@ -350,6 +396,7 @@ class ContainerImage:
         self._mounts = mounts
         self._allow_elevated = allow_elevated
         self._allow_stdio_access = allowStdioAccess
+        self._user = user or {},
         self._allow_privilege_escalation = allowPrivilegeEscalation
         self._policy_json = None
         self._policy_json_str = None
@@ -359,10 +406,11 @@ class ContainerImage:
         self._signals = signals or []
         self._extraEnvironmentRules = extraEnvironmentRules
 
+        print(type(self._user))
+
     def get_policy_json(self) -> str:
         if not self._policy_json:
             self._policy_json_serialization()
-
         return self._policy_json
 
     def get_id(self) -> str:
@@ -388,6 +436,12 @@ class ContainerImage:
 
     def set_layers(self, layers: List[str]) -> None:
         self._layers = layers
+
+    def get_user(self) -> Dict:
+        return self._user
+
+    def set_user(self, user: Dict) -> None:
+        self._user = user
 
     def get_mounts(self) -> List:
         return self._mounts
@@ -485,10 +539,12 @@ class ContainerImage:
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_ELEVATED: self._allow_elevated,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_EXEC_PROCESSES: self._exec_processes,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_SIGNAL_CONTAINER_PROCESSES: self._signals,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER: self.get_user(),
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_STDIO_ACCESS: self._allow_stdio_access,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES: not self._allow_privilege_escalation
         }
-
+        print(type(self.get_user()))
+        print(json.dumps(self.get_user()))
         self._policy_json = elements
         return self._policy_json
 
