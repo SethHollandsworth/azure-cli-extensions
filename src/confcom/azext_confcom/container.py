@@ -252,12 +252,12 @@ def extract_user(container_json: Any) -> Dict:
             security_context, config.ACI_FIELD_CONTAINERS_RUN_AS_USER
         )
 
-        if not isinstance(run_as_user_value, int):
+        if run_as_user_value and not isinstance(run_as_user_value, int):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_USER}"] can only be an integer value.'
             )
-        else:
+        elif run_as_user_value:
             user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME] = {
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: str(run_as_user_value),
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: "id"
@@ -268,12 +268,12 @@ def extract_user(container_json: Any) -> Dict:
             security_context, config.ACI_FIELD_CONTAINERS_RUN_AS_GROUP
         )
 
-        if not isinstance(run_as_group_value, int):
+        if run_as_group_value and not isinstance(run_as_group_value, int):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_GROUP}"] can only be an integer value.'
             )
-        else:
+        elif run_as_group_value:
             user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0] = {
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: str(run_as_group_value),
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: "id"
