@@ -315,6 +315,15 @@ def extract_capabilities(container_json):
         for key in output_capabilities.keys():
             output_capabilities[key] = copy.deepcopy(config.DEFAULT_PRIVILEGED_CAPABILITIES)
     else:
+        non_added_fields = [
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING,
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE,
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED,
+            ]
+
+        # add the default capabilities to the output
+        for key in non_added_fields:
+            output_capabilities[key] = copy.deepcopy(config.DEFAULT_UNPRIVILEGED_CAPABILITIES)
         # get the capabilities field
         capabilities = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_CAPABILITIES
@@ -326,16 +335,6 @@ def extract_capabilities(container_json):
                     f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                     + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES}"] can only be a dictionary.'
                 )
-
-            non_added_fields = [
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING,
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE,
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED,
-            ]
-
-            # drop the capabilities from the output
-            for key in non_added_fields:
-                output_capabilities[key] = copy.deepcopy(config.DEFAULT_UNPRIVILEGED_CAPABILITIES)
 
             # get the add field
             add = case_insensitive_dict_get(
@@ -420,7 +419,7 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
     # assumes that securityContext field is optional
     if security_context:
 
-        # get the field for allow privilege escalation, default to true
+        # get the field for allow privilege escalation, default to false
         allow_privilege_escalation = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
         )
@@ -520,7 +519,7 @@ class ContainerImage:
         user: Dict = copy.deepcopy(_DEFAULT_USER),
         seccomp_profile_sha256: str = "",
         allowStdioAccess: bool = True,
-        allowPrivilegeEscalation: bool = True,
+        allowPrivilegeEscalation: bool = False,
         execProcesses: List = None,
         signals: List = None,
     ) -> None:
