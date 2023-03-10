@@ -16,6 +16,7 @@ from azext_confcom.errors import (
 )
 from azext_confcom import os_util
 from azext_confcom import config
+from hashlib import sha256
 
 
 # TODO: these can be optimized to not have so many groups in the single match
@@ -562,6 +563,8 @@ def print_func(x: dict) -> str:
 def pretty_print_func(x: dict) -> str:
     return json.dumps(x, indent=2, sort_keys=True)
 
+def str_to_sha256(x: str) -> str:
+    return sha256(x.encode('utf-8')).hexdigest()
 
 def is_sidecar(image_name: str) -> bool:
     return image_name.split(":")[0] in config.BASELINE_SIDECAR_CONTAINERS
