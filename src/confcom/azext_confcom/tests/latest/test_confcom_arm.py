@@ -3531,6 +3531,147 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
 
                     "properties": {
                     "image": "[variables('image')]",
+                    "command": [
+                        "python3"
+                    ],
+                    "ports": [
+                        {
+                        "port": "[parameters('port')]"
+                        }
+                    ],
+                    "resources": {
+                        "requests": {
+                        "cpu": "[parameters('cpuCores')]",
+                        "memoryInGb": "[parameters('memoryInGb')]"
+                        }
+                    },
+                     "volumeMounts": [
+                            {
+                                "name": "filesharevolume",
+                                "mountPath": "/aci/logs",
+                                "readOnly": false
+                            },
+                            {
+                                "name": "secretvolume",
+                                "mountPath": "/aci/secret",
+                                "readOnly": true
+                            }
+                        ]
+                    }
+                }
+                ],
+                "volumes": [
+                    {
+                        "name": "filesharevolume",
+                        "azureFile": {
+                            "shareName": "shareName1",
+                            "storageAccountName": "storage-account-name",
+                            "storageAccountKey": "storage-account-key"
+                        }
+                    },
+                    {
+
+                        "name": "secretvolume",
+                        "secret": {
+                            "mysecret1": "secret1",
+                            "mysecret2": "secret2"
+                        }
+                    }
+
+                ],
+                "osType": "Linux",
+                "restartPolicy": "OnFailure",
+                "confidentialComputeProperties": {
+                "IsolationType": "SevSnp"
+                },
+                "ipAddress": {
+                "type": "Public",
+                "ports": [
+                    {
+                    "protocol": "Tcp",
+                    "port": "[parameters( 'port' )]"
+                    }
+                ]
+                }
+            }
+            }
+        ],
+        "outputs": {
+            "containerIPv4Address": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', parameters('containergroupname'))).ipAddress.ip]"
+            }
+        }
+    }
+    """
+
+    custom_arm_json2 = """
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "variables": {
+            "image": "python:3.6.14-slim-buster"
+        },
+
+
+        "parameters": {
+            "containergroupname": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container group"
+            },
+            "defaultValue":"simple-container-group"
+            },
+
+            "containername": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container"
+            },
+            "defaultValue":"simple-container"
+            },
+            "port": {
+            "type": "string",
+            "metadata": {
+                "description": "Port to open on the container and the public IP address."
+            },
+            "defaultValue": "8080"
+            },
+            "cpuCores": {
+            "type": "string",
+            "metadata": {
+                "description": "The number of CPU cores to allocate to the container."
+            },
+            "defaultValue": "1.0"
+            },
+            "memoryInGb": {
+            "type": "string",
+            "metadata": {
+                "description": "The amount of memory to allocate to the container in gigabytes."
+            },
+            "defaultValue": "1.5"
+            },
+            "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+            }
+        },
+        "resources": [
+            {
+            "name": "[parameters('containergroupname')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2022-04-01-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "containers": [
+                {
+                    "name": "[parameters('containername')]",
+
+                    "properties": {
+                    "image": "[variables('image')]",
                     "securityContext":{
                         "privileged":"true",
                         "allowPrivilegeEscalation":"true",
@@ -3616,6 +3757,8 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
     }
     """
 
+    
+
     @classmethod
     def setUpClass(cls):
         cls.aci_arm_policy = load_policy_from_arm_template_str(cls.custom_arm_json, "")[
@@ -3623,9 +3766,39 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
         ]
         cls.aci_arm_policy.populate_policy_content_for_all_images()
 
-    def test_arm_template_security_context_allow_privilege_escalation(self):
+        cls.aci_arm_policy2 = load_policy_from_arm_template_str(cls.custom_arm_json2, "")[
+            0
+        ]
+        cls.aci_arm_policy2.populate_policy_content_for_all_images()
+
+    def test_arm_template_security_context_defaults(self):
+        expected_user_json = json.loads("""{
+            "user_idname":
+            {
+                "pattern": "",
+                "strategy": "any"
+            },
+            "group_idnames": [
+                {
+                    "pattern": "",
+                    "strategy": "any"
+                }
+            ],
+            "umask": "0022"
+        }""")
+
         regular_image_json = json.loads(
             self.aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        self.assertTrue(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES])
+        self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+
+    def test_arm_template_security_context_allow_privilege_escalation(self):
+        regular_image_json = json.loads(
+            self.aci_arm_policy2.get_serialized_output(
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
@@ -3634,13 +3807,24 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
         self.assertFalse(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES])
 
     def test_arm_template_security_context_user(self):
+        expected_user_json = json.loads("""{
+            "user_idname":
+            {
+                "pattern": "456",
+                "strategy": "id"
+            },
+            "group_idnames": [
+                {
+                    "pattern": "123",
+                    "strategy": "id"
+                }
+            ],
+            "umask": "0022"
+        }""")
+
         regular_image_json = json.loads(
-            self.aci_arm_policy.get_serialized_output(
+            self.aci_arm_policy2.get_serialized_output(
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
-        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN], "456")
-        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN], "123")
-        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY], "id")
-        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY], "id")
-        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_UMASK], "0022")
+        self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})

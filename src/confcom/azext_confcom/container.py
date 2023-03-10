@@ -287,11 +287,11 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
         container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
     ) 
             
-    allow_privilege_escalation = True
+    allow_privilege_escalation = False
     # assumes that securityContext field is optional
     if security_context:
         try: 
-            # get the field for allow privilege escalation, default to true
+            # get the field for allow privilege escalation, default to false
             allow_privilege_escalation_value = bool(case_insensitive_dict_get(
                 security_context, config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
             ))
@@ -396,7 +396,7 @@ class ContainerImage:
         self._mounts = mounts
         self._allow_elevated = allow_elevated
         self._allow_stdio_access = allowStdioAccess
-        self._user = user or {},
+        self._user = user or {}
         self._allow_privilege_escalation = allowPrivilegeEscalation
         self._policy_json = None
         self._policy_json_str = None
@@ -405,8 +405,6 @@ class ContainerImage:
         self._exec_processes = execProcesses or []
         self._signals = signals or []
         self._extraEnvironmentRules = extraEnvironmentRules
-
-        print(type(self._user))
 
     def get_policy_json(self) -> str:
         if not self._policy_json:
@@ -543,8 +541,6 @@ class ContainerImage:
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_STDIO_ACCESS: self._allow_stdio_access,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES: not self._allow_privilege_escalation
         }
-        print(type(self.get_user()))
-        print(json.dumps(self.get_user()))
         self._policy_json = elements
         return self._policy_json
 
