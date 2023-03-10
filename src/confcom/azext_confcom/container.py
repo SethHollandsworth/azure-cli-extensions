@@ -7,10 +7,9 @@ import copy
 import json
 import os
 from typing import Any, List, Dict
-from azext_confcom.template_util import case_insensitive_dict_get, replace_params_and_vars
+from azext_confcom.template_util import case_insensitive_dict_get, replace_params_and_vars, str_to_sha256
 from azext_confcom import config
 from azext_confcom.errors import eprint
-import requests
 
 
 _DEFAULT_MOUNTS = config.DEFAULT_MOUNTS_USER
@@ -388,6 +387,29 @@ def extract_capabilities(container_json):
 
     return output_capabilities
 
+def extract_seccomp_profile_sha256(container_json: Any) -> Dict:
+    security_context = case_insensitive_dict_get(
+        container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
+    )
+
+    seccomp_profile_sha256 = ""
+    # assumes that securityContext field is optional
+    if security_context:
+        # get the field for seccomp_profile
+        seccomp_profile = case_insensitive_dict_get(
+            security_context, config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE
+        )
+
+        if not isinstance(seccomp_profile, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE}"] can only be a string.'
+            )
+        elif seccomp_profile:
+            seccomp_profile_sha256 = str_to_sha256(seccomp_profile)
+
+    return seccomp_profile_sha256
+
 
 def extract_allow_privilege_escalation(container_json: Any) -> bool:
     security_context = case_insensitive_dict_get(
@@ -463,6 +485,7 @@ class ContainerImage:
         signals = extract_get_signals(container_json)
         user = extract_user(container_json)
         capabilities = extract_capabilities(container_json)
+        seccomp_profile_sha256 = extract_seccomp_profile_sha256(container_json)
         allow_stdio_access = extract_allow_stdio_access(container_json)
         allow_privilege_escalation = extract_allow_privilege_escalation(container_json)
         return ContainerImage(
@@ -477,6 +500,7 @@ class ContainerImage:
             signals=signals,
             user=user,
             capabilities=capabilities,
+            seccomp_profile_sha256=seccomp_profile_sha256,
             allowStdioAccess=allow_stdio_access,
             allowPrivilegeEscalation=allow_privilege_escalation,
             id_val=id_val,
@@ -494,6 +518,7 @@ class ContainerImage:
         extraEnvironmentRules: Dict,
         capabilities: Dict,
         user: Dict = copy.deepcopy(_DEFAULT_USER),
+        seccomp_profile_sha256: str = "",
         allowStdioAccess: bool = True,
         allowPrivilegeEscalation: bool = True,
         execProcesses: List = None,
@@ -511,6 +536,7 @@ class ContainerImage:
         self._mounts = mounts
         self._allow_elevated = allow_elevated
         self._allow_stdio_access = allowStdioAccess
+        self._seccomp_profile_sha256 = seccomp_profile_sha256
         self._user = user or {}
         self._capabilities = capabilities
         self._allow_privilege_escalation = allowPrivilegeEscalation
@@ -521,8 +547,6 @@ class ContainerImage:
         self._exec_processes = execProcesses or []
         self._signals = signals or []
         self._extraEnvironmentRules = extraEnvironmentRules
-
-        print(type(self._user))
 
     def get_policy_json(self) -> str:
         if not self._policy_json:
@@ -657,11 +681,10 @@ class ContainerImage:
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_SIGNAL_CONTAINER_PROCESSES: self._signals,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER: self.get_user(),
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES: self._capabilities,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_SECCOMP_PROFILE_SHA256: self._seccomp_profile_sha256,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_STDIO_ACCESS: self._allow_stdio_access,
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES: not self._allow_privilege_escalation
         }
-        print(type(self.get_user()))
-        print(json.dumps(self.get_user()))
         self._policy_json = elements
         return self._policy_json
 
