@@ -3673,7 +3673,7 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
                     "properties": {
                     "image": "[variables('image')]",
                     "securityContext":{
-                        "privileged":"true",
+                        "privileged":"false",
                         "allowPrivilegeEscalation":"true",
                         "capabilities":{
                             "add":["ADDCAP1","ADDCAP2"],
@@ -3757,7 +3757,160 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
     }
     """
 
-    
+
+    custom_arm_json3 = """
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "variables": {
+            "image": "python:3.6.14-slim-buster"
+        },
+
+
+        "parameters": {
+            "containergroupname": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container group"
+            },
+            "defaultValue":"simple-container-group"
+            },
+
+            "containername": {
+            "type": "string",
+            "metadata": {
+                "description": "Name for the container"
+            },
+            "defaultValue":"simple-container"
+            },
+            "port": {
+            "type": "string",
+            "metadata": {
+                "description": "Port to open on the container and the public IP address."
+            },
+            "defaultValue": "8080"
+            },
+            "cpuCores": {
+            "type": "string",
+            "metadata": {
+                "description": "The number of CPU cores to allocate to the container."
+            },
+            "defaultValue": "1.0"
+            },
+            "memoryInGb": {
+            "type": "string",
+            "metadata": {
+                "description": "The amount of memory to allocate to the container in gigabytes."
+            },
+            "defaultValue": "1.5"
+            },
+            "location": {
+            "type": "string",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "Location for all resources."
+            }
+            }
+        },
+        "resources": [
+            {
+            "name": "[parameters('containergroupname')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2022-04-01-preview",
+            "location": "[parameters('location')]",
+            "properties": {
+                "containers": [
+                {
+                    "name": "[parameters('containername')]",
+
+                    "properties": {
+                    "image": "[variables('image')]",
+                    "securityContext":{
+                        "privileged": true,
+                        "allowPrivilegeEscalation":"true",
+                        "capabilities":{
+                            "add":["ADDCAP1","ADDCAP2"],
+                            "drop":["DROPCAP1","DROPCAP2"]
+                        },
+                        "runAsGroup":123,
+                        "runAsUser":456,
+                        "seccompProfile":"cHJvZmlsZVZhbHVl"
+                    },
+                    "command": [
+                        "python3"
+                    ],
+                    "ports": [
+                        {
+                        "port": "[parameters('port')]"
+                        }
+                    ],
+                    "resources": {
+                        "requests": {
+                        "cpu": "[parameters('cpuCores')]",
+                        "memoryInGb": "[parameters('memoryInGb')]"
+                        }
+                    },
+                     "volumeMounts": [
+                            {
+                                "name": "filesharevolume",
+                                "mountPath": "/aci/logs",
+                                "readOnly": false
+                            },
+                            {
+                                "name": "secretvolume",
+                                "mountPath": "/aci/secret",
+                                "readOnly": true
+                            }
+                        ]
+                    }
+                }
+                ],
+                "volumes": [
+                    {
+                        "name": "filesharevolume",
+                        "azureFile": {
+                            "shareName": "shareName1",
+                            "storageAccountName": "storage-account-name",
+                            "storageAccountKey": "storage-account-key"
+                        }
+                    },
+                    {
+
+                        "name": "secretvolume",
+                        "secret": {
+                            "mysecret1": "secret1",
+                            "mysecret2": "secret2"
+                        }
+                    }
+
+                ],
+                "osType": "Linux",
+                "restartPolicy": "OnFailure",
+                "confidentialComputeProperties": {
+                "IsolationType": "SevSnp"
+                },
+                "ipAddress": {
+                "type": "Public",
+                "ports": [
+                    {
+                    "protocol": "Tcp",
+                    "port": "[parameters( 'port' )]"
+                    }
+                ]
+                }
+            }
+            }
+        ],
+        "outputs": {
+            "containerIPv4Address": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', parameters('containergroupname'))).ipAddress.ip]"
+            }
+        }
+    }
+    """
+
+
 
     @classmethod
     def setUpClass(cls):
@@ -3770,6 +3923,11 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
             0
         ]
         cls.aci_arm_policy2.populate_policy_content_for_all_images()
+
+        cls.aci_arm_policy3 = load_policy_from_arm_template_str(cls.custom_arm_json3, "")[
+            0
+        ]
+        cls.aci_arm_policy3.populate_policy_content_for_all_images()
 
     def test_arm_template_security_context_defaults(self):
         expected_user_json = json.loads("""{
@@ -3840,3 +3998,48 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
         )
 
         self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_SECCOMP_PROFILE_SHA256], expected_seccomp_profile_sha256)
+
+    def test_arm_template_capabilities_unprivileged(self):
+        expected_capabilities = ["ADDCAP1", "ADDCAP2"]
+        expected_capabilities2 = ["DROPCAP1", "DROPCAP2"]
+        regular_image_json = json.loads(
+            self.aci_arm_policy2.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+        for cap in expected_capabilities:
+            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT])
+        for cap in expected_capabilities:
+            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING])
+        for cap in expected_capabilities2:
+            self.assertNotIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT])
+        for cap in expected_capabilities2:
+            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING])
+
+    def test_arm_template_capabilities_undefined(self):
+        regular_image_json = json.loads(
+            self.aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        # check all the default unprivileged capabilities are present
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED], ignore_order=True), {})
+        self.assertEquals([], regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT])
+        self.assertEquals([], regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE])
+
+    def test_arm_template_capabilities_privileged(self):
+        regular_image_json = json.loads(
+            self.aci_arm_policy3.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        # check all the default unprivileged capabilities are present
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_PRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_PRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_PRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_PRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_PRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE], ignore_order=True), {})
