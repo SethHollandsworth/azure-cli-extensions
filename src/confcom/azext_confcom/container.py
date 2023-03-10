@@ -239,6 +239,7 @@ def extract_allow_stdio_access(container_json: Any) -> bool:
     allow_stdio_access = allow_stdio_value if allow_stdio_value is not None else True
     return allow_stdio_access
 
+
 def extract_user(container_json: Any) -> Dict:
     security_context = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
@@ -309,18 +310,17 @@ def extract_capabilities(container_json):
         config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT: [],
     }
 
-
     # if privileged is true, then set all capabilities to true
     # else, get the capabilities field from the ARM Template
     if privileged_value:
-        for key in output_capabilities.keys():
+        for key in output_capabilities:
             output_capabilities[key] = copy.deepcopy(config.DEFAULT_PRIVILEGED_CAPABILITIES)
     else:
         non_added_fields = [
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING,
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE,
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED,
-            ]
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE,
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED,
+        ]
 
         # add the default capabilities to the output
         for key in non_added_fields:
@@ -354,7 +354,8 @@ def extract_capabilities(container_json):
                     for capability in add:
                         if not isinstance(capability, str):
                             eprint(
-                                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                                + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                                 + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_ADD}"] can only contain strings.'
                             )
                         value.append(capability)
@@ -376,16 +377,16 @@ def extract_capabilities(container_json):
                     for capability in drop:
                         if not isinstance(capability, str):
                             eprint(
-                                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                                + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                                 + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_DROP}"] can only contain strings.'
                             )
                         output_capabilities[value].append(capability)
-
     # de-duplicate the capabilities
     for key, value in output_capabilities.items():
-        output_capabilities[key] = list(set(value))
-
+        output_capabilities[key] = sorted(list(set(value)))
     return output_capabilities
+
 
 def extract_seccomp_profile_sha256(container_json: Any) -> Dict:
     security_context = case_insensitive_dict_get(
@@ -422,10 +423,12 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
 
         # get the field for allow privilege escalation, default to false
         allow_privilege_escalation = case_insensitive_dict_get(
-            security_context, config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
+            security_context,
+            config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
         )
 
-        if allow_privilege_escalation and not isinstance(allow_privilege_escalation, bool) and not isinstance(allow_privilege_escalation, str):
+        if (allow_privilege_escalation and not isinstance(allow_privilege_escalation, bool)
+                and not isinstance(allow_privilege_escalation, str)):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_PRIVILEGED}"] can only be a boolean or string value.'
@@ -516,7 +519,7 @@ class ContainerImage:
         allow_elevated: bool,
         id_val: str,
         extraEnvironmentRules: Dict,
-        capabilities: Dict,
+        capabilities: Dict = {},
         user: Dict = copy.deepcopy(_DEFAULT_USER),
         seccomp_profile_sha256: str = "",
         allowStdioAccess: bool = True,

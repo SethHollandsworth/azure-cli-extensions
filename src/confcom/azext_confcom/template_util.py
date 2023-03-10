@@ -8,6 +8,7 @@ import json
 import copy
 import tarfile
 from typing import Any, Tuple, Dict, List
+from hashlib import sha256
 import deepdiff
 import yaml
 import docker
@@ -16,7 +17,6 @@ from azext_confcom.errors import (
 )
 from azext_confcom import os_util
 from azext_confcom import config
-from hashlib import sha256
 
 
 # TODO: these can be optimized to not have so many groups in the single match
@@ -321,7 +321,7 @@ def readable_diff(diff_dict) -> Dict[str, Any]:
     name_translation = {
         "values_changed": "values_changed",
         "iterable_item_removed": "values_removed",
-        "iterable_item_added": "values_added",
+        "iterable_item_added": "values_added"
     }
 
     human_readable_diff = {}
@@ -350,6 +350,7 @@ def compare_containers(container1, container2) -> Dict[str, Any]:
     diff = deepdiff.DeepDiff(
         container1,
         container2,
+        ignore_order=True
     )
     # cast to json using built-in function in deepdiff so there's safe translation
     # e.g. a type will successfully cast to string
@@ -563,8 +564,10 @@ def print_func(x: dict) -> str:
 def pretty_print_func(x: dict) -> str:
     return json.dumps(x, indent=2, sort_keys=True)
 
+
 def str_to_sha256(x: str) -> str:
     return sha256(x.encode('utf-8')).hexdigest()
+
 
 def is_sidecar(image_name: str) -> bool:
     return image_name.split(":")[0] in config.BASELINE_SIDECAR_CONTAINERS

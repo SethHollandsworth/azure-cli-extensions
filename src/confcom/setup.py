@@ -70,7 +70,6 @@ for release in r.json():
             # save the file to the bin folder
             with open(bin_folder + asset["name"], "wb") as f:
                 f.write(r.content)
-    
     # break out of the loop if we have both files
     if bin_flag and exe_flag:
         # get the download url for the dmverity-vhd file
