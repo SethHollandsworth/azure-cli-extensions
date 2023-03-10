@@ -247,6 +247,7 @@ def extract_user(container_json: Any) -> Dict:
     user = copy.deepcopy(_DEFAULT_USER)
     # assumes that securityContext field is optional
     if security_context:
+        # To-Do: figure out how to determine if regex patterns
         # get the field for run as user
         run_as_user_value = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_RUN_AS_USER
@@ -290,7 +291,7 @@ def extract_capabilities(container_json):
     privileged_value = case_insensitive_dict_get(
         security_context, config.ACI_FIELD_CONTAINERS_PRIVILEGED
     )
-    if not isinstance(privileged_value, bool) and not isinstance(privileged_value, str):
+    if privileged_value and not isinstance(privileged_value, bool) and not isinstance(privileged_value, str):
         eprint(
             f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
             + f'["{config.ACI_FIELD_CONTAINERS_PRIVILEGED}"] can only be a boolean or string value.'
@@ -399,7 +400,7 @@ def extract_seccomp_profile_sha256(container_json: Any) -> Dict:
             security_context, config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE
         )
 
-        if not isinstance(seccomp_profile, str):
+        if seccomp_profile and not isinstance(seccomp_profile, str):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE}"] can only be a string.'
@@ -424,7 +425,7 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
             security_context, config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
         )
 
-        if not isinstance(allow_privilege_escalation, bool) and not isinstance(allow_privilege_escalation, str):
+        if allow_privilege_escalation and not isinstance(allow_privilege_escalation, bool) and not isinstance(allow_privilege_escalation, str):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_PRIVILEGED}"] can only be a boolean or string value.'

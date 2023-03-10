@@ -4152,7 +4152,7 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
         "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
         "contentVersion": "1.0.0.0",
         "variables": {
-            "image": "python:3.6.14-slim-buster"
+            "image": "temp_image"
         },
 
 
@@ -4310,10 +4310,17 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
         ]
         cls.aci_arm_policy2.populate_policy_content_for_all_images()
 
-        cls.aci_arm_policy3 = load_policy_from_arm_template_str(cls.custom_arm_json3, "")[
-            0
-        ]
-        cls.aci_arm_policy3.populate_policy_content_for_all_images()
+        # create docker file to build and test on
+        cls.path = os.path.dirname(__file__)
+        cls.dockerfile_path = os.path.join(cls.path, "./Dockerfile")
+
+        cls.client = docker.from_env()
+
+    @classmethod
+    def tearDownClass(cls):
+        os.remove(cls.dockerfile_path)
+
+        cls.client.close()
 
     def test_arm_template_security_context_no_run_as_group(self):
         expected_user_json = json.loads("""{
@@ -4360,15 +4367,30 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
-        print(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER])
         self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
 
-    def test_arm_template_security_context_docker(self):
+    def test_arm_template_security_context_uid_gid(self):
+        dockerfile_contents = ["FROM ubuntu\n", "USER 456:123\n"]
+        open(self.dockerfile_path, "w").close()
+        with open(self.dockerfile_path, "w") as dockerfile:
+            dockerfile.writelines(dockerfile_contents)
+
+        # build docker image
+        self.client.images.build(path=self.path, nocache=True, tag="temp_image")
+
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy.populate_policy_content_for_all_images()
+        regular_image_json = json.loads(
+            aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
         expected_user_json = json.loads("""{
             "user_idname":
             {
-                "pattern": "",
-                "strategy": "any"
+                "pattern": "456",
+                "strategy": "id"
             },
             "group_idnames": [
                 {
@@ -4378,16 +4400,182 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
             ],
             "umask": "0022"
         }""")
+        self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
 
-        client = docker.from_env()
+        self.client.images.remove("temp_image")
 
+    def test_arm_template_security_context_user_gid(self):
+        dockerfile_contents = ["FROM ubuntu\n", "USER test_user:123\n"]
+        open(self.dockerfile_path, "w").close()
+        with open(self.dockerfile_path, "w") as dockerfile:
+            dockerfile.writelines(dockerfile_contents)
 
-        client.images.build()
+        # build docker image
+        self.client.images.build(path=self.path, nocache=True, tag="temp_image")
 
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy.populate_policy_content_for_all_images()
         regular_image_json = json.loads(
-            self.aci_arm_policy3.get_serialized_output(
+            aci_arm_policy.get_serialized_output(
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
-        print(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER])
+
+        expected_user_json = json.loads("""{
+            "user_idname":
+            {
+                "pattern": "test_user",
+                "strategy": "name"
+            },
+            "group_idnames": [
+                {
+                    "pattern": "123",
+                    "strategy": "id"
+                }
+            ],
+            "umask": "0022"
+        }""")
         self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+
+        self.client.images.remove("temp_image")
+    
+    def test_arm_template_security_context_user_group(self):
+        dockerfile_contents = ["FROM ubuntu\n", "USER test_user:test_group\n"]
+        open(self.dockerfile_path, "w").close()
+        with open(self.dockerfile_path, "w") as dockerfile:
+            dockerfile.writelines(dockerfile_contents)
+
+        # build docker image
+        self.client.images.build(path=self.path, nocache=True, tag="temp_image")
+
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy.populate_policy_content_for_all_images()
+        regular_image_json = json.loads(
+            aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        expected_user_json = json.loads("""{
+            "user_idname":
+            {
+                "pattern": "test_user",
+                "strategy": "name"
+            },
+            "group_idnames": [
+                {
+                    "pattern": "test_group",
+                    "strategy": "name"
+                }
+            ],
+            "umask": "0022"
+        }""")
+        self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+
+        self.client.images.remove("temp_image")
+
+    def test_arm_template_security_context_uid_group(self):
+        # valid values are "user", "uid",
+        dockerfile_contents = ["FROM ubuntu\n", "USER 456:test_group\n"]
+        open(self.dockerfile_path, "w").close()
+        with open(self.dockerfile_path, "w") as dockerfile:
+            dockerfile.writelines(dockerfile_contents)
+
+        # build docker image
+        self.client.images.build(path=self.path, nocache=True, tag="temp_image")
+
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy.populate_policy_content_for_all_images()
+        regular_image_json = json.loads(
+            aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        expected_user_json = json.loads("""{
+            "user_idname":
+            {
+                "pattern": "456",
+                "strategy": "id"
+            },
+            "group_idnames": [
+                {
+                    "pattern": "test_group",
+                    "strategy": "name"
+                }
+            ],
+            "umask": "0022"
+        }""")
+        self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+
+        self.client.images.remove("temp_image")
+
+    def test_arm_template_security_context_uid(self):
+        dockerfile_contents = ["FROM ubuntu\n", "USER 456\n"]
+        open(self.dockerfile_path, "w").close()
+        with open(self.dockerfile_path, "w") as dockerfile:
+            dockerfile.writelines(dockerfile_contents)
+
+        # build docker image
+        self.client.images.build(path=self.path, nocache=True, tag="temp_image")
+
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy.populate_policy_content_for_all_images()
+        regular_image_json = json.loads(
+            aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        expected_user_json = json.loads("""{
+            "user_idname":
+            {
+                "pattern": "456",
+                "strategy": "id"
+            },
+            "group_idnames": [
+                {
+                    "pattern": "",
+                    "strategy": "any"
+                }
+            ],
+            "umask": "0022"
+        }""")
+        self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+
+        self.client.images.remove("temp_image")
+
+    def test_arm_template_security_context_user(self):
+        dockerfile_contents = ["FROM ubuntu\n", "USER test_user\n"]
+        open(self.dockerfile_path, "w").close()
+        with open(self.dockerfile_path, "w") as dockerfile:
+            dockerfile.writelines(dockerfile_contents)
+
+        # build docker image
+        self.client.images.build(path=self.path, nocache=True, tag="temp_image")
+
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy.populate_policy_content_for_all_images()
+        regular_image_json = json.loads(
+            aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        expected_user_json = json.loads("""{
+            "user_idname":
+            {
+                "pattern": "test_user",
+                "strategy": "name"
+            },
+            "group_idnames": [
+                {
+                    "pattern": "",
+                    "strategy": "any"
+                }
+            ],
+            "umask": "0022"
+        }""")
+        self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+
+        self.client.images.remove("temp_image")
