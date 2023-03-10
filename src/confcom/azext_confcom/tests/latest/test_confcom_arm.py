@@ -3681,7 +3681,7 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
                         },
                         "runAsGroup":123,
                         "runAsUser":456,
-                        "seccompProfile":"profileValue"
+                        "seccompProfile":"cHJvZmlsZVZhbHVl"
                     },
                     "command": [
                         "python3"
@@ -3795,6 +3795,7 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
 
         self.assertTrue(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES])
         self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_SECCOMP_PROFILE_SHA256], "")
 
     def test_arm_template_security_context_allow_privilege_escalation(self):
         regular_image_json = json.loads(
@@ -3828,3 +3829,14 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
             )
         )
         self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
+
+    def test_arm_template_security_context_seccomp_profile(self):
+        expected_seccomp_profile_sha256 = "8e39cad7a848a852e4a3acf19c0558870b940ad977f8f3333f77b408bdcdd66d"
+
+        regular_image_json = json.loads(
+            self.aci_arm_policy2.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_SECCOMP_PROFILE_SHA256], expected_seccomp_profile_sha256)
