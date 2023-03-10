@@ -287,7 +287,7 @@ def extract_capabilities(container_json):
     security_context = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
     )
-    # get the field for privileged
+    # get the field for privileged, default to false
     privileged_value = case_insensitive_dict_get(
         security_context, config.ACI_FIELD_CONTAINERS_PRIVILEGED
     )
