@@ -416,7 +416,7 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
         container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
     )
 
-    allow_privilege_escalation = True
+    allow_privilege_escalation = False
     # assumes that securityContext field is optional
     if security_context:
 
