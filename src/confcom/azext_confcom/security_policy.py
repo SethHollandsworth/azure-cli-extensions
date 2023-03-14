@@ -480,7 +480,8 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
 
                     if (deepdiff.DeepDiff(image.get_user(), config.DEFAULT_USER, ignore_order=True) == {}
                             and image_info.get("User") != ""):
-                        # valid values are "user", "user:group", "uid", "uid:gid", "user:gid", "uid:group"
+                        # valid values are in the form "user", "user:group", "uid", "uid:gid", "user:gid", "uid:group"
+                        # where each entry is either a string or an unsigned integer
                         # "" means any user (use default)
                         # TO-DO figure out why groups is a list
                         user = copy.deepcopy(config.DEFAULT_USER)
