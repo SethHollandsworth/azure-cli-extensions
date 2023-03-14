@@ -6,6 +6,8 @@ Release History
 * adding parsing of container security context field in ARM template
 * changing hardcoded API_SVN and FRAMEWORK_SVN to get values from HCSSHIM repo
 * bumping HCSSHIM version
+* fixing bug where you could not pull by sha value if a tag was not specified
+* fixing error message when attempting to use sha value with tar files
 
 0.2.12
 * adding ability for mixed-mode OCI image pulling, e.g. using tar files and remote registries in the same template
