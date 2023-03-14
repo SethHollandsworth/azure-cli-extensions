@@ -482,28 +482,25 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                             and image_info.get("User") != ""):
                         # valid values are "user", "user:group", "uid", "uid:gid", "user:gid", "uid:group"
                         # "" means any user (use default)
-                        # TO-DO figure out why groups is a list and when/how the strategy can be regex
+                        # TO-DO figure out why groups is a list
                         user = copy.deepcopy(config.DEFAULT_USER)
                         parts = image_info.get("User").split(":", 1)
 
-                        user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][
-                            config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN] = parts[0]
+                        strategy = ["name", "name"]
                         if parts[0].isdigit():
-                            user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][
-                                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "id"
-                        else:
-                            user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME][
-                                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "name"
+                            strategy[0] = "id"
+                        user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME] = {
+                            config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: parts[0],
+                            config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: strategy[0]
+                        }
                         if len(parts) == 2:
                             # group also specified
-                            user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][
-                                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN] = parts[1]
                             if parts[1].isdigit():
-                                user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][
-                                    config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "id"
-                            else:
-                                user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0][
-                                    config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY] = "name"
+                                strategy[1] = "id"
+                            user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0] = {
+                                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: parts[1],
+                                config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: strategy[1]
+                            }
                         image.set_user(user)
 
                 # populate tar location
@@ -662,7 +659,7 @@ def load_policy_from_arm_template_str(
                     config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
                     config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio,
                     config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT: case_insensitive_dict_get(
-                    image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+                        image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
                     ),
                 }
             )

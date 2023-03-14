@@ -7,6 +7,7 @@ import copy
 import json
 import os
 from typing import Any, List, Dict
+from itertools import product
 from azext_confcom.template_util import case_insensitive_dict_get, replace_params_and_vars, str_to_sha256
 from azext_confcom import config
 from azext_confcom.errors import eprint
@@ -22,6 +23,14 @@ _INJECTED_CUSTOMER_ENV_RULES = (
     + config.MANAGED_IDENTITY_ENV_RULES
     + config.ENABLE_RESTART_ENV_RULE
 )
+
+_CAPABILITIES = {
+    config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING: [],
+    config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE: [],
+    config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE: [],
+    config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED: [],
+    config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT: [],
+}
 
 
 def extract_container_image(container_json: Any) -> str:
@@ -302,13 +311,7 @@ def extract_capabilities(container_json):
     if isinstance(privileged_value, str):
         privileged_value = privileged_value.lower() == "true"
 
-    output_capabilities = {
-        config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING: [],
-        config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE: [],
-        config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE: [],
-        config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED: [],
-        config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT: [],
-    }
+    output_capabilities = copy.deepcopy(_CAPABILITIES)
 
     # if privileged is true, then set all capabilities to true
     # else, get the capabilities field from the ARM Template
@@ -350,15 +353,14 @@ def extract_capabilities(container_json):
                     )
 
                 # add the capabilities to the output
-                for value in output_capabilities.values():
-                    for capability in add:
-                        if not isinstance(capability, str):
-                            eprint(
-                                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                                + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
-                                + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_ADD}"] can only contain strings.'
-                            )
-                        value.append(capability)
+                for value, capability in product(output_capabilities.values(), add):
+                    if not isinstance(capability, str):
+                        eprint(
+                            f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                            + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                            + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_ADD}"] can only contain strings.'
+                        )
+                    value.append(capability)
 
             # get the drop field
             drop = case_insensitive_dict_get(
@@ -373,15 +375,14 @@ def extract_capabilities(container_json):
                     )
 
                 # drop the capabilities from the output
-                for value in non_added_fields:
-                    for capability in drop:
-                        if not isinstance(capability, str):
-                            eprint(
-                                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
-                                + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
-                                + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_DROP}"] can only contain strings.'
-                            )
-                        output_capabilities[value].append(capability)
+                for value, capability in product(non_added_fields, drop):
+                    if not isinstance(capability, str):
+                        eprint(
+                            f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                            + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                            + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_DROP}"] can only contain strings.'
+                        )
+                    output_capabilities[value].append(capability)
     # de-duplicate the capabilities
     for key, value in output_capabilities.items():
         output_capabilities[key] = sorted(list(set(value)))
@@ -519,7 +520,7 @@ class ContainerImage:
         allow_elevated: bool,
         id_val: str,
         extraEnvironmentRules: Dict,
-        capabilities: Dict = {},
+        capabilities: Dict = copy.deepcopy(_CAPABILITIES),
         user: Dict = copy.deepcopy(_DEFAULT_USER),
         seccomp_profile_sha256: str = "",
         allowStdioAccess: bool = True,
