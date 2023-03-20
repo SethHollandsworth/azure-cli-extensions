@@ -332,8 +332,9 @@ def extract_capabilities(container_json: Any, allow_elevated: bool):
         capabilities = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_CAPABILITIES
         )
-        # if allow elevated is true and not privileged, default capabilities are limited
-        # if not allow elevated, use limited capabilities
+        # if allow elevated is true and container is not privileged, 
+        # user can ADD and DROP capabilities in the ARM template
+        # if not allow elevated and container is not privileged, use default unprivileged capabilities
         if capabilities and allow_elevated:
             # error check if capabilities is not a dict
             if not isinstance(capabilities, dict):
