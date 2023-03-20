@@ -4,7 +4,7 @@ import future.keywords.every
 import future.keywords.in
 
 api_svn := %s
-framework_svn := %s
+framework_svn := 0.2.2
 
 fragments := %s
 

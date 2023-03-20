@@ -293,7 +293,7 @@ def extract_user(container_json: Any) -> Dict:
     return user
 
 
-def extract_capabilities(container_json):
+def extract_capabilities(container_json: Any, allow_elevated: bool):
     security_context = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
     )
@@ -313,9 +313,9 @@ def extract_capabilities(container_json):
 
     output_capabilities = copy.deepcopy(_CAPABILITIES)
 
-    # if privileged is true, then set all capabilities to true
+    # if privileged and allow elevated is true, then set all capabilities to true
     # else, get the capabilities field from the ARM Template
-    if privileged_value:
+    if privileged_value and allow_elevated:
         for key in output_capabilities:
             output_capabilities[key] = copy.deepcopy(config.DEFAULT_PRIVILEGED_CAPABILITIES)
     else:
@@ -332,7 +332,9 @@ def extract_capabilities(container_json):
         capabilities = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_CAPABILITIES
         )
-        if capabilities:
+        # if allow elevated is true and not privileged, default capabilities are limited
+        # if not allow elevated, use limited capabilities
+        if capabilities and allow_elevated:
             # error check if capabilities is not a dict
             if not isinstance(capabilities, dict):
                 eprint(
@@ -488,7 +490,7 @@ class ContainerImage:
         )
         signals = extract_get_signals(container_json)
         user = extract_user(container_json)
-        capabilities = extract_capabilities(container_json)
+        capabilities = extract_capabilities(container_json, allow_elevated)
         seccomp_profile_sha256 = extract_seccomp_profile_sha256(container_json)
         allow_stdio_access = extract_allow_stdio_access(container_json)
         allow_privilege_escalation = extract_allow_privilege_escalation(container_json)

@@ -179,12 +179,12 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         if self._images[0].get_id() and is_sidecar(self._images[0].get_id()):
             return config.SIDECAR_REGO_POLICY % (
                 pretty_print_func(self._svn_api),
-                pretty_print_func(self._svn_framework),
+                # pretty_print_func(self._svn_framework),
                 output
             )
         return config.CUSTOMER_REGO_POLICY % (
             pretty_print_func(self._svn_api),
-            pretty_print_func(self._svn_framework),
+            # pretty_print_func(self._svn_framework),
             pretty_print_func(self._fragments),
             output,
             pretty_print_func(self._allow_properties_access),
