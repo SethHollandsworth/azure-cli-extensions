@@ -19,7 +19,7 @@ except ImportError:
 
     logger.warn("Wheel is not available, disabling bdist_wheel hook")
 
-VERSION = "0.2.14"
+VERSION = "0.2.14a1"
 
 # The full list of classifiers is available at
 # https://pypi.python.org/pypi?%3Aaction=list_classifiers
@@ -73,19 +73,12 @@ for release in r.json():
     # break out of the loop if we have both files
     if bin_flag and exe_flag:
         # get the download url for the dmverity-vhd file
-        exe_url = release["html_url"]
+        api_svn_url = release["html_url"]
         # update the url to get framework svn file
-        exe_url = exe_url.replace("releases/tag", "raw")
-        exe_url += "/pkg/securitypolicy/svn_framework"
+        api_svn_url = api_svn_url.replace("releases/tag", "raw")
+        api_svn_url += "/pkg/securitypolicy/svn_api"
         # download the file
-        r = requests.get(exe_url)
-        # save the file to the data folder
-        with open(data_folder + "svn_framework", "wb") as f:
-            f.write(r.content)
-        # update the url to get api svn file
-        exe_url = exe_url.replace("framework", "api")
-        # download the file
-        r = requests.get(exe_url)
+        r = requests.get(api_svn_url)
         # save the file to the data folder
         with open(data_folder + "svn_api", "wb") as f:
             f.write(r.content)

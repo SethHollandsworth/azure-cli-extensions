@@ -81,12 +81,16 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             self._allow_unencrypted_scratch = config.DEBUG_MODE_SETTINGS.get(
                 "allowUnencryptedScratch"
             )
+            self._allow_capability_dropping = config.DEBUG_MODE_SETTINGS.get(
+                "allowCapabilityDropping"
+            )
         else:
             self._allow_properties_access = False
             self._allow_dump_stacks = False
             self._allow_runtime_logging = False
             self._allow_environment_variable_dropping = True
             self._allow_unencrypted_scratch = False
+            self._allow_capability_dropping = True
 
         self.version = case_insensitive_dict_get(
             deserialized_config, config.ACI_FIELD_VERSION
@@ -192,6 +196,8 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             pretty_print_func(self._allow_runtime_logging),
             pretty_print_func(self._allow_environment_variable_dropping),
             pretty_print_func(self._allow_unencrypted_scratch),
+            # TODO: add capability dropping as field in config and make sure it's not a data.framework.____ field
+            pretty_print_func(self._allow_capability_dropping),
         )
 
     def _add_elements(self, dictionary) -> Dict:

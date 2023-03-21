@@ -2,6 +2,6 @@ package microsoftcontainerinstance
 
 svn := "1.0.0"
 api_svn := %s
-framework_svn := 0.2.2
+framework_svn := "0.2.3"
 
 containers := %s

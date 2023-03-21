@@ -40,6 +40,13 @@ test_arm_template_policy_regex | python:3.6.14-slim-buster | Make sure the regex
 test_wildcard_env_var | python:3.6.14-slim-buster | Check that an "allow all" regex is created when a value for env var is not provided via a parameter value
 test_wildcard_env_var_invalid | N/A | Make sure the process errors out if a value is not given for an env var or an undefined parameter is used for the name of an env var
 test_arm_template_with_env_var | rust:1.52.1 | Make sure that a value that looks similar to but is not an ARM parameter is treated as a string
+test_arm_template_security_context_defaults | N/A | Make sure default values for securityContext are correct
+test_arm_template_security_context_allow_privilege_escalation | N/A | See if changing the allowPrivilegeEscalation flag is working
+test_arm_template_security_context_user | N/A | Set the user field manually to make sure it is reflected in the policy
+test_arm_template_security_context_seccomp_profile | N/A | Make sure we have the correct seccomp profile hash
+test_arm_template_capabilities_unprivileged | N/A | See if unprivileged capabilities are in the correct sets and have the right values. Using add and drop fields
+test_arm_template_capabilities_undefined | N/A | See if unprivileged capabilities are correct if the user does not have any added manually
+test_arm_template_capabilities_privileged | N/A | See if privilileged capabilities are correct
 
 ## policy.json [test file](test_confcom_scenario.py)
 
@@ -60,6 +67,7 @@ test_allow_elevated | python:3.6.14-slim-buster | Using allow_elevated in contai
 test_image_layers_python | python:3.6.14-slim-buster | Make sure image layers are as expected
 test_image_layers_rust | rust:1.52.1 | Make sure image layers are as expected with different image
 test_docker_pull | rust:1.52.1 | Test pulling an image from docker client
+test_infrastructure_svn | rust:1.52.1 | make sure the correct infrastructure_svn is present in the policy
 test_stdio_access_default | python:3.6.14-slim-buster | Checking the default value for std I/O access
 test_stdio_access_updated | python:3.6.14-slim-buster | Checking the value for std I/O when it's set
 test_environment_variables_parsing | mcr.microsoft.com/azuredocs/aci-dataprocessing-cc:v1 | Make sure env vars are output in the right format

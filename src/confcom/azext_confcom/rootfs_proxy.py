@@ -30,7 +30,7 @@ class SecurityPolicyProxy:  # pylint: disable=too-few-public-methods
             if arch == "64bit":
                 DEFAULT_LIB += ".exe"
             else:
-                raise NotImplementedError(
+                eprint(
                     f"The current architecture {arch} for windows is not supported."
                 )
         elif host_os == "Darwin":

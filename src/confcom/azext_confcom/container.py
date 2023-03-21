@@ -317,7 +317,9 @@ def extract_capabilities(container_json: Any, allow_elevated: bool):
     # else, get the capabilities field from the ARM Template
     if privileged_value and allow_elevated:
         for key in output_capabilities:
-            output_capabilities[key] = copy.deepcopy(config.DEFAULT_PRIVILEGED_CAPABILITIES)
+            # we still want the ambient set to be empty
+            if key != config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT:
+                output_capabilities[key] = copy.deepcopy(config.DEFAULT_PRIVILEGED_CAPABILITIES)
     else:
         non_added_fields = [
             config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING,
@@ -332,7 +334,7 @@ def extract_capabilities(container_json: Any, allow_elevated: bool):
         capabilities = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_CAPABILITIES
         )
-        # if allow elevated is true and container is not privileged, 
+        # if allow elevated is true and container is not privileged,
         # user can ADD and DROP capabilities in the ARM template
         # if not allow elevated and container is not privileged, use default unprivileged capabilities
         if capabilities and allow_elevated:
@@ -354,16 +356,20 @@ def extract_capabilities(container_json: Any, allow_elevated: bool):
                         f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                         + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_ADD}"] can only be a list.'
                     )
-
-                # add the capabilities to the output
-                for value, capability in product(output_capabilities.values(), add):
+                # error check that all the items in "add" are strings
+                for capability in add:
                     if not isinstance(capability, str):
                         eprint(
                             f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
                             + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                             + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_ADD}"] can only contain strings.'
                         )
-                    value.append(capability)
+
+                for key in output_capabilities:
+                    # we still want the ambient set to be empty
+                    if key != config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT:
+                        output_capabilities[key] += add
+
 
             # get the drop field
             drop = case_insensitive_dict_get(
