@@ -312,7 +312,7 @@ class PolicyGeneratingDebugMode(unittest.TestCase):
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
-    def test_logging_enabled(self):
+    def test_debug_flags(self):
 
         policy = self.aci_policy.get_serialized_output(
             output_type=OutputType.RAW, rego_boilerplate=True
@@ -322,11 +322,17 @@ class PolicyGeneratingDebugMode(unittest.TestCase):
         expected_logging_string = "allow_runtime_logging := true"
         expected_properties_access = "allow_properties_access := true"
         expected_dump_stacks = "allow_dump_stacks := true"
+        expected_env_var_dropping = "allow_environment_variable_dropping := true"
+        expected_capability_dropping = "allow_capability_dropping := true"
+        expected_unencrypted_scratch = "allow_unencrypted_scratch := false"
 
         # make sure all these are included in the policy
         self.assertTrue(expected_logging_string in policy)
         self.assertTrue(expected_properties_access in policy)
         self.assertTrue(expected_dump_stacks in policy)
+        self.assertTrue(expected_env_var_dropping in policy)
+        self.assertTrue(expected_capability_dropping in policy)
+        self.assertTrue(expected_unencrypted_scratch in policy)
 
 
 # @unittest.skip("not in use")

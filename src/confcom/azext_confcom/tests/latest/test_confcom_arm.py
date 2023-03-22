@@ -278,6 +278,15 @@ class PolicyGeneratingArm(unittest.TestCase):
             ],
         )
 
+    def test_default_pause_container(self):
+        regular_image_json = json.loads(
+            self.aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+        # check default pause container
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_CONTAINERS[0], regular_image_json[1], ignore_order=True), {})
+
 # @unittest.skip("not in use")
 @pytest.mark.run(order=2)
 class PolicyGeneratingArmIncorrect(unittest.TestCase):
@@ -3667,8 +3676,8 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
                         "privileged":"false",
                         "allowPrivilegeEscalation":"true",
                         "capabilities":{
-                            "add":["ADDCAP1","ADDCAP2"],
-                            "drop":["DROPCAP1","DROPCAP2"]
+                            "add":["CAP_SYS_TIME","CAP_DAC_READ_SEARCH"],
+                            "drop":["CAP_CHOWN","CAP_KILL"]
                         },
                         "runAsGroup":123,
                         "runAsUser":456,
@@ -3819,10 +3828,6 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
                     "securityContext":{
                         "privileged": true,
                         "allowPrivilegeEscalation":"true",
-                        "capabilities":{
-                            "add":["ADDCAP1","ADDCAP2"],
-                            "drop":["DROPCAP1","DROPCAP2"]
-                        },
                         "runAsGroup":123,
                         "runAsUser":456,
                         "seccompProfile":"cHJvZmlsZVZhbHVl"
@@ -3945,7 +3950,14 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
         self.assertFalse(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES])
         self.assertEqual(deepdiff.DeepDiff(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER], expected_user_json, ignore_order=True), {})
         self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_SECCOMP_PROFILE_SHA256], "")
-        # To-Do add assertion for default privileged value and default capabilities
+        # check all the default unprivileged capabilities are present
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE], ignore_order=True), {})
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED], ignore_order=True), {})
+        self.assertEquals([], regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT])
+        self.assertEquals([], regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE])
+        # check default pause container
+        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_CONTAINERS[0], regular_image_json[1], ignore_order=True), {})
 
     def test_arm_template_security_context_allow_privilege_escalation(self):
         regular_image_json = json.loads(
@@ -3992,36 +4004,25 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
         self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_SECCOMP_PROFILE_SHA256], expected_seccomp_profile_sha256)
 
     def test_arm_template_capabilities_unprivileged(self):
-        expected_capabilities = ["ADDCAP1", "ADDCAP2"]
-        expected_capabilities2 = ["DROPCAP1", "DROPCAP2"]
+        expected_new_capabilities = ["CAP_SYS_TIME", "CAP_DAC_READ_SEARCH"]
+        expected_removed_capabilities = ["CAP_CHOWN", "CAP_KILL"]
         regular_image_json = json.loads(
             self.aci_arm_policy2.get_serialized_output(
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
         # ambient should be empty
-        for cap in expected_capabilities:
-            self.assertNotIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT])
-        for cap in expected_capabilities:
-            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING])
-        for cap in expected_capabilities2:
-            self.assertNotIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT])
-        for cap in expected_capabilities2:
-            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING])
-
-    def test_arm_template_capabilities_undefined(self):
-        regular_image_json = json.loads(
-            self.aci_arm_policy.get_serialized_output(
-                output_type=OutputType.RAW, rego_boilerplate=False
-            )
-        )
-
-        # check all the default unprivileged capabilities are present
-        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING], ignore_order=True), {})
-        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE], ignore_order=True), {})
-        self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_UNPRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED], ignore_order=True), {})
         self.assertEquals([], regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT])
-        self.assertEquals([], regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE])
+        for cap in expected_new_capabilities:
+            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING])
+            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE])
+            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE])
+            self.assertIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED])
+        for cap in expected_removed_capabilities:
+            self.assertNotIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING])
+            self.assertNotIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE])
+            self.assertNotIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_INHERITABLE])
+            self.assertNotIn(cap, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_PERMITTED])
 
     def test_arm_template_capabilities_privileged(self):
         regular_image_json = json.loads(
@@ -4614,12 +4615,12 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
                 dockerfile.writelines(dockerfile_contents)
 
             # build docker image
-            image = self.client.images.build(nocache=True, tag="temp_image", fileobj=open(self.dockerfile_path2, "rb"))
+            image = self.client.images.build(nocache=True, tag="temp_image2", fileobj=open(self.dockerfile_path2, "rb"))
         finally:
             if os.path.exists(self.dockerfile_path2):
                 os.remove(self.dockerfile_path2)
 
-        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3.replace("temp_image", "temp_image2"), "")[0]
         aci_arm_policy.populate_policy_content_for_all_images()
         regular_image_json = json.loads(
             aci_arm_policy.get_serialized_output(
@@ -4652,12 +4653,12 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
                 dockerfile.writelines(dockerfile_contents)
 
             # build docker image
-            image = self.client.images.build(nocache=True, tag="temp_image", fileobj=open(self.dockerfile_path3, "rb"))
+            image = self.client.images.build(nocache=True, tag="temp_image3", fileobj=open(self.dockerfile_path3, "rb"))
         finally:
             if os.path.exists(self.dockerfile_path3):
                 os.remove(self.dockerfile_path3)
 
-        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3.replace("temp_image", "temp_image3"), "")[0]
         aci_arm_policy.populate_policy_content_for_all_images()
         regular_image_json = json.loads(
             aci_arm_policy.get_serialized_output(
@@ -4691,12 +4692,12 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
                 dockerfile.writelines(dockerfile_contents)
 
             # build docker image
-            image = self.client.images.build(nocache=True, tag="temp_image", fileobj=open(self.dockerfile_path4, "rb"))
+            image = self.client.images.build(nocache=True, tag="temp_image4", fileobj=open(self.dockerfile_path4, "rb"))
         finally:
             if os.path.exists(self.dockerfile_path4):
                 os.remove(self.dockerfile_path4)
 
-        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3.replace("temp_image", "temp_image4"), "")[0]
         aci_arm_policy.populate_policy_content_for_all_images()
         regular_image_json = json.loads(
             aci_arm_policy.get_serialized_output(
@@ -4730,12 +4731,12 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
                 dockerfile.writelines(dockerfile_contents)
 
             # build docker image
-            image = self.client.images.build(nocache=True, tag="temp_image", fileobj=open(self.dockerfile_path5, "rb"))
+            image = self.client.images.build(nocache=True, tag="temp_image5", fileobj=open(self.dockerfile_path5, "rb"))
         finally:
             if os.path.exists(self.dockerfile_path5):
                 os.remove(self.dockerfile_path5)
 
-        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3.replace("temp_image", "temp_image5"), "")[0]
         aci_arm_policy.populate_policy_content_for_all_images()
         regular_image_json = json.loads(
             aci_arm_policy.get_serialized_output(
@@ -4768,12 +4769,12 @@ class PolicyGeneratingSecurityContextUserEdgeCases(unittest.TestCase):
                 dockerfile.writelines(dockerfile_contents)
 
             # build docker image
-            image = self.client.images.build(nocache=True, tag="temp_image", fileobj=open(self.dockerfile_path6, "rb"))
+            image = self.client.images.build(nocache=True, tag="temp_image6", fileobj=open(self.dockerfile_path6, "rb"))
         finally:
             if os.path.exists(self.dockerfile_path6):
                 os.remove(self.dockerfile_path6)
 
-        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3, "")[0]
+        aci_arm_policy = load_policy_from_arm_template_str(self.custom_arm_json3.replace("temp_image", "temp_image6"), "")[0]
         aci_arm_policy.populate_policy_content_for_all_images()
         regular_image_json = json.loads(
             aci_arm_policy.get_serialized_output(

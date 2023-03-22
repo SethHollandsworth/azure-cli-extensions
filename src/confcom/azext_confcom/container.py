@@ -356,20 +356,18 @@ def extract_capabilities(container_json: Any, allow_elevated: bool):
                         f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                         + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_ADD}"] can only be a list.'
                     )
-                # error check that all the items in "add" are strings
-                for capability in add:
+                for key, capability in product(output_capabilities, add):
+                    # error check that all the items in "add" are strings
                     if not isinstance(capability, str):
                         eprint(
                             f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
                             + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                             + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_ADD}"] can only contain strings.'
                         )
-
-                for key in output_capabilities:
+                    # add the capabilities to the output, except ambient list
                     # we still want the ambient set to be empty
                     if key != config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_AMBIENT:
-                        output_capabilities[key] += add
-
+                        output_capabilities[key].append(capability)
 
             # get the drop field
             drop = case_insensitive_dict_get(
@@ -382,16 +380,17 @@ def extract_capabilities(container_json: Any, allow_elevated: bool):
                         f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                         + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_DROP}"] can only be a list.'
                     )
-
-                # drop the capabilities from the output
-                for value, capability in product(non_added_fields, drop):
+                # error check that all the items in "drop" are strings
+                for capability in drop:
                     if not isinstance(capability, str):
                         eprint(
                             f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
                             + f'["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                             + f'["{config.ACI_FIELD_CONTAINERS_CAPABILITIES_DROP}"] can only contain strings.'
                         )
-                    output_capabilities[value].append(capability)
+                # drop the capabilities from the output
+                for value in non_added_fields:
+                    output_capabilities[value] = [x for x in output_capabilities[value] if x not in drop]
     # de-duplicate the capabilities
     for key, value in output_capabilities.items():
         output_capabilities[key] = sorted(list(set(value)))

@@ -21,6 +21,7 @@ Test Name | Image Used | Purpose
 ---|---|---
 test_arm_template_policy | python:3.6.14-slim-buster | Generate an ARM Template policy and policy.json policy and see if their outputs match
 test_default_infrastructure_svn | python:3.6.14-slim-buster | See the default value of the minimum SVN for the infrastructure fragment
+test_default_pause_container | python:3.6.14-slim-buster | See if the default pause containers match the config
 test_arm_template_missing_image_name | N/A | Error condition if an image isn't specified
 test_arm_template_missing_resources | N/A | Error condition where no resources are specified to deploy
 test_arm_template_missing_aci | N/A | Error condition where ACI is not specified in resources
@@ -58,7 +59,7 @@ Test Name | Image Used | Purpose
 test_user_container_customized_mounts | rust:1.52.1 | See if mounts are translated correctly to the appropriate source and destination locations
 test_user_container_mount_injected_dns | python:3.6.14-slim-buster | See if the resolvconf mount works properly
 test_injected_sidecar_container_msi | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1 | Make sure User mounts and env vars aren't added to sidecar containers, using JSON output format
-test_logging_enabled | python:3.6.14-slim-buster | Enable logging via debug_mode
+test_debug_flags | python:3.6.14-slim-buster | Enable flags set via debug_mode
 test_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See if sidecar validation would pass policy created by given policy.json
 test_sidecar_stdio_access_default | Check that sidecar containers have std I/O access by default
 test_incorrect_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See what output format for failing sidecar validation would be
