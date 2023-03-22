@@ -25,7 +25,7 @@ containers := [
         "command": ["<command>", "<arg0>", "<arg1>", /*...*/],
         "env_rules": [
             {
-                "pattern": `<pattern>`,
+                "pattern": "<pattern>",
                 "strategy": "<string|re2>",
                 "required": <true|false>
             },
@@ -54,11 +54,11 @@ containers := [
         "signals": [/*...*/],
         "user": {
             "user_idname": {
-                "pattern": `<pattern>`,
+                "pattern": "<pattern>",
                 "strategy": "<id|name|re2|any>",
             },
             "group_idnames": [{
-                "pattern": `<pattern>`,
+                "pattern": "<pattern>",
                 "strategy": "<id|name|re2|any>",
             }],
             "umask": "<umask>"

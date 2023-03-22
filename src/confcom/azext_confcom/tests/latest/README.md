@@ -46,8 +46,15 @@ test_arm_template_security_context_allow_privilege_escalation | N/A | See if cha
 test_arm_template_security_context_user | N/A | Set the user field manually to make sure it is reflected in the policy
 test_arm_template_security_context_seccomp_profile | N/A | Make sure we have the correct seccomp profile hash
 test_arm_template_capabilities_unprivileged | N/A | See if unprivileged capabilities are in the correct sets and have the right values. Using add and drop fields
-test_arm_template_capabilities_undefined | N/A | See if unprivileged capabilities are correct if the user does not have any added manually
 test_arm_template_capabilities_privileged | N/A | See if privilileged capabilities are correct
+test_arm_template_security_context_no_run_as_group | N/A | See if user is set correctly if run_as_group is not set in ARM template
+test_arm_template_security_context_no_run_as_user | N/A | See if user is set correctly if run_as_user is not set in ARM template
+test_arm_template_security_context_uid_gid | N/A | See if user is set correctly by getting the user field from the Docker image in the format uid:gid
+test_arm_template_security_context_user_gid | N/A | See if user is set correctly by getting the user field from the Docker image in the format user:gid
+test_arm_template_security_context_user_group | N/A | See if user is set correctly by getting the user field from the Docker image in the format user:group
+test_arm_template_security_context_uid_group | N/A | See if user is set correctly by getting the user field from the Docker image in the format uid:group
+test_arm_template_security_context_uid | N/A | See if user is set correctly by getting the user field from the Docker image in the format uid
+test_arm_template_security_context_user_dockerfile | N/A | See if user is set correctly by getting the user field from the Docker image in the format user
 
 ## policy.json [test file](test_confcom_scenario.py)
 
