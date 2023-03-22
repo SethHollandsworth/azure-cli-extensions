@@ -5,7 +5,7 @@ Release History
 0.2.14
 * updating svn_framework version
 * updating capabilities defaults to be based on allow_elevated and privileged values
-* adding capabilities into pause container
+* adding capabilities and user into pause container
 
 0.2.13
 * adding parsing of container security context field in ARM template
