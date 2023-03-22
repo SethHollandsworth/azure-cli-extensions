@@ -427,11 +427,11 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
         container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
     )
 
-    allow_privilege_escalation = False
+    allow_privilege_escalation = True
     # assumes that securityContext field is optional
     if security_context:
 
-        # get the field for allow privilege escalation, default to false
+        # get the field for allow privilege escalation, default to true
         allow_privilege_escalation = case_insensitive_dict_get(
             security_context,
             config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
@@ -533,7 +533,7 @@ class ContainerImage:
         user: Dict = copy.deepcopy(_DEFAULT_USER),
         seccomp_profile_sha256: str = "",
         allowStdioAccess: bool = True,
-        allowPrivilegeEscalation: bool = False,
+        allowPrivilegeEscalation: bool = True,
         execProcesses: List = None,
         signals: List = None,
     ) -> None:
@@ -723,32 +723,6 @@ class UserContainerImage(ContainerImage):
 
         image.set_extra_environment_rules(_INJECTED_CUSTOMER_ENV_RULES)
         return image
-
-    def __init__(
-        self,
-        containerImage: str,
-        environmentRules: List[Dict],
-        command: List[str],
-        mounts: List[Dict],
-        workingDir: str,
-        allowElevated: bool,
-        id_val: str,
-        execProcesses: List = None,
-        signals: List = None,
-        extraEnvironmentRules: Dict = _INJECTED_CUSTOMER_ENV_RULES,
-    ) -> None:
-        super().__init__(
-            containerImage=containerImage,
-            environmentRules=environmentRules,
-            command=command,
-            mounts=mounts,
-            workingDir=workingDir,
-            allow_elevated=allowElevated,
-            id_val=id_val,
-            signals=signals or [],
-            extraEnvironmentRules=extraEnvironmentRules,
-            execProcesses=execProcesses or [],
-        )
 
     def _populate_policy_json_elements(self) -> Dict[str, Any]:
         elements = super()._populate_policy_json_elements()

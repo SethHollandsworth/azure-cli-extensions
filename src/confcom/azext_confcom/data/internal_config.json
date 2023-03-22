@@ -1,5 +1,5 @@
 {
-    "version": "0.2.14a1",
+    "version": "0.2.14a2",
     "hcsshim_config": {
         "maxVersion": "1.0.0",
         "minVersion": "0.0.1"
@@ -206,6 +206,19 @@
             "allow_elevated": false,
             "allow_stdio_access": true,
             "working_dir": "/",
+            "user": {
+                "user_idname": {
+                    "pattern": "",
+                    "strategy": "any"
+                },
+                "group_idnames": [
+                    {
+                        "pattern": "",
+                        "strategy": "any"
+                    }
+                ],
+                "umask": "0022"
+            },
             "capabilities": {
                 "bounding": [
                     "CAP_CHOWN",
