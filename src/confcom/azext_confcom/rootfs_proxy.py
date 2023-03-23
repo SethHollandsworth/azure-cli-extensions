@@ -7,6 +7,7 @@ import subprocess
 from typing import List
 import os
 import stat
+import sys
 from pathlib import Path
 import platform
 from azext_confcom.errors import eprint
@@ -14,6 +15,7 @@ from azext_confcom.errors import eprint
 
 host_os = platform.system()
 arch = platform.architecture()[0]
+machine = platform.machine()
 
 
 class SecurityPolicyProxy:  # pylint: disable=too-few-public-methods
@@ -27,11 +29,14 @@ class SecurityPolicyProxy:  # pylint: disable=too-few-public-methods
         if host_os == "Linux":
             pass
         elif host_os == "Windows":
-            if arch == "64bit":
+            # platform.architecture is not a reliable way of ensuring the python
+            # interpreter is 64-bit, sys.maxsize is more accurate
+            # platform.machine ensures the os is 64-bit
+            if (arch == "64bit" and sys.maxsize > 2**32) and machine.endswith('64'):
                 DEFAULT_LIB += ".exe"
             else:
                 eprint(
-                    f"The current architecture {arch} for windows is not supported."
+                    "32-bit Windows and the Python 32-bit installation are not supported."
                 )
         elif host_os == "Darwin":
             eprint("The extension for MacOS has not been implemented.")

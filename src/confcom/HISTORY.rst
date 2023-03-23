@@ -6,6 +6,7 @@ Release History
 * updating svn_framework version
 * updating capabilities defaults to be based on allow_elevated and privileged values
 * adding capabilities and user into pause container
+* updating method to check if Windows is 32-bit
 
 0.2.13
 * adding parsing of container security context field in ARM template
