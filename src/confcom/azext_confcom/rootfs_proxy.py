@@ -7,7 +7,6 @@ import subprocess
 from typing import List
 import os
 import stat
-import sys
 from pathlib import Path
 import platform
 from azext_confcom.errors import eprint
