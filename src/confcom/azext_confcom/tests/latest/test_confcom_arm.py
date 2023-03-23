@@ -3673,7 +3673,6 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
                     "image": "[variables('image')]",
                     "securityContext":{
                         "privileged":"false",
-                        "allowPrivilegeEscalation":"true",
                         "capabilities":{
                             "add":["CAP_SYS_TIME","CAP_DAC_READ_SEARCH"],
                             "drop":["CAP_CHOWN","CAP_KILL"]
@@ -3826,7 +3825,7 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
                     "image": "[variables('image')]",
                     "securityContext":{
                         "privileged": true,
-                        "allowPrivilegeEscalation":"true",
+                        "allowPrivilegeEscalation":"false",
                         "runAsGroup":123,
                         "runAsUser":456,
                         "seccompProfile":"cHJvZmlsZVZhbHVl"
@@ -4030,6 +4029,7 @@ class PolicyGeneratingSecurityContext(unittest.TestCase):
             )
         )
 
+        self.assertTrue(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_NO_NEW_PRIVILEGES])
         # check all the default unprivileged capabilities are present
         self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_PRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_BOUNDING], ignore_order=True), {})
         self.assertEquals(deepdiff.DeepDiff(config.DEFAULT_PRIVILEGED_CAPABILITIES, regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES][config.POLICY_FIELD_CONTAINERS_ELEMENTS_CAPABILITIES_EFFECTIVE], ignore_order=True), {})

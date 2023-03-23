@@ -431,21 +431,21 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
     if security_context:
 
         # get the field for allow privilege escalation, default to true
-        allow_privilege_escalation = case_insensitive_dict_get(
+        temp_privilege_escalation = case_insensitive_dict_get(
             security_context,
             config.ACI_FIELD_CONTAINERS_ALLOW_PRIVILEGE_ESCALATION
         )
+        if temp_privilege_escalation is not None:
+            if not isinstance(temp_privilege_escalation, bool) and not isinstance(temp_privilege_escalation, str):
+                eprint(
+                    f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                    + f'["{config.ACI_FIELD_CONTAINERS_PRIVILEGED}"] can only be a boolean or string value.'
+                )
 
-        if (allow_privilege_escalation and not isinstance(allow_privilege_escalation, bool)
-                and not isinstance(allow_privilege_escalation, str)):
-            eprint(
-                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
-                + f'["{config.ACI_FIELD_CONTAINERS_PRIVILEGED}"] can only be a boolean or string value.'
-            )
-
-        # force the field into a bool
-        if isinstance(allow_privilege_escalation, str):
-            allow_privilege_escalation = allow_privilege_escalation.lower() == "true"
+            # force the field into a bool
+            if isinstance(temp_privilege_escalation, str):
+                temp_privilege_escalation = temp_privilege_escalation.lower() == "true"
+            allow_privilege_escalation = temp_privilege_escalation
 
     return allow_privilege_escalation
 
