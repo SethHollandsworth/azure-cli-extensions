@@ -156,10 +156,6 @@ CUSTOMER_REGO_POLICY = os_util.load_str_from_file(REGO_FILE_PATH)
 SIDECAR_REGO_FILE = "./data/sidecar_rego_policy.txt"
 SIDECAR_REGO_FILE_PATH = f"{script_directory}/{SIDECAR_REGO_FILE}"
 SIDECAR_REGO_POLICY = os_util.load_str_from_file(SIDECAR_REGO_FILE_PATH)
-# framework svn file
-SVN_FRAMEWORK_FILE = "./data/svn_framework"
-SVN_FRAMEWORK_PATH = f"{script_directory}/{SVN_FRAMEWORK_FILE}"
-SVN_FRAMEWORK_VERSION = os_util.load_str_from_file(SVN_FRAMEWORK_PATH)
 # api svn file
 SVN_API_FILE = "./data/svn_api"
 SVN_API_PATH = f"{script_directory}/{SVN_API_FILE}"

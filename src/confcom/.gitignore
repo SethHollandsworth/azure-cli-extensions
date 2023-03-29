@@ -34,6 +34,4 @@ azext_confcom/bin/*
 
 # temporary files
 azext_confcom/data/svn_api
-azext_confcom/data/svn_framework
 **/svn_api
-**/svn_framework
