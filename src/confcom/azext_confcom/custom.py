@@ -123,8 +123,11 @@ def acipolicygen_confcom(
         elif diff:
             exit_code = get_diff_outputs(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
         elif arm_template and (not print_policy_to_terminal and not outraw and not outraw_pretty_print):
+            seccomp_profile_hashes = {x.get_id(): x.get_seccomp_profile_sha256() for x in policy.get_images()}
             result = inject_policy_into_template(arm_template, arm_template_parameters,
-                                                 policy.get_serialized_output(output_type, use_json), count)
+                                                 policy.get_serialized_output(output_type, use_json),
+                                                 count,
+                                                 seccomp_profile_hashes)
             if result:
                 print("CCE Policy successfully injected into ARM Template")
         else:

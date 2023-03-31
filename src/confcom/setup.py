@@ -19,7 +19,7 @@ except ImportError:
 
     logger.warn("Wheel is not available, disabling bdist_wheel hook")
 
-VERSION = "0.2.14a5"
+VERSION = "0.2.14a6"
 
 # The full list of classifiers is available at
 # https://pypi.python.org/pypi?%3Aaction=list_classifiers
@@ -37,7 +37,7 @@ CLASSIFIERS = [
     "License :: OSI Approved :: MIT License",
 ]
 
-DEPENDENCIES = ["docker", "tqdm", "deepdiff"]
+DEPENDENCIES = ["docker", "tqdm", "deepdiff", "pydash"]
 
 dir_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "azext_confcom")
 
@@ -72,15 +72,10 @@ for release in r.json():
                 f.write(r.content)
     # break out of the loop if we have both files
     if bin_flag and exe_flag:
-        # get the download url for the dmverity-vhd file
-        api_svn_url = release["html_url"]
-        # update the url to get framework svn file
-        api_svn_url = api_svn_url.replace("releases/tag", "raw")
-        api_svn_url += "/pkg/securitypolicy/svn_api"
-        # download the file
-        r = requests.get(api_svn_url)
+        # pull the most recent version_api file from github
+        r = requests.get("https://raw.githubusercontent.com/microsoft/hcsshim/main/pkg/securitypolicy/version_api")
         # save the file to the data folder
-        with open(data_folder + "svn_api", "wb") as f:
+        with open(data_folder + "version_api", "wb") as f:
             f.write(r.content)
         break
 

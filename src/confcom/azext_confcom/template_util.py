@@ -12,6 +12,7 @@ from hashlib import sha256
 import deepdiff
 import yaml
 import docker
+import pydash
 from azext_confcom.errors import (
     eprint,
 )
@@ -663,7 +664,7 @@ def compare_env_vars(
 
 
 def inject_policy_into_template(
-    arm_template_path: str, parameter_data_path: str, policy: str, count: int
+    arm_template_path: str, parameter_data_path: str, policy: str, count: int, hashes: dict
 ) -> bool:
     write_flag = False
     parameter_data = None
@@ -726,6 +727,25 @@ def inject_policy_into_template(
                 config.ACI_FIELD_TEMPLATE_CCE_POLICY
             ] = policy
             write_flag = True
+    # get containers to inject the base64 encoding of seccom profile hash into template if exists
+    containers = case_insensitive_dict_get(
+        container_group_properties, config.ACI_FIELD_CONTAINERS
+    )
+    for c in containers:
+        container_image = case_insensitive_dict_get(c, config.ACI_FIELD_TEMPLATE_IMAGE)
+        container_properties = case_insensitive_dict_get(c, config.ACI_FIELD_TEMPLATE_PROPERTIES)
+        security_context = case_insensitive_dict_get(
+            container_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+        )
+        if security_context:
+            seccomp_profile = case_insensitive_dict_get(
+                security_context, config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE
+            )
+            if seccomp_profile:
+                hash_base64 = os_util.str_to_base64(hashes.get(container_image, ""))
+                security_context[config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE] = hash_base64
+                write_flag = True
+    # write base64 encoding of seccomp profile hash to the template
     if write_flag:
         os_util.write_json_to_file(arm_template_path, input_arm_json)
         return True
@@ -824,3 +844,31 @@ def print_existing_policy_from_arm_template(arm_template_path, parameter_data_pa
             eprint("CCE Policy is either in an supported format or not present")
         print(f"CCE Policy for Container Group: {container_group_name}\n")
         print(pretty_print_func(containers))
+
+
+def process_seccomp_policy(policy2):
+    policy = json.loads(policy2)
+    policy = pydash.defaults(policy, {'defaultAction': ""})
+    policy = pydash.pick(policy, 'defaultAction', 'defaultErrnoRet', 'architectures',
+                         'flags', 'listenerPath', 'listenerMetadata', 'syscalls')
+    syscalls = policy['syscalls']
+    temp_syscalls = []
+    for s in syscalls:
+        syscall = s
+        syscall = pydash.defaults(syscall, {'names': [], 'action': ""})
+        syscall = pydash.pick(syscall, 'names', 'action', 'errnoRet', 'args')
+
+        if 'args' in syscall:
+            temp_args = []
+            args = syscall['args']
+
+            for j in args:
+                arg = j
+                arg = pydash.defaults(arg, {'value': 0, 'op': "", 'index': 0})
+                arg = pydash.pick(arg, 'index', 'value', 'valueTwo', 'op')
+                temp_args.append(arg)
+            syscall['args'] = temp_args
+        temp_syscalls.append(syscall)
+    # put temp_syscalls back into policy
+    policy['syscalls'] = temp_syscalls
+    return policy

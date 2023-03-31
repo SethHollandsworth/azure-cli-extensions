@@ -33,5 +33,5 @@ azext_confcom/bin/*
 **/htmlcov
 
 # temporary files
-azext_confcom/data/svn_api
-**/svn_api
+azext_confcom/data/version_api
+**/version_api

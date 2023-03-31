@@ -8,9 +8,15 @@ import json
 import os
 from typing import Any, List, Dict
 from itertools import product
-from azext_confcom.template_util import case_insensitive_dict_get, replace_params_and_vars, str_to_sha256
+from azext_confcom.template_util import (
+    case_insensitive_dict_get,
+    replace_params_and_vars,
+    str_to_sha256,
+    process_seccomp_policy
+)
 from azext_confcom import config
 from azext_confcom.errors import eprint
+from azext_confcom.os_util import load_str_from_file, base64_to_str
 
 
 _DEFAULT_MOUNTS = config.DEFAULT_MOUNTS_USER
@@ -406,18 +412,21 @@ def extract_seccomp_profile_sha256(container_json: Any) -> Dict:
     # assumes that securityContext field is optional
     if security_context:
         # get the field for seccomp_profile
-        seccomp_profile = case_insensitive_dict_get(
+        seccomp_profile_base64 = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE
         )
 
-        if seccomp_profile and not isinstance(seccomp_profile, str):
+        if seccomp_profile_base64 and not isinstance(seccomp_profile_base64, str):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE}"] can only be a string.'
             )
-        elif seccomp_profile:
-            seccomp_profile_sha256 = str_to_sha256(seccomp_profile)
-
+        elif seccomp_profile_base64:
+            # clean up and jsonify the seccomp profile
+            seccomp_profile = process_seccomp_policy(base64_to_str(seccomp_profile_base64))
+            seccomp_profile_str = json.dumps(seccomp_profile, separators=(',', ':'))
+            # hash the seccomp profile
+            seccomp_profile_sha256 = str_to_sha256(seccomp_profile_str)
     return seccomp_profile_sha256
 
 
@@ -597,6 +606,9 @@ class ContainerImage:
 
     def get_mounts(self) -> List:
         return self._mounts
+
+    def get_seccomp_profile_sha256(self) -> str:
+        return self._seccomp_profile_sha256
 
     def set_extra_environment_rules(self, rules: Dict) -> None:
         self._extraEnvironmentRules = rules
