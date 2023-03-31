@@ -3,17 +3,14 @@
 Release History
 ===============
 0.2.14
-* updating svn_framework version
-* updating capabilities defaults to be based on allow_elevated and privileged values
-* adding capabilities and user into pause container
-* updating method to check if Windows is 32-bit
+* changing the name of api_svn and framework_svn to api_version and framework_version
+* changing fragment versions to an integer instead of semver
+* bugfix for allowing 32bit python on a 64bit OS
 
 0.2.13
-* adding parsing of container security context field in ARM template
-* changing hardcoded API_SVN and FRAMEWORK_SVN to get values from HCSSHIM repo
-* bumping HCSSHIM version
 * fixing bug where you could not pull by sha value if a tag was not specified
 * fixing error message when attempting to use sha value with tar files
+* making image caching template-wide instead of container group-wide
 
 0.2.12
 * adding ability for mixed-mode OCI image pulling, e.g. using tar files and remote registries in the same template

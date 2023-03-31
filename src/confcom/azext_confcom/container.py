@@ -16,7 +16,7 @@ from azext_confcom.template_util import (
 )
 from azext_confcom import config
 from azext_confcom.errors import eprint
-from azext_confcom.os_util import load_str_from_file, base64_to_str
+from azext_confcom.os_util import base64_to_str
 
 
 _DEFAULT_MOUNTS = config.DEFAULT_MOUNTS_USER

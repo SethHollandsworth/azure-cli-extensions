@@ -27,7 +27,7 @@ class SecurityPolicyProxy:  # pylint: disable=too-few-public-methods
         if host_os == "Linux":
             pass
         elif host_os == "Windows":
-            if machine.endswith('64'):
+            if machine.endswith("64"):
                 DEFAULT_LIB += ".exe"
             else:
                 eprint(
