@@ -851,24 +851,25 @@ def process_seccomp_policy(policy2):
     policy = pydash.defaults(policy, {'defaultAction': ""})
     policy = pydash.pick(policy, 'defaultAction', 'defaultErrnoRet', 'architectures',
                          'flags', 'listenerPath', 'listenerMetadata', 'syscalls')
-    syscalls = policy['syscalls']
-    temp_syscalls = []
-    for s in syscalls:
-        syscall = s
-        syscall = pydash.defaults(syscall, {'names': [], 'action': ""})
-        syscall = pydash.pick(syscall, 'names', 'action', 'errnoRet', 'args')
+    if 'syscalls' in policy:
+        syscalls = policy['syscalls']
+        temp_syscalls = []
+        for s in syscalls:
+            syscall = s
+            syscall = pydash.defaults(syscall, {'names': [], 'action': ""})
+            syscall = pydash.pick(syscall, 'names', 'action', 'errnoRet', 'args')
 
-        if 'args' in syscall:
-            temp_args = []
-            args = syscall['args']
+            if 'args' in syscall:
+                temp_args = []
+                args = syscall['args']
 
-            for j in args:
-                arg = j
-                arg = pydash.defaults(arg, {'value': 0, 'op': "", 'index': 0})
-                arg = pydash.pick(arg, 'index', 'value', 'valueTwo', 'op')
-                temp_args.append(arg)
-            syscall['args'] = temp_args
-        temp_syscalls.append(syscall)
-    # put temp_syscalls back into policy
-    policy['syscalls'] = temp_syscalls
+                for j in args:
+                    arg = j
+                    arg = pydash.defaults(arg, {'value': 0, 'op': "", 'index': 0})
+                    arg = pydash.pick(arg, 'index', 'value', 'valueTwo', 'op')
+                    temp_args.append(arg)
+                syscall['args'] = temp_args
+            temp_syscalls.append(syscall)
+        # put temp_syscalls back into policy
+        policy['syscalls'] = temp_syscalls
     return policy
