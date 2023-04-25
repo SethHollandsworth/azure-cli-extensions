@@ -107,19 +107,15 @@ class PolicyGeneratingImageCleanRoom(unittest.TestCase):
         policy.populate_policy_content_for_all_images(individual_image=True)
 
         regular_image_json = json.loads(
-            regular_image.get_serialized_output(output_type=OutputType.RAW, use_json=True)
+            regular_image.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
         )
 
         clean_room_json = json.loads(
-            policy.get_serialized_output(output_type=OutputType.RAW, use_json=True)
+            policy.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
         )
 
-        regular_image_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"].pop(config.POLICY_FIELD_CONTAINERS_ID)
-        clean_room_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        regular_image_json[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        clean_room_json[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
 
         # see if the remote image and the local one produce the same output
         self.assertEqual(

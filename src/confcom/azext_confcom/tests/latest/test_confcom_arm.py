@@ -244,21 +244,17 @@ class PolicyGeneratingArm(unittest.TestCase):
     def test_arm_template_policy(self):
         # deep diff the output policies from the regular policy.json and the ARM template
         normalized_aci_policy = json.loads(
-            self.aci_policy.get_serialized_output(output_type=OutputType.RAW, use_json=True)
+            self.aci_policy.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
         )
 
         normalized_aci_arm_policy = json.loads(
             self.aci_arm_policy.get_serialized_output(
-                output_type=OutputType.RAW, use_json=True
+                output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
 
-        normalized_aci_policy[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"].pop(config.POLICY_FIELD_CONTAINERS_ID)
-        normalized_aci_arm_policy[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        normalized_aci_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        normalized_aci_arm_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
 
         self.assertEqual(
             deepdiff.DeepDiff(
@@ -1055,16 +1051,12 @@ class PolicyGeneratingArmParameters2(unittest.TestCase):
         )
         output[0].populate_policy_content_for_all_images()
         output_json = json.loads(
-            output[0].get_serialized_output(output_type=OutputType.RAW, use_json=True)
+            output[0].get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
         )
 
         # see if we have environment variables specific to the python image in the parameter file
         python_flag = False
-        for _, value in output_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ].items():
+        for value in output_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS]:
             if "PYTHON" in value[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE]:
                 python_flag = True
         self.assertTrue(python_flag)
@@ -1241,15 +1233,9 @@ class PolicyGeneratingArmContainerConfig(unittest.TestCase):
         )
         output[0].populate_policy_content_for_all_images()
         # see if we have environment variables that are in the template
-        output_json = json.loads(
-            output[0].get_serialized_output(output_type=OutputType.RAW, use_json=True)
-        )
+        output_json = json.loads(output[0].get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False))
 
-        for _, value in output_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ].items():
+        for value in output_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS]:
             if case_insensitive_dict_get(
                 value, config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE
             ).startswith("PORT"):
@@ -1265,11 +1251,7 @@ class PolicyGeneratingArmContainerConfig(unittest.TestCase):
             "-c",
             "while sleep 5; do cat /mnt/input/access.log; done",
         ]
-        for _, value in output_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"][config.POLICY_FIELD_CONTAINERS_ELEMENTS_COMMANDS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ].items():
+        for value in output_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_COMMANDS]:
             self.assertTrue(value in expected)
 
 # @unittest.skip("not in use")
@@ -1443,19 +1425,15 @@ class PolicyGeneratingArmParametersCleanRoom(unittest.TestCase):
         clean_room[0].populate_policy_content_for_all_images()
 
         regular_image_json = json.loads(
-            regular_image[0].get_serialized_output(output_type=OutputType.RAW, use_json=True)
+            regular_image[0].get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
         )
 
         clean_room_json = json.loads(
-            clean_room[0].get_serialized_output(output_type=OutputType.RAW, use_json=True)
+            clean_room[0].get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
         )
 
-        regular_image_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"].pop(config.POLICY_FIELD_CONTAINERS_ID)
-        clean_room_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["0"].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        regular_image_json[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        clean_room_json[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
 
         # see if the remote image and the local one produce the same output
         self.assertEqual(
@@ -1824,6 +1802,7 @@ class PolicyGeneratingArmInfrastructureSvn(unittest.TestCase):
 
     def test_update_infrastructure_svn(self):
         expected_policy = "cGFja2FnZSBwb2xpY3kKCmltcG9ydCBmdXR1cmUua2V5d29yZHMuZXZlcnkKaW1wb3J0IGZ1dHVyZS5rZXl3b3Jkcy5pbgoKYXBpX3ZlcnNpb24gOj0gIjAuMTAuMCIKZnJhbWV3b3JrX3ZlcnNpb24gOj0gIjAuMi4zIgoKZnJhZ21lbnRzIDo9IFsKICB7CiAgICAiZmVlZCI6ICJtY3IubWljcm9zb2Z0LmNvbS9hY2kvYWNpLWNjLWluZnJhLWZyYWdtZW50IiwKICAgICJpbmNsdWRlcyI6IFsKICAgICAgImNvbnRhaW5lcnMiCiAgICBdLAogICAgImlzc3VlciI6ICJkaWQ6eDUwOTowOnNoYTI1NjpJX19pdUwyNW9YRVZGZFRQX2FCTHhfZVQxUlBIYkNRX0VDQlFmWVpwdDlzOjpla3U6MS4zLjYuMS40LjEuMzExLjc2LjU5LjEuMyIsCiAgICAibWluaW11bV9zdm4iOiAiMiIKICB9Cl0KCmNvbnRhaW5lcnMgOj0gW3siYWxsb3dfZWxldmF0ZWQiOnRydWUsImFsbG93X3N0ZGlvX2FjY2VzcyI6dHJ1ZSwiY2FwYWJpbGl0aWVzIjp7ImFtYmllbnQiOltdLCJib3VuZGluZyI6WyJDQVBfQVVESVRfV1JJVEUiLCJDQVBfQ0hPV04iLCJDQVBfREFDX09WRVJSSURFIiwiQ0FQX0ZPV05FUiIsIkNBUF9GU0VUSUQiLCJDQVBfS0lMTCIsIkNBUF9NS05PRCIsIkNBUF9ORVRfQklORF9TRVJWSUNFIiwiQ0FQX05FVF9SQVciLCJDQVBfU0VURkNBUCIsIkNBUF9TRVRHSUQiLCJDQVBfU0VUUENBUCIsIkNBUF9TRVRVSUQiLCJDQVBfU1lTX0NIUk9PVCJdLCJlZmZlY3RpdmUiOlsiQ0FQX0FVRElUX1dSSVRFIiwiQ0FQX0NIT1dOIiwiQ0FQX0RBQ19PVkVSUklERSIsIkNBUF9GT1dORVIiLCJDQVBfRlNFVElEIiwiQ0FQX0tJTEwiLCJDQVBfTUtOT0QiLCJDQVBfTkVUX0JJTkRfU0VSVklDRSIsIkNBUF9ORVRfUkFXIiwiQ0FQX1NFVEZDQVAiLCJDQVBfU0VUR0lEIiwiQ0FQX1NFVFBDQVAiLCJDQVBfU0VUVUlEIiwiQ0FQX1NZU19DSFJPT1QiXSwiaW5oZXJpdGFibGUiOltdLCJwZXJtaXR0ZWQiOlsiQ0FQX0FVRElUX1dSSVRFIiwiQ0FQX0NIT1dOIiwiQ0FQX0RBQ19PVkVSUklERSIsIkNBUF9GT1dORVIiLCJDQVBfRlNFVElEIiwiQ0FQX0tJTEwiLCJDQVBfTUtOT0QiLCJDQVBfTkVUX0JJTkRfU0VSVklDRSIsIkNBUF9ORVRfUkFXIiwiQ0FQX1NFVEZDQVAiLCJDQVBfU0VUR0lEIiwiQ0FQX1NFVFBDQVAiLCJDQVBfU0VUVUlEIiwiQ0FQX1NZU19DSFJPT1QiXX0sImNvbW1hbmQiOlsicHl0aG9uMyJdLCJlbnZfcnVsZXMiOlt7InBhdHRlcm4iOiJQQVRIPS91c3IvbG9jYWwvYmluOi91c3IvbG9jYWwvc2JpbjovdXNyL2xvY2FsL2JpbjovdXNyL3NiaW46L3Vzci9iaW46L3NiaW46L2JpbiIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifSx7InBhdHRlcm4iOiJMQU5HPUMuVVRGLTgiLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5Ijoic3RyaW5nIn0seyJwYXR0ZXJuIjoiR1BHX0tFWT0wRDk2REY0RDQxMTBFNUM0M0ZCRkIxN0YyRDM0N0VBNkFBNjU0MjFEIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InN0cmluZyJ9LHsicGF0dGVybiI6IlBZVEhPTl9WRVJTSU9OPTMuNi4xNCIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifSx7InBhdHRlcm4iOiJQWVRIT05fUElQX1ZFUlNJT049MjEuMi40IiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InN0cmluZyJ9LHsicGF0dGVybiI6IlBZVEhPTl9HRVRfUElQX1VSTD1odHRwczovL2dpdGh1Yi5jb20vcHlwYS9nZXQtcGlwL3Jhdy9jMjBiMGNmZDY0M2NkNGExOTI0NmNjZjIwNGUyOTk3YWY3MGY2YjIxL3B1YmxpYy9nZXQtcGlwLnB5IiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InN0cmluZyJ9LHsicGF0dGVybiI6IlBZVEhPTl9HRVRfUElQX1NIQTI1Nj1mYTZmM2ZiOTNjY2UyMzRjZDRlOGRkMmJlYjU0YTUxYWI5YzI0NzY1M2I1Mjg1NWE0OGRkNDRlNmIyMWZmMjhiIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InN0cmluZyJ9LHsicGF0dGVybiI6IlRFUk09eHRlcm0iLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5Ijoic3RyaW5nIn0seyJwYXR0ZXJuIjoiKCg/aSlGQUJSSUMpXy4rPS4rIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InJlMiJ9LHsicGF0dGVybiI6IkhPU1ROQU1FPS4rIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InJlMiJ9LHsicGF0dGVybiI6IlQoRSk/TVA9LisiLCJyZXF1aXJlZCI6ZmFsc2UsInN0cmF0ZWd5IjoicmUyIn0seyJwYXR0ZXJuIjoiRmFicmljUGFja2FnZUZpbGVOYW1lPS4rIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InJlMiJ9LHsicGF0dGVybiI6Ikhvc3RlZFNlcnZpY2VOYW1lPS4rIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InJlMiJ9LHsicGF0dGVybiI6IklERU5USVRZX0FQSV9WRVJTSU9OPS4rIiwicmVxdWlyZWQiOmZhbHNlLCJzdHJhdGVneSI6InJlMiJ9LHsicGF0dGVybiI6IklERU5USVRZX0hFQURFUj0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifSx7InBhdHRlcm4iOiJJREVOVElUWV9TRVJWRVJfVEhVTUJQUklOVD0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifSx7InBhdHRlcm4iOiJhenVyZWNvbnRhaW5lcmluc3RhbmNlX3Jlc3RhcnRlZF9ieT0uKyIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJyZTIifV0sImV4ZWNfcHJvY2Vzc2VzIjpbXSwiaWQiOiJweXRob246My42LjE0LXNsaW0tYnVzdGVyIiwibGF5ZXJzIjpbIjI1NGNjODUzZGE2MDgxOTA1YzkxMDljOGI5ZDk5YzlmYjA5ODdiYTFkODhmNzI5MDg4OTAzY2ZmYjgwZjU1ZjEiLCJhNTY4ZjE5MDBiZWQ2MGEwNjQxYjc2Yjk5MWFkNDMxNDQ2ZDljM2EzNDRkN2IyNjFmMTBkZThkOGU3Mzc2M2FjIiwiYzcwYzUzMGU4NDJmNjYyMTViMGJkOTU1ODc3MTU3YmEyNGMzNzk5MzAzNTY3YzNmNTY3M2M0NTY2M2VhNGQxNSIsIjNlODZjM2NjZjE2NDJiZjU4NGRlMzNiNDljNzI0OGY4N2VlY2QwZjZkOGMwODM1M2RhYTM2Y2M3YWQwYTdiNmEiLCIxZTQ2ODRkOGM3Y2FhNzRjNjUyNDE3MmI0ZDVhMTU5YTEwODg3NjEzZWQ3MGYxOGQwYTU1ZDA1YjJhZjYxYWNkIl0sIm1vdW50cyI6W3siZGVzdGluYXRpb24iOiIvYWNpL2xvZ3MiLCJvcHRpb25zIjpbInJiaW5kIiwicnNoYXJlZCIsInJ3Il0sInNvdXJjZSI6InNhbmRib3g6Ly8vdG1wL2F0bGFzL2F6dXJlRmlsZVZvbHVtZS8uKyIsInR5cGUiOiJiaW5kIn0seyJkZXN0aW5hdGlvbiI6Ii9hY2kvc2VjcmV0Iiwib3B0aW9ucyI6WyJyYmluZCIsInJzaGFyZWQiLCJybyJdLCJzb3VyY2UiOiJzYW5kYm94Oi8vL3RtcC9hdGxhcy9zZWNyZXRzVm9sdW1lLy4rIiwidHlwZSI6ImJpbmQifSx7ImRlc3RpbmF0aW9uIjoiL2V0Yy9yZXNvbHYuY29uZiIsIm9wdGlvbnMiOlsicmJpbmQiLCJyc2hhcmVkIiwicnciXSwic291cmNlIjoic2FuZGJveDovLy90bXAvYXRsYXMvcmVzb2x2Y29uZi8uKyIsInR5cGUiOiJiaW5kIn1dLCJub19uZXdfcHJpdmlsZWdlcyI6ZmFsc2UsInNlY2NvbXBfcHJvZmlsZV9zaGEyNTYiOiIiLCJzaWduYWxzIjpbXSwidXNlciI6eyJncm91cF9pZG5hbWVzIjpbeyJwYXR0ZXJuIjoiIiwic3RyYXRlZ3kiOiJhbnkifV0sInVtYXNrIjoiMDAyMiIsInVzZXJfaWRuYW1lIjp7InBhdHRlcm4iOiIiLCJzdHJhdGVneSI6ImFueSJ9fSwid29ya2luZ19kaXIiOiIvIn0seyJhbGxvd19lbGV2YXRlZCI6ZmFsc2UsImFsbG93X3N0ZGlvX2FjY2VzcyI6dHJ1ZSwiY2FwYWJpbGl0aWVzIjp7ImFtYmllbnQiOltdLCJib3VuZGluZyI6WyJDQVBfQ0hPV04iLCJDQVBfREFDX09WRVJSSURFIiwiQ0FQX0ZTRVRJRCIsIkNBUF9GT1dORVIiLCJDQVBfTUtOT0QiLCJDQVBfTkVUX1JBVyIsIkNBUF9TRVRHSUQiLCJDQVBfU0VUVUlEIiwiQ0FQX1NFVEZDQVAiLCJDQVBfU0VUUENBUCIsIkNBUF9ORVRfQklORF9TRVJWSUNFIiwiQ0FQX1NZU19DSFJPT1QiLCJDQVBfS0lMTCIsIkNBUF9BVURJVF9XUklURSJdLCJlZmZlY3RpdmUiOlsiQ0FQX0NIT1dOIiwiQ0FQX0RBQ19PVkVSUklERSIsIkNBUF9GU0VUSUQiLCJDQVBfRk9XTkVSIiwiQ0FQX01LTk9EIiwiQ0FQX05FVF9SQVciLCJDQVBfU0VUR0lEIiwiQ0FQX1NFVFVJRCIsIkNBUF9TRVRGQ0FQIiwiQ0FQX1NFVFBDQVAiLCJDQVBfTkVUX0JJTkRfU0VSVklDRSIsIkNBUF9TWVNfQ0hST09UIiwiQ0FQX0tJTEwiLCJDQVBfQVVESVRfV1JJVEUiXSwiaW5oZXJpdGFibGUiOltdLCJwZXJtaXR0ZWQiOlsiQ0FQX0NIT1dOIiwiQ0FQX0RBQ19PVkVSUklERSIsIkNBUF9GU0VUSUQiLCJDQVBfRk9XTkVSIiwiQ0FQX01LTk9EIiwiQ0FQX05FVF9SQVciLCJDQVBfU0VUR0lEIiwiQ0FQX1NFVFVJRCIsIkNBUF9TRVRGQ0FQIiwiQ0FQX1NFVFBDQVAiLCJDQVBfTkVUX0JJTkRfU0VSVklDRSIsIkNBUF9TWVNfQ0hST09UIiwiQ0FQX0tJTEwiLCJDQVBfQVVESVRfV1JJVEUiXX0sImNvbW1hbmQiOlsiL3BhdXNlIl0sImVudl9ydWxlcyI6W3sicGF0dGVybiI6IlBBVEg9L3Vzci9sb2NhbC9zYmluOi91c3IvbG9jYWwvYmluOi91c3Ivc2JpbjovdXNyL2Jpbjovc2JpbjovYmluIiwicmVxdWlyZWQiOnRydWUsInN0cmF0ZWd5Ijoic3RyaW5nIn0seyJwYXR0ZXJuIjoiVEVSTT14dGVybSIsInJlcXVpcmVkIjpmYWxzZSwic3RyYXRlZ3kiOiJzdHJpbmcifV0sImV4ZWNfcHJvY2Vzc2VzIjpbXSwibGF5ZXJzIjpbIjE2YjUxNDA1N2EwNmFkNjY1ZjkyYzAyODYzYWNhMDc0ZmQ1OTc2Yzc1NWQyNmJmZjE2MzY1Mjk5MTY5ZTg0MTUiXSwibW91bnRzIjpbXSwibm9fbmV3X3ByaXZpbGVnZXMiOnRydWUsInNlY2NvbXBfcHJvZmlsZV9zaGEyNTYiOiIiLCJzaWduYWxzIjpbXSwidXNlciI6eyJncm91cF9pZG5hbWVzIjpbeyJwYXR0ZXJuIjoiIiwic3RyYXRlZ3kiOiJhbnkifV0sInVtYXNrIjoiMDAyMiIsInVzZXJfaWRuYW1lIjp7InBhdHRlcm4iOiIiLCJzdHJhdGVneSI6ImFueSJ9fSwid29ya2luZ19kaXIiOiIvIn1dCgphbGxvd19wcm9wZXJ0aWVzX2FjY2VzcyA6PSBmYWxzZQphbGxvd19kdW1wX3N0YWNrcyA6PSBmYWxzZQphbGxvd19ydW50aW1lX2xvZ2dpbmcgOj0gZmFsc2UKYWxsb3dfZW52aXJvbm1lbnRfdmFyaWFibGVfZHJvcHBpbmcgOj0gdHJ1ZQphbGxvd191bmVuY3J5cHRlZF9zY3JhdGNoIDo9IGZhbHNlCmFsbG93X2NhcGFiaWxpdHlfZHJvcHBpbmcgOj0gdHJ1ZQoKbW91bnRfZGV2aWNlIDo9IGRhdGEuZnJhbWV3b3JrLm1vdW50X2RldmljZQp1bm1vdW50X2RldmljZSA6PSBkYXRhLmZyYW1ld29yay51bm1vdW50X2RldmljZQptb3VudF9vdmVybGF5IDo9IGRhdGEuZnJhbWV3b3JrLm1vdW50X292ZXJsYXkKdW5tb3VudF9vdmVybGF5IDo9IGRhdGEuZnJhbWV3b3JrLnVubW91bnRfb3ZlcmxheQpjcmVhdGVfY29udGFpbmVyIDo9IGRhdGEuZnJhbWV3b3JrLmNyZWF0ZV9jb250YWluZXIKZXhlY19pbl9jb250YWluZXIgOj0gZGF0YS5mcmFtZXdvcmsuZXhlY19pbl9jb250YWluZXIKZXhlY19leHRlcm5hbCA6PSBkYXRhLmZyYW1ld29yay5leGVjX2V4dGVybmFsCnNodXRkb3duX2NvbnRhaW5lciA6PSBkYXRhLmZyYW1ld29yay5zaHV0ZG93bl9jb250YWluZXIKc2lnbmFsX2NvbnRhaW5lcl9wcm9jZXNzIDo9IGRhdGEuZnJhbWV3b3JrLnNpZ25hbF9jb250YWluZXJfcHJvY2VzcwpwbGFuOV9tb3VudCA6PSBkYXRhLmZyYW1ld29yay5wbGFuOV9tb3VudApwbGFuOV91bm1vdW50IDo9IGRhdGEuZnJhbWV3b3JrLnBsYW45X3VubW91bnQKZ2V0X3Byb3BlcnRpZXMgOj0gZGF0YS5mcmFtZXdvcmsuZ2V0X3Byb3BlcnRpZXMKZHVtcF9zdGFja3MgOj0gZGF0YS5mcmFtZXdvcmsuZHVtcF9zdGFja3MKcnVudGltZV9sb2dnaW5nIDo9IGRhdGEuZnJhbWV3b3JrLnJ1bnRpbWVfbG9nZ2luZwpsb2FkX2ZyYWdtZW50IDo9IGRhdGEuZnJhbWV3b3JrLmxvYWRfZnJhZ21lbnQKc2NyYXRjaF9tb3VudCA6PSBkYXRhLmZyYW1ld29yay5zY3JhdGNoX21vdW50CnNjcmF0Y2hfdW5tb3VudCA6PSBkYXRhLmZyYW1ld29yay5zY3JhdGNoX3VubW91bnQKCnJlYXNvbiA6PSB7ImVycm9ycyI6IGRhdGEuZnJhbWV3b3JrLmVycm9yc30="
+
         self.assertEqual(expected_policy, self.aci_arm_policy.get_serialized_output())
 
         self.assertEqual(
@@ -2189,13 +2168,11 @@ class PolicyGeneratingArmInitContainer(unittest.TestCase):
     def test_arm_template_with_init_container(self):
         regular_image_json = json.loads(
             self.aci_arm_policy.get_serialized_output(
-                output_type=OutputType.RAW, use_json=True
+                output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
 
-        python_image_name = regular_image_json[config.POLICY_FIELD_CONTAINERS][
-            config.POLICY_FIELD_CONTAINERS_ELEMENTS
-        ]["1"].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        python_image_name = regular_image_json[1].pop(config.POLICY_FIELD_CONTAINERS_ID)
 
         # see if the remote image and the local one produce the same output
         self.assertTrue("python" in python_image_name)
@@ -2349,6 +2326,157 @@ class PolicyGeneratingDisableStdioAccess(unittest.TestCase):
 
 # @unittest.skip("not in use")
 @pytest.mark.run(order=13)
+class PolicyGeneratingAllowElevated(unittest.TestCase):
+
+    custom_arm_json_default_value = """
+    {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+
+
+        "parameters": {
+            "containergroupname": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container group"
+                },
+                "defaultValue":"simple-container-group"
+            },
+            "image": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container group"
+                },
+                "defaultValue":"rust:1.52.1"
+            },
+            "containername": {
+                "type": "string",
+                "metadata": {
+                    "description": "Name for the container"
+                },
+                "defaultValue":"simple-container"
+            },
+
+            "port": {
+                "type": "string",
+                "metadata": {
+                    "description": "Port to open on the container and the public IP address."
+                },
+                "defaultValue": "8080"
+            },
+            "cpuCores": {
+                "type": "string",
+                "metadata": {
+                    "description": "The number of CPU cores to allocate to the container."
+                },
+                "defaultValue": "1.0"
+            },
+            "memoryInGb": {
+                "type": "string",
+                "metadata": {
+                    "description": "The amount of memory to allocate to the container in gigabytes."
+                },
+                "defaultValue": "1.5"
+            },
+            "location": {
+                "type": "string",
+                "defaultValue": "[resourceGroup().location]",
+                "metadata": {
+                    "description": "Location for all resources."
+                }
+            }
+        },
+        "resources": [
+            {
+            "name": "[parameters('containergroupname')]",
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2022-04-01-preview",
+            "location": "[parameters('location')]",
+
+            "properties": {
+                "containers": [
+                {
+                    "name": "[parameters('containername')]",
+                    "properties": {
+                    "securityContext":{
+                        "privileged":"false"
+                    },
+                    "image": "[parameters('image')]",
+                    "environmentVariables": [
+                        {
+                        "name": "PORT",
+                        "value": "80"
+                        }
+                    ],
+
+                    "ports": [
+                        {
+                        "port": "[parameters('port')]"
+                        }
+                    ],
+                    "command": [
+                        "/bin/bash",
+                        "-c",
+                        "while sleep 5; do cat /mnt/input/access.log; done"
+                    ],
+                    "resources": {
+                        "requests": {
+                        "cpu": "[parameters('cpuCores')]",
+                        "memoryInGb": "[parameters('memoryInGb')]"
+                        }
+                    }
+                    }
+                }
+                ],
+
+                "osType": "Linux",
+                "restartPolicy": "OnFailure",
+                "confidentialComputeProperties": {
+                "IsolationType": "SevSnp"
+                },
+                "ipAddress": {
+                "type": "Public",
+                "ports": [
+                    {
+                    "protocol": "Tcp",
+                    "port": "[parameters( 'port' )]"
+                    }
+                ]
+                }
+            }
+            }
+        ],
+        "outputs": {
+            "containerIPv4Address": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', parameters('containergroupname'))).ipAddress.ip]"
+            }
+        }
+    }
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.aci_arm_policy = load_policy_from_arm_template_str(
+            cls.custom_arm_json_default_value, "", disable_stdio=True
+        )[0]
+        cls.aci_arm_policy.populate_policy_content_for_all_images()
+
+    def test_arm_template_allow_elevated_false(self):
+        regular_image_json = json.loads(
+            self.aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
+
+        allow_elevated = regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_ELEVATED]
+
+        # see if the remote image and the local one produce the same output
+        self.assertFalse(allow_elevated)
+
+
+# @unittest.skip("not in use")
+@pytest.mark.run(order=14)
 class PrintExistingPolicy(unittest.TestCase):
 
     def test_printing_existing_policy(self):
@@ -2649,7 +2777,7 @@ class PrintExistingPolicy(unittest.TestCase):
             os.remove("test_template2.json")
 
 # @unittest.skip("not in use")
-@pytest.mark.run(order=14)
+@pytest.mark.run(order=15)
 class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
     custom_json = """
         {
@@ -3312,7 +3440,7 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
         self.assertEqual(wrapped_exit.exception.code, 1)
 
 # @unittest.skip("not in use")
-@pytest.mark.run(order=15)
+@pytest.mark.run(order=16)
 class PolicyGeneratingEdgeCases(unittest.TestCase):
 
     custom_arm_json_default_value = """

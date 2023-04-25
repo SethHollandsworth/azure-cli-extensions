@@ -30,8 +30,5 @@ azext_confcom/bin/*
 
 # metadata file for coverage reports
 **/.coverage
-**/htmlcov
 
-# temporary files
-azext_confcom/data/version_api
-**/version_api
+**/htmlcov
