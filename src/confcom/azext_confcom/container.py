@@ -250,24 +250,22 @@ def extract_allow_elevated(container_json: Any) -> bool:
     if isinstance(privileged_value, str):
         privileged_value = privileged_value.lower() == "true"
 
-    if privileged_value is not None:
+    if privileged_value is not None and privileged_value:
         return privileged_value
 
     # allow_elevated is used for input.json
     _allow_elevated = case_insensitive_dict_get(
         container_json, config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED
     )
-    if _allow_elevated:
+    if _allow_elevated is not None:
         if not isinstance(_allow_elevated, bool):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED}"] can only be boolean value.'
             )
-
-    if _allow_elevated is not None:
         return _allow_elevated
-    # default value is true
-    return True
+    # default value is false
+    return False
 
 
 def extract_allow_stdio_access(container_json: Any) -> bool:
@@ -440,12 +438,12 @@ def extract_seccomp_profile_sha256(container_json: Any) -> Dict:
             security_context, config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE
         )
 
-        if seccomp_profile_base64 and not isinstance(seccomp_profile_base64, str):
+        if seccomp_profile_base64 is not None and not isinstance(seccomp_profile_base64, str):
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
                 + f'["{config.ACI_FIELD_CONTAINERS_SECCOMP_PROFILE}"] can only be a string.'
             )
-        elif seccomp_profile_base64:
+        elif seccomp_profile_base64 is not None:
             # clean up and jsonify the seccomp profile
             seccomp_profile = process_seccomp_policy(base64_to_str(seccomp_profile_base64))
             seccomp_profile_str = json.dumps(seccomp_profile, separators=(',', ':'))

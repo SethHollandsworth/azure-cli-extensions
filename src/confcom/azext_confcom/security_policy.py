@@ -179,11 +179,11 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         # determine if we're outputting for a sidecar or not
         if self._images[0].get_id() and is_sidecar(self._images[0].get_id()):
             return config.SIDECAR_REGO_POLICY % (
-                pretty_print_func(self._version_api),
+                pretty_print_func(self._api_version),
                 output
             )
         return config.CUSTOMER_REGO_POLICY % (
-            pretty_print_func(self._version_api),
+            pretty_print_func(self._api_version),
             pretty_print_func(self._fragments),
             output,
             pretty_print_func(self._allow_properties_access),
@@ -554,7 +554,7 @@ def load_policy_from_arm_template_str(
         # add init containers to the list of other containers since they aren't treated differently
         # in the security policy
         if init_container_list:
-            container_list = container_list + init_container_list
+            container_list.extend(init_container_list)
 
         existing_containers, fragments = extract_confidential_properties(
             container_group_properties
@@ -606,6 +606,9 @@ def load_policy_from_arm_template_str(
                     )
                     or [],
                     config.ACI_FIELD_CONTAINERS_MOUNTS: process_mounts(image_properties, volumes),
+                    config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED: case_insensitive_dict_get(
+                        image_properties, config.ACI_FIELD_CONTAINERS_ALLOW_ELEVATED
+                    ),
                     config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES: exec_processes
                     + config.DEBUG_MODE_SETTINGS.get("execProcesses")
                     if debug_mode
