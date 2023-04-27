@@ -250,7 +250,7 @@ def extract_allow_elevated(container_json: Any) -> bool:
     if isinstance(privileged_value, str):
         privileged_value = privileged_value.lower() == "true"
 
-    if privileged_value is not None and privileged_value:
+    if privileged_value:
         return privileged_value
 
     # allow_elevated is used for input.json
@@ -291,32 +291,32 @@ def extract_user(container_json: Any) -> Dict:
             security_context, config.ACI_FIELD_CONTAINERS_RUN_AS_USER
         )
 
-        if run_as_user_value and not isinstance(run_as_user_value, int):
-            eprint(
-                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
-                + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_USER}"] can only be an integer value.'
-            )
-        elif run_as_user_value:
+        if isinstance(run_as_user_value, int) and run_as_user_value >= 0:
             user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_USER_IDNAME] = {
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: str(run_as_user_value),
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: "id"
             }
+        elif run_as_user_value is not None:
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_USER}"] can only be an integer value.'
+            )
 
         # get the field for run as group
         run_as_group_value = case_insensitive_dict_get(
             security_context, config.ACI_FIELD_CONTAINERS_RUN_AS_GROUP
         )
 
-        if run_as_group_value and not isinstance(run_as_group_value, int):
-            eprint(
-                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
-                + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_GROUP}"] can only be an integer value.'
-            )
-        elif run_as_group_value:
+        if isinstance(run_as_group_value, int) and run_as_group_value >= 0:
             user[config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_GROUP_IDNAMES][0] = {
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_PATTERN: str(run_as_group_value),
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_USER_STRATEGY: "id"
             }
+        elif run_as_group_value is not None:
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]["{config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT}"]'
+                + f'["{config.ACI_FIELD_CONTAINERS_RUN_AS_GROUP}"] can only be an integer value.'
+            )
 
     return user
 
@@ -457,7 +457,8 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
         container_json, config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT
     )
 
-    allow_privilege_escalation = True
+    # default to false so that no_new_privileges defaults to true
+    allow_privilege_escalation = False
     # assumes that securityContext field is optional
     if security_context:
 
@@ -477,7 +478,6 @@ def extract_allow_privilege_escalation(container_json: Any) -> bool:
             if isinstance(temp_privilege_escalation, str):
                 temp_privilege_escalation = temp_privilege_escalation.lower() == "true"
             allow_privilege_escalation = temp_privilege_escalation
-
     return allow_privilege_escalation
 
 
