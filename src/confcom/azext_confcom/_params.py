@@ -128,6 +128,86 @@ def load_arguments(self, _):
             help="Use buffered image reader for dmverity hashing. This will speed up the hashing process but use much more memory.",
         )
 
+        c.argument(
+            "virtual_kubelet_yaml_path",
+            options_list=("--virtual-kubelet-yaml-path", "-k"),
+            required=False,
+            help="Path to the virtual kubelet yaml file",
+        )
+
+        c.argument(
+            "configmaps",
+            options_list=("--configmaps"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_port",
+            options_list=("--kubernetes-port"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_port_tcp",
+            options_list=("--kubernetes-port-tcp"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_port_tcp_addr",
+            options_list=("--kubernetes-port-tcp-addr"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_port_tcp_proto",
+            options_list=("--kubernetes-port-tcp-proto"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_service_host",
+            options_list=("--kubernetes-service-host"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_service_port",
+            options_list=("--kubernetes-service-port"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_service_port_https",
+            options_list=("--kubernetes-service-port-https"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "kubernetes_tcp_port",
+            options_list=("--kubernetes-tcp-port"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "output_file_name",
+            options_list=("--output-file-name"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "print_json",
+            options_list=("--print-json"),
+            required=False,
+            help="",
+        )
+        c.argument(
+            "secrets",
+            options_list=("--secrets"),
+            required=False,
+            help="",
+        )
+
     with self.argument_context("confcom katapolicygen") as c:
         c.argument(
             "yaml_path",

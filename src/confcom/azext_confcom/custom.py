@@ -21,6 +21,7 @@ from azext_confcom.init_checks import run_initial_docker_checks
 from azext_confcom import security_policy
 from azext_confcom.security_policy import OutputType
 from azext_confcom.kata_proxy import KataPolicyGenProxy
+from azext_confcom.virtual_kubelet_proxy import VirtualKubeletProxy
 
 
 logger = get_logger(__name__)
@@ -34,6 +35,7 @@ def acipolicygen_confcom(
     infrastructure_svn: str,
     tar_mapping_location: str,
     approve_wildcards: str = False,
+    virtual_kubelet_yaml_path: str = None,
     outraw: bool = False,
     outraw_pretty_print: bool = False,
     diff: bool = False,
@@ -44,7 +46,58 @@ def acipolicygen_confcom(
     disable_stdio: bool = False,
     print_existing_policy: bool = False,
     faster_hashing: bool = False,
+
+    configmaps: str = "",
+    kubernetes_port: str = "",
+    kubernetes_port_tcp: str = "",
+    kubernetes_port_tcp_addr: str = "",
+    kubernetes_port_tcp_proto: str = "",
+    kubernetes_service_host: str = "",
+    kubernetes_service_port: str = "",
+    kubernetes_service_port_https: str = "",
+    kubernetes_tcp_port: str = "",
+    output_file_name: str = "",
+    print_json: str = "",
+    secrets: str = "",
 ):
+    virtual_kubelet_args = [
+        configmaps,
+        kubernetes_port,
+        kubernetes_port_tcp,
+        kubernetes_port_tcp_addr,
+        kubernetes_port_tcp_proto,
+        kubernetes_service_host,
+        kubernetes_service_port,
+        kubernetes_service_port_https,
+        kubernetes_tcp_port,
+        output_file_name,
+        print_json,
+        secrets,
+    ]
+
+
+    if any(virtual_kubelet_args) and not virtual_kubelet_yaml_path:
+        error_out(
+            "Virtual Kubelet arguments can only be used with a Virtual Kubelet YAML file"
+        )
+    elif virtual_kubelet_yaml_path:
+        virtual_kubelet_proxy = VirtualKubeletProxy()
+        virtual_kubelet_proxy.generate_arm_template(
+            virtual_kubelet_yaml_path,
+            configmaps=configmaps,
+            kubernetes_port=kubernetes_port,
+            kubernetes_port_tcp=kubernetes_port_tcp,
+            kubernetes_port_tcp_addr=kubernetes_port_tcp_addr,
+            kubernetes_port_tcp_proto=kubernetes_port_tcp_proto,
+            kubernetes_service_host=kubernetes_service_host,
+            kubernetes_service_port=kubernetes_service_port,
+            kubernetes_service_port_https=kubernetes_service_port_https,
+            kubernetes_tcp_port=kubernetes_tcp_port,
+            output_file_name=output_file_name,
+            print_json=print_json,
+            secrets=secrets,
+        )
+        arm_template = virtual_kubelet_proxy.get_arm_template_path()
 
     if sum(map(bool, [input_path, arm_template, image_name])) != 1:
         error_out("Can only generate CCE policy from one source at a time")
