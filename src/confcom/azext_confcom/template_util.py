@@ -55,6 +55,19 @@ def case_insensitive_dict_get(dictionary, search_key) -> Any:
             return dictionary[key]
     return None
 
+def deep_dict_update(source: dict, destination: dict):
+    """
+    https://stackoverflow.com/questions/20656135/python-deep-merge-dictionary-data
+    """
+    for key, value in source.items():
+        if isinstance(value, dict):
+            node = destination.setdefault(key, {})
+            deep_dict_update(value, node)
+        else:
+            destination[key] = value
+
+    return destination
+
 
 def image_has_hash(image: str) -> bool:
     return "@sha256:" in image

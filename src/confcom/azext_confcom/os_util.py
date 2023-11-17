@@ -8,6 +8,7 @@ import binascii
 import shutil
 import json
 import os
+import yaml
 from tarfile import TarFile
 from azext_confcom.errors import (
     eprint,
@@ -41,9 +42,21 @@ def load_json_from_str(data: str) -> dict:
     return {}
 
 
+def load_yaml_from_str(data: str) -> dict:
+    if data:
+        try:
+            return yaml.load(data, Loader=yaml.SafeLoader)
+        except yaml.YAMLError:
+            eprint(f"Invalid YAML formatting for data: {data}")
+    return {}
+
 def load_json_from_file(path: str) -> dict:
     raw_data = load_str_from_file(path)
     return load_json_from_str(raw_data)
+
+def load_yaml_from_file(path: str) -> dict:
+    raw_data = load_str_from_file(path)
+    return load_yaml_from_str(raw_data)
 
 
 def copy_file(src: str, dest: str) -> None:
@@ -72,6 +85,13 @@ def write_json_to_file(path: str, content: dict) -> None:
         ),
     )
 
+def write_yaml_to_file(path: str, content: dict) -> None:
+    write_str_to_file(
+        path,
+        yaml.dump(
+            content
+        ),
+    )
 
 def write_str_to_file(path: str, content: str) -> None:
     with open(path, "w", encoding="utf-8") as f:

@@ -8,7 +8,14 @@ import sys
 
 from pkg_resources import parse_version
 from knack.log import get_logger
-from azext_confcom.config import DEFAULT_REGO_FRAGMENTS, DATA_FOLDER
+from azext_confcom.config import (
+    DEFAULT_REGO_FRAGMENTS, DATA_FOLDER, 
+    VIRTUAL_KUBELET_YAML_METADATA, 
+    VIRTUAL_KUBELET_YAML_ANNOTATIONS, 
+    VIRTUAL_KUBELET_YAML_SKU, 
+    VIRTUAL_KUBELET_YAML_SKU_NAME, 
+    VIRTUAL_KUBELET_YAML_POLICY,
+)
 from azext_confcom import os_util
 from azext_confcom.template_util import (
     pretty_print_func,
@@ -16,6 +23,7 @@ from azext_confcom.template_util import (
     str_to_sha256,
     inject_policy_into_template,
     print_existing_policy_from_arm_template,
+    deep_dict_update,
 )
 from azext_confcom.init_checks import run_initial_docker_checks
 from azext_confcom import security_policy
@@ -56,7 +64,7 @@ def acipolicygen_confcom(
     kubernetes_service_port: str = "",
     kubernetes_service_port_https: str = "",
     kubernetes_tcp_port: str = "",
-    output_file_name: str = "",
+    output_file_name: str = "arm-template.json",
     print_json: str = "",
     secrets: str = "",
 ):
@@ -185,6 +193,20 @@ def acipolicygen_confcom(
 
         if validate_sidecar:
             exit_code = validate_sidecar_in_policy(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
+        elif virtual_kubelet_yaml_path:
+            virtual_kubelet_yaml = os_util.load_yaml_from_file(virtual_kubelet_yaml_path)
+            # Metadata to be added to virutal kubelet YAML
+            needed_metadata = {
+                VIRTUAL_KUBELET_YAML_METADATA: {
+                    VIRTUAL_KUBELET_YAML_ANNOTATIONS: {
+                        VIRTUAL_KUBELET_YAML_SKU: VIRTUAL_KUBELET_YAML_SKU_NAME, 
+                        VIRTUAL_KUBELET_YAML_POLICY: policy.get_serialized_output(),
+                    }
+                }
+            }
+            # Update virtual kubelet YAML with metadata
+            deep_dict_update(needed_metadata, virtual_kubelet_yaml)
+            os_util.write_yaml_to_file(virtual_kubelet_yaml_path, virtual_kubelet_yaml)
         elif diff:
             exit_code = get_diff_outputs(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
         elif arm_template and not (print_policy_to_terminal or outraw or outraw_pretty_print):

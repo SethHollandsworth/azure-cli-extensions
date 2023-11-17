@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.4.0
+++++++
+* adding virtual kubelet support for acipolicygen
+
 0.3.5
 ++++++
 * making diff mode more robust

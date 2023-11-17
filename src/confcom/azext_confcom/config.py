@@ -127,6 +127,13 @@ POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES = "includes"
 POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_CONFIGMAP_LOCATION = "/mnt/configmap"
 POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_CONFIGMAP_TYPE = "emptyDir"
 
+VIRTUAL_KUBELET_YAML_METADATA = "metadata"
+VIRTUAL_KUBELET_YAML_ANNOTATIONS = "annotations"
+VIRTUAL_KUBELET_YAML_SKU = "virtual-kubelet.io/container-sku"
+VIRTUAL_KUBELET_YAML_POLICY = "virtual-kubelet.io/confidential-compute-cce-policy"
+VIRTUAL_KUBELET_YAML_SKU_NAME = "Confidential"
+
+
 CONFIG_FILE = "./data/internal_config.json"
 
 script_directory = os.path.dirname(os.path.realpath(__file__))

@@ -101,11 +101,10 @@ class VirtualKubeletProxy:  # pylint: disable=too-few-public-methods
         kubernetes_service_port: str = "",
         kubernetes_service_port_https: str = "",
         kubernetes_tcp_port: str = "",
-        output_file_name: str = "",
+        output_file_name: str = "arm-template.json",
         print_json: str = "",
         secrets: str = "",
     ) -> None:
-
         VirtualKubeletProxy.arm_template_path = output_file_name
         policy_bin_str = str(self.policy_bin)
 

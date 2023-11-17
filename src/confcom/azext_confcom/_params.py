@@ -139,73 +139,73 @@ def load_arguments(self, _):
             "configmaps",
             options_list=("--configmaps"),
             required=False,
-            help="",
+            help="Kubernetes config maps json string (map[string]ConfigMap)",
         )
         c.argument(
             "kubernetes_port",
             options_list=("--kubernetes-port"),
             required=False,
-            help="",
+            help="KUBERNETES_PORT environment variable (default 'tcp://10.0.0.1:443')",
         )
         c.argument(
             "kubernetes_port_tcp",
             options_list=("--kubernetes-port-tcp"),
             required=False,
-            help="",
+            help="KUBERNETES_PORT_443_TCP environment variable (default 'tcp://10.0.0.1:443')",
         )
         c.argument(
             "kubernetes_port_tcp_addr",
             options_list=("--kubernetes-port-tcp-addr"),
             required=False,
-            help="",
+            help="KUBERNETES_PORT_443_TCP_ADDRESS environment variable (default '10.0.0.1')",
         )
         c.argument(
             "kubernetes_port_tcp_proto",
             options_list=("--kubernetes-port-tcp-proto"),
             required=False,
-            help="",
+            help="KUBERNETES_PORT_443_TCP_PROTO environment variable (default 'tcp')",
         )
         c.argument(
             "kubernetes_service_host",
             options_list=("--kubernetes-service-host"),
             required=False,
-            help="",
+            help="KUBERNETES_SERVICE_HOST environment variable (default '10.0.0.1')",
         )
         c.argument(
             "kubernetes_service_port",
             options_list=("--kubernetes-service-port"),
             required=False,
-            help="",
+            help="KUBERNETES_SERVICE_PORT environment variable (default '443')",
         )
         c.argument(
             "kubernetes_service_port_https",
             options_list=("--kubernetes-service-port-https"),
             required=False,
-            help="",
+            help="KUBERNETES_SERVICE_PORT_HTTPS environment variable (default '443')",
         )
         c.argument(
             "kubernetes_tcp_port",
             options_list=("--kubernetes-tcp-port"),
             required=False,
-            help="",
+            help="KUBERNETES_PORT_443_TCP_PORT environment variable (default '443')",
         )
         c.argument(
             "output_file_name",
             options_list=("--output-file-name"),
             required=False,
-            help="",
+            help="Name of the output file (default 'arm-template.json')",
         )
         c.argument(
             "print_json",
             options_list=("--print-json"),
             required=False,
-            help="",
+            help="Whether or not to print ARM template",
         )
         c.argument(
             "secrets",
             options_list=("--secrets"),
             required=False,
-            help="",
+            help="Kubernetes secrets map json string (map[string]Secret)",
         )
 
     with self.argument_context("confcom katapolicygen") as c:
