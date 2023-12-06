@@ -13,8 +13,6 @@ import pytest
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 
 
-# @unittest.skip("not in use")
-@pytest.mark.run(order=1)
 class KataPolicyGen(unittest.TestCase):
 
     pod_string = """
