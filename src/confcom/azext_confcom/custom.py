@@ -44,6 +44,11 @@ def acipolicygen_confcom(
     disable_stdio: bool = False,
     print_existing_policy: bool = False,
     faster_hashing: bool = False,
+    namespace: str = None,
+    svn: str = None,
+    key: str = None,
+    fragments_json: str = None,
+    generate_fragment: bool = False,
 ):
 
     if sum(map(bool, [input_path, arm_template, image_name])) != 1:
@@ -60,6 +65,12 @@ def acipolicygen_confcom(
         error_out("Must print policy to terminal when saving to file")
     elif faster_hashing and tar_mapping_location:
         error_out("Cannot use --faster-hashing with --tar")
+
+    if generate_fragment and (not namespace or not svn):
+        error_out("Must provide both namespace and svn for generating policy fragments")
+    if generate_fragment:
+        # make sure the ORAS CLI is installed
+        os_util.check_oras_cli()
 
     if print_existing_policy or outraw or outraw_pretty_print:
         logger.warning(
@@ -141,6 +152,18 @@ def acipolicygen_confcom(
                 # this is always going to be the unencoded policy
                 print(str_to_sha256(policy.get_serialized_output(OutputType.RAW)))
                 logger.info("CCE Policy successfully injected into ARM Template")
+        elif generate_fragment and image_name:
+            fragments = []
+            if fragments_json:
+                fragments = os_util.load_json_from_file(fragments_json)
+
+            fragment_text = policy.generate_fragment(namespace, svn, fragments)
+            filename = f"{namespace}.rego"
+            os_util.write_str_to_file(filename, fragment_text)
+            # print(f"{fragment_text}\n\n")
+            if key:
+                os_util.sign_fragment(key)
+                os_util.attach_fragment_to_image(image_name, filename)
         else:
             # output to terminal
             print(f"{policy.get_serialized_output(output_type)}\n\n")

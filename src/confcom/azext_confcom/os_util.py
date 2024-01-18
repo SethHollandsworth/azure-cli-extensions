@@ -8,6 +8,7 @@ import binascii
 import shutil
 import json
 import os
+import subprocess
 from tarfile import TarFile
 from azext_confcom.errors import (
     eprint,
@@ -176,3 +177,29 @@ def map_image_from_tar(image_name: str, tar: TarFile, tar_location: str):
     image_info["Architecture"] = image_info_raw.get("architecture")
 
     return image_info
+
+
+def check_oras_cli():
+    item = subprocess.run(["oras", "version"], check=True, capture_output=True)
+
+    if item.returncode != 0:
+        eprint(
+            "ORAS CLI not installed. Please install ORAS CLI: https://oras.land/docs/installation"
+        )
+
+
+def attach_fragment_to_image(image_name: str, filename: str):
+    if ":" not in image_name:
+        image_name += ":latest"
+    # attach the fragment to the image
+    item = subprocess.run(
+        ["oras", "attach", "--artifact-type", "policy/fragment", image_name, filename],
+        check=True,
+        capture_output=True,
+    )
+    if item.returncode != 0:
+        eprint(f"Could not attach fragment to image: {image_name}")
+
+    # extract digest from stdout
+    digest = item.stdout.decode("utf8").strip("\n").split("\n")[-1]
+    print(f"Fragment attached to image '{image_name}' with {digest}")

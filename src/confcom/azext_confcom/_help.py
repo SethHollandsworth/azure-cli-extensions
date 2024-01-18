@@ -85,6 +85,26 @@ helps[
           type: boolean
           short-summary: 'When enabled, the hashing algorithm used to generate the policy is faster but less memory efficient'
 
+        - name: --generate-fragment -g
+          type: boolean
+          short-summary: 'When enabled, the generated security policy will be placed in a policy fragment instead of a standalone policy'
+
+        - name: --namespace -n
+          type: string
+          short-summary: 'Namespace to use for the generated policy fragment'
+
+        - name: --svn
+          type: string
+          short-summary: 'Minimum Allowed Software Version Number for the generated policy fragment'
+
+        - name: --key -k
+          type: string
+          short-summary: 'Path to key file to use for signing the generated policy fragment'
+
+        -name: --fragments-json -f
+          type: string
+          short-summary: 'Path to JSON file containing fragments to use for generating the policy'
+
     examples:
         - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template
           text: az confcom acipolicygen --template-file "./template.json"

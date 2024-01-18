@@ -127,6 +127,37 @@ def load_arguments(self, _):
             required=False,
             help="Use buffered image reader for dmverity hashing. This will speed up the hashing process but use much more memory.",
         )
+        c.argument(
+            "generate_fragment",
+            options_list=("--generate-fragment", "-g"),
+            required=False,
+            help="Generate a policy fragment",
+        )
+        c.argument(
+            "namespace",
+            options_list=("--namespace", "-n"),
+            required=False,
+            help="Namespace for the generated policy fragment",
+        )
+        c.argument(
+            "svn",
+            options_list=("--svn"),
+            required=False,
+            help="Software Version Number for the generated policy fragment",
+        )
+        c.argument(
+            "key",
+            options_list=("--key", "-k"),
+            required=False,
+            help="Key for signing the generated policy fragment",
+        )
+        c.argument(
+            "fragments_json",
+            options_list=("--fragments-json", "-f"),
+            required=False,
+            help="Fragments to add to the generated policy in JSON format",
+
+        )
 
     with self.argument_context("confcom katapolicygen") as c:
         c.argument(

@@ -176,8 +176,15 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         # encode to base64
         return os_util.str_to_base64(policy_str)
 
-    def _add_rego_boilerplate(self, output: str) -> str:
+    def generate_fragment(self, namespace: str, svn: str, fragments_json) -> str:
+        return config.CUSTOMER_REGO_FRAGMENT % (
+            namespace,
+            pretty_print_func(svn),
+            pretty_print_func(fragments_json),
+            self.get_serialized_output(OutputType.PRETTY_PRINT, rego_boilerplate=False),
+        )
 
+    def _add_rego_boilerplate(self, output: str) -> str:
         # determine if we're outputting for a sidecar or not
         if self._images[0].get_id() and is_sidecar(self._images[0].get_id()):
             return config.SIDECAR_REGO_POLICY % (

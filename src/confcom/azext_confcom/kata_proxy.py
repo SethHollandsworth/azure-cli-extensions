@@ -89,7 +89,7 @@ class KataPolicyGenProxy:  # pylint: disable=too-few-public-methods
             eprint("The extension for MacOS has not been implemented.")
         else:
             eprint(
-                "Unknown target platform. The extension only works with Windows, Linux and MacOS"
+                "Unknown target platform. The extension only works with Windows and Linux"
             )
 
         self.policy_bin = Path(os.path.join(f"{script_directory}", f"{DEFAULT_LIB}"))
@@ -109,6 +109,7 @@ class KataPolicyGenProxy:  # pylint: disable=too-few-public-methods
         print_policy=False,
         use_cached_files=False,
         settings_file_name=None,
+
         rules_file_name=None,
         print_version=False,
         containerd_pull=False,

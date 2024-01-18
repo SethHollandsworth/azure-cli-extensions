@@ -159,9 +159,12 @@ DEFAULT_REGO_FRAGMENTS = _config["default_rego_fragments"]
 DEBUG_MODE_SETTINGS = _config["debugMode"]
 # customer rego file for data to be injected
 REGO_FILE = "./data/customer_rego_policy.txt"
+REGO_FRAGMENT_FILE = "./data/customer_rego_fragment.txt"
 script_directory = os.path.dirname(os.path.realpath(__file__))
 REGO_FILE_PATH = f"{script_directory}/{REGO_FILE}"
+REGO_FRAGMENT_FILE_PATH = f"{script_directory}/{REGO_FRAGMENT_FILE}"
 CUSTOMER_REGO_POLICY = os_util.load_str_from_file(REGO_FILE_PATH)
+CUSTOMER_REGO_FRAGMENT = os_util.load_str_from_file(REGO_FRAGMENT_FILE_PATH)
 # sidecar rego file
 SIDECAR_REGO_FILE = "./data/sidecar_rego_policy.txt"
 SIDECAR_REGO_FILE_PATH = f"{script_directory}/{SIDECAR_REGO_FILE}"
