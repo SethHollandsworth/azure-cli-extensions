@@ -135,6 +135,7 @@ test_invalid_input_path | mcr.microsoft.com/aks/e2e/library-busybox:master.22031
 test_invalid_config_map_path | mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64 | Input a path that does not exist for the config-map.yaml file
 test_valid_settings | mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64 | Input a valid path for the pod.yaml with the default config file
 test_print_version | N/A | Print the version of the extension
+test_invalid_settings | mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64 | Input an invalid name for a custom settings file
 
 ## Virtual Node File [test file](test_confcom_virtual_node.py)
 
@@ -145,3 +146,21 @@ Test Name | Image Used | Purpose
 test_compare_policy_sources | mcr.microsoft.com/cbl-mariner/distroless/python:3.9-nonroot | Compare the output of a policy generated from a Virtual Node file and a policy generated from an input json
 test_configmaps | mcr.microsoft.com/cbl-mariner/distroless/python:3.9-nonroot | Check that the configmaps are being added to the policy in env var and mount form
 test_secrets | mcr.microsoft.com/cbl-mariner/distroless/python:3.9-nonroot | Check that the secrets are being added to the policy in env var and mount form
+
+## Fragment File [test file](test_confcom_fragment.py)
+
+This is how to generate a policy fragment to be included in a CCE Policy for Confidential ACI
+
+Test Name | Image Used | Purpose
+---|---|---
+test_user_container_customized_mounts | alpine:3.16 | See if mounts are translated correctly to the appropriate source and destination locations
+test_user_container_mount_injected_dns | alpine:3.16 | See if the resolvconf mount works properly
+test_injected_sidecar_container_msi | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1 | Make sure User mounts and env vars aren't added to sidecar containers
+test_sign | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See if signing a fragment with a given cert and key works properly
+test_debug_processes | python:3.6.14-slim-buster | Enable exec_processes via debug_mode
+test_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See if sidecar validation would pass policy created by given fragment
+test_sidecar_stdio_access_default | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Check that sidecar containers have std I/O access by default
+test_incorrect_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See what output format for failing sidecar validation would be
+test_generate_import_local | python:3.6.14-slim-buster | Generate a fragment from an image that is local
+test_generate_import_remote | python:3.6.14-slim-buster | Generate a fragment from an image that is remote
+test_invalid_input | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Fail out under various invalid input circumstances

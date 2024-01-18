@@ -13,6 +13,8 @@ from azext_confcom.config import (
     VIRTUAL_NODE_YAML_METADATA,
     VIRTUAL_NODE_YAML_ANNOTATIONS,
     VIRTUAL_NODE_YAML_POLICY,
+    RESERVED_FRAGMENT_NAMES,
+    SUPPORTED_ALGOS,
 )
 from azext_confcom import os_util
 from azext_confcom.template_util import (
@@ -26,16 +28,23 @@ from azext_confcom.template_util import (
     filter_non_pod_resources,
     convert_to_pod_spec_helper,
 )
+from azext_confcom.fragment_util import get_all_fragment_contents
 from azext_confcom.init_checks import run_initial_docker_checks
 from azext_confcom import security_policy
 from azext_confcom.security_policy import OutputType
 from azext_confcom.kata_proxy import KataPolicyGenProxy
+from azext_confcom.cose_proxy import CoseSignToolProxy
+from azext_confcom import oras_proxy
 
 
 logger = get_logger(__name__)
 
 
+<<<<<<< HEAD
 # pylint: disable=too-many-locals, too-many-branches
+=======
+# pylint: disable=R0914, R0912
+>>>>>>> ec183f9fd (initial commit of image attached fragments)
 def acipolicygen_confcom(
     input_path: str,
     arm_template: str,
@@ -55,8 +64,34 @@ def acipolicygen_confcom(
     disable_stdio: bool = False,
     print_existing_policy: bool = False,
     faster_hashing: bool = False,
+    include_fragments: bool = False,
+    fragments_json: str = None,
 ):
 
+<<<<<<< HEAD
+=======
+    if sum(map(bool, [input_path, arm_template, image_name])) != 1:
+        error_out("Can only generate CCE policy from one source at a time")
+    if sum(map(bool, [print_policy_to_terminal, outraw, outraw_pretty_print])) > 1:
+        error_out("Can only print in one format at a time")
+    elif (diff and input_path) or (diff and image_name):
+        error_out("Can only diff CCE policy from ARM Template")
+    elif arm_template_parameters and not arm_template:
+        error_out(
+            "Can only use ARM Template Parameters if ARM Template is also present"
+        )
+    elif save_to_file and arm_template and not (print_policy_to_terminal or outraw or outraw_pretty_print):
+        error_out("Must print policy to terminal when saving to file")
+    elif faster_hashing and tar_mapping_location:
+        error_out("Cannot use --faster-hashing with --tar")
+
+    if fragments_json and not include_fragments:
+        error_out("Using a --fragments-json file requires the --include-fragments flag")
+    if include_fragments:
+        # make sure the ORAS CLI is installed
+        oras_proxy.check_oras_cli()
+
+>>>>>>> ec183f9fd (initial commit of image attached fragments)
     if print_existing_policy or outraw or outraw_pretty_print:
         logger.warning(
             "%s %s %s %s %s",
@@ -88,6 +123,16 @@ def acipolicygen_confcom(
     # warn user that input infrastructure_svn is less than the configured default value
     check_infrastructure_svn(infrastructure_svn)
 
+    fragments_list = []
+    fragment_policy_list = []
+    # gather information about the fragments being used in the new policy
+    if include_fragments:
+        fragments_list = os_util.load_json_from_file(fragments_json)
+        # convert to list if it's just a dict
+        if not isinstance(fragments_list, list):
+            fragments_list = [fragments_list]
+        fragment_policy_list = get_all_fragment_contents(fragments_list)
+
     # telling the user what operation we're doing
     logger.warning(
         "Generating security policy for %s: %s in %s",
@@ -110,7 +155,12 @@ def acipolicygen_confcom(
             debug_mode=debug_mode,
             disable_stdio=disable_stdio,
             approve_wildcards=approve_wildcards,
+<<<<<<< HEAD
             diff_mode=diff
+=======
+            rego_imports=fragments_list,
+            fragment_contents=fragment_policy_list,
+>>>>>>> ec183f9fd (initial commit of image attached fragments)
         )
     elif image_name:
         container_group_policies = security_policy.load_policy_from_image_name(
@@ -172,6 +222,7 @@ def acipolicygen_confcom(
                 # this is always going to be the unencoded policy
                 print(str_to_sha256(policy.get_serialized_output(OutputType.RAW)))
                 logger.info("CCE Policy successfully injected into ARM Template")
+
         else:
             # output to terminal
             print(f"{policy.get_serialized_output(output_type)}\n\n")
@@ -186,6 +237,108 @@ def acipolicygen_confcom(
                 policy.save_to_file(save_to_file, output_type)
 
     sys.exit(exit_code)
+
+
+# pylint: disable=R0914
+def acifragmentgen_confcom(
+    image_name: str,
+    config: str,
+    tar_mapping_location: str,
+    namespace: str,
+    svn: str,
+    feed: str,
+    key: str,
+    chain: str,
+    minimum_svn: int,
+    algo: str = "ES384",
+    fragment_path: str = None,
+    generate_import: bool = False,
+    disable_stdio: bool = False,
+    debug_mode: bool = False,
+    output_filename: str = None,
+    outraw: bool = False,
+    upload_fragment: bool = False,
+    no_print: bool = False,
+    fragments_json: str = "",
+):
+    if sum(map(bool, [key, chain])) == 1:
+        error_out("Must provide both a key and a chain to sign the fragment")
+    if not generate_import and (not image_name and not config):
+        error_out("Must provide either an image name or a config file")
+    if generate_import and sum(map(bool, [fragment_path, config, image_name])) != 1:
+        error_out("Must provide fragment path, config, or image name to generate an import")
+    if not generate_import and (not namespace or not svn):
+        error_out("Must provide namespace and svn to generate a fragment")
+    if namespace in RESERVED_FRAGMENT_NAMES:
+        error_out(f"Namespace '{namespace}' is a reserved fragment name")
+    if generate_import and not minimum_svn:
+        error_out("Must provide minimum_svn to generate an import")
+    if algo not in SUPPORTED_ALGOS:
+        error_out(f"Algorithm '{algo}' is not supported. Supported algorithms are {SUPPORTED_ALGOS}")
+
+    output_type = get_fragment_output_type(outraw)
+
+    if generate_import:
+        cose_client = CoseSignToolProxy()
+        import_statement = cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)
+        if fragments_json:
+            fragments_list = []
+            if os.path.isfile(fragments_json):
+                print("Appending import statement to JSON file")
+                fragments_list = os_util.load_json_from_file(fragments_json)
+            else:
+                print("Creating import statement JSON file")
+            # convert to list if it's just a dict
+            if not isinstance(fragments_list, list):
+                fragments_list = [fragments_list]
+            fragments_list.append(import_statement)
+
+            os_util.write_str_to_file(fragments_json, pretty_print_func(fragments_list))
+        else:
+            print(pretty_print_func(import_statement))
+        sys.exit(0)
+
+    tar_mapping = tar_mapping_validation(tar_mapping_location)
+
+    if image_name:
+        policy = security_policy.load_policy_from_image_name(
+            image_name, debug_mode=debug_mode, disable_stdio=disable_stdio
+        )
+    elif config:
+        policy = security_policy.load_policy_from_config_file(
+            config, debug_mode=debug_mode, disable_stdio=disable_stdio
+        )
+    policy.populate_policy_content_for_all_images(
+        individual_image=bool(image_name), tar_mapping=tar_mapping
+    )
+
+    # if no feed is provided, use the first image's feed
+    # to assume it's an image-attached fragment
+    if not feed:
+        feed = policy.get_images()[0].containerImage
+
+    fragments = []
+    fragment_text = policy.generate_fragment(namespace, svn, fragments, output_type)
+
+    if output_type != security_policy.OutputType.DEFAULT and not no_print:
+        print(fragment_text)
+
+    # take ".rego" off the end of the filename if it's there, it'll get added back later
+    if output_filename and output_filename.endswith(".rego"):
+        output_filename = output_filename[:-5]
+    filename = f"{output_filename or namespace}.rego"
+    os_util.write_str_to_file(filename, fragment_text)
+
+    if key:
+        cose_proxy = CoseSignToolProxy()
+        iss = cose_proxy.create_issuer(chain)
+        out_path = filename + ".cose"
+
+        cose_proxy.cose_sign(filename, key, chain, feed, iss, algo, out_path)
+        if upload_fragment:
+            oras_proxy.attach_fragment_to_image(feed, out_path)
+
+    sys.exit(0)
 
 
 def katapolicygen_confcom(
@@ -314,3 +467,62 @@ def get_output_type(outraw, outraw_pretty_print):
     elif outraw_pretty_print:
         output_type = security_policy.OutputType.PRETTY_PRINT
     return output_type
+<<<<<<< HEAD
+=======
+
+
+def get_fragment_output_type(outraw):
+    output_type = security_policy.OutputType.PRETTY_PRINT
+    if outraw:
+        output_type = security_policy.OutputType.RAW
+    return output_type
+
+
+def error_out(error_string):
+    logger.error(error_string)
+    sys.exit(1)
+
+
+def acipolicygen_error_check(
+    input_path: str,
+    arm_template: str,
+    arm_template_parameters: str,
+    image_name: str,
+    outraw: bool = False,
+    outraw_pretty_print: bool = False,
+    diff: bool = False,
+    save_to_file: str = None,
+    print_policy_to_terminal: bool = False,
+    print_existing_policy: bool = False,
+    include_fragments: bool = False,
+    fragments_json: str = None,
+):
+
+    if sum(map(bool, [input_path, arm_template, image_name])) != 1:
+        error_out("Can only generate CCE policy from one source at a time")
+    if sum(map(bool, [print_policy_to_terminal, outraw, outraw_pretty_print])) > 1:
+        error_out("Can only print in one format at a time")
+    elif (diff and input_path) or (diff and image_name):
+        error_out("Can only diff CCE policy from ARM Template")
+    elif arm_template_parameters and not arm_template:
+        error_out(
+            "Can only use ARM Template Parameters if ARM Template is also present"
+        )
+    elif save_to_file and arm_template and not (print_policy_to_terminal or outraw or outraw_pretty_print):
+        error_out("Must print policy to terminal when saving to file")
+    if fragments_json and not include_fragments:
+        error_out("Using a --fragments-json file requires the --include-fragments flag")
+    if include_fragments:
+        # make sure the ORAS CLI is installed
+        oras_proxy.check_oras_cli()
+
+    if print_existing_policy or outraw or outraw_pretty_print:
+        logger.warning(
+            "%s %s %s %s %s",
+            "Secrets that are included in the provided arm template or configuration files ",
+            "in the container env or cmd sections will be printed out with this flag.",
+            "These are outputed secrets that you must protect. Be sure that you do not include these secrets in your",
+            "source control. Also verify that no secrets are present in the logs of your command or script.",
+            "For additional information, see http://aka.ms/clisecrets. \n",
+        )
+>>>>>>> ec183f9fd (initial commit of image attached fragments)

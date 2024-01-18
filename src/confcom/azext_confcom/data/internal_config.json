@@ -279,6 +279,12 @@
             ]
         }
     ],
+    "reserved_fragment_namespaces": [
+        "microsoftcontainerinstance",
+        "data",
+        "input",
+        "policy"
+    ],
     "default_containers": [
         {
             "command": [
