@@ -4,7 +4,6 @@
 # --------------------------------------------------------------------------------------------
 
 import subprocess
-from typing import List
 import os
 import stat
 import sys
@@ -105,11 +104,12 @@ class KataPolicyGenProxy:  # pylint: disable=too-few-public-methods
         print_policy=False,
         use_cached_files=False,
         settings_file_name=None,
+
         rules_file_name=None,
         print_version=False,
         containerd_pull=False,
         containerd_socket_path=None
-    ) -> List[str]:
+    ) -> list[str]:
         policy_bin_str = str(self.policy_bin)
         # get path to data and rules folder
         arg_list = [policy_bin_str]

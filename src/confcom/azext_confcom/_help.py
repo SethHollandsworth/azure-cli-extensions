@@ -93,6 +93,18 @@ helps[
           type: boolean
           short-summary: 'When enabled, the generated policy will not contain the ID field. This will keep the policy from being tied to a specific image name and tag.'
 
+        - name: --include-fragments -f
+          type: boolean
+          short-summary: 'When enabled, image-attached fragments will be pulled and used for generating the policy or the path specified by --fragments-json will be used'
+
+        - name: --fragments-json -j
+          type: string
+          short-summary: 'Path to JSON file containing fragment information to use for generating a policy. This requires --include-fragments to be enabled'
+
+        - name: --exclude-default-fragments -e
+          type: boolean
+          short-summary: 'When enabled, the default fragments are not included in the generated policy. This includes containers needed to mount azure files, mount secrets, mount git repos, and other common ACI features'
+
     examples:
         - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template
           text: az confcom acipolicygen --template-file "./template.json"
@@ -102,6 +114,94 @@ helps[
           text: az confcom acipolicygen --template-file "./template.json" -s "./output-file.txt" --print-policy
         - name: Input an ARM Template file and use a tar file as the image source instead of the Docker daemon
           text: az confcom acipolicygen --template-file "./template.json" --tar "./image.tar"
+        - name: Input an ARM Template file and use a fragments JSON file to generate a policy
+          text: az confcom acipolicygen --template-file "./template.json" --fragments-json "./fragments.json" --include-fragments
+"""
+
+helps[
+    "confcom acifragmentgen"
+] = """
+    type: command
+    short-summary: Create a Confidential Container Policy Fragment for ACI.
+
+    parameters:
+        - name: --image
+          type: string
+          short-summary: 'Image to use for the generated policy fragment'
+
+        - name: --input -i
+          type: string
+          short-summary: 'Path to a JSON file containing the configuration for the generated policy fragment'
+
+        - name: --tar
+          type: string
+          short-summary: 'Path to either a tarball containing image layers or a JSON file containing paths to tarballs of image layers'
+
+        - name: --namespace -n
+          type: string
+          short-summary: 'Namespace to use for the generated policy fragment'
+
+        - name: --svn
+          type: string
+          short-summary: 'Minimum Allowed Software Version Number for the generated policy fragment'
+
+        - name: feed
+          type: string
+          short-summary: 'Feed to use for the generated policy fragment'
+
+        - name: --key -k
+          type: string
+          short-summary: 'Path to key file to use for signing the generated policy fragment'
+
+        - name: --chain
+          type: string
+          short-summary: 'Path to certificate chain file to use for signing the generated policy fragment'
+
+        - name: --algo
+          type: string
+          short-summary: 'Algorithm used for signing the generated policy fragment. Default is ES384'
+
+        - name: --fragment-path, -p
+          type: string
+          short-summary: 'Path to a policy fragment to be used with --generate-import to make import statements without having access to the OCI registry containing the fragment'
+
+        - name: --generate-import
+          type: boolean
+          short-summary: 'Generate an import statement for a policy fragment.'
+
+        - name: --disable-stdio
+          type: boolean
+          short-summary: 'When enabled, the containers in the container group do not have access to stdio.'
+
+        - name: --debug-mode
+          type: boolean
+          short-summary: 'When enabled, the generated security policy adds the ability to use /bin/sh or /bin/bash to debug the container. It also enabled stdio access, ability to dump stack traces, and enables runtime logging. It is recommended to only use this option for debugging purposes.'
+
+        - name: --output-filename
+          type: string
+          short-summary: 'Save output policy to given file path.'
+
+        - name: --outraw
+          type: boolean
+          short-summary: 'Output policy in clear text compact JSON instead of default pretty print format'
+
+        - name: --upload-fragment
+          type: boolean
+          short-summary: 'When enabled, the generated policy fragment will be uploaded to the registry of the image being used'
+
+        - name: --fragments-json -j
+          type: string
+          short-summary: 'Path to JSON file to write fragment import information. This is used with --generate-import to be fed into a subsequent call to acipolicygen. If not specified, the import statement will print to the console'
+
+    examples:
+        - name: Input an image name to generate a simple fragment
+          text: az confcom acifragmentgen --image mcr.microsoft.com/azuredocs/aci-helloworld
+        - name: Input a config file to generate a fragment with a custom namespace and debug mode enabled
+          text: az confcom acifragmentgen --config "./config.json" --namespace "my-namespace" --debug-mode
+        - name: Generate an import statement with a signed local fragment
+          text: az confcom acifragmentgen --fragment-path "./fragment.json" --generate-import --minimum-svn 1
+        - name: Generate a fragment and cose sign it with a key and chain
+          text: az confcom acifragmentgen --image mcr.microsoft.com/azuredocs/aci-helloworld --key "./key.pem" --chain "./chain.pem" --svn 1 --namespace contoso --no-print
 """
 
 helps[

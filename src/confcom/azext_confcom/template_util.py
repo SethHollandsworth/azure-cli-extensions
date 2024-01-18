@@ -19,7 +19,6 @@ from azext_confcom.errors import (
 from azext_confcom import os_util
 from azext_confcom import config
 
-
 # TODO: these can be optimized to not have so many groups in the single match
 # make this global so it can be used in multiple functions
 PARAMETER_AND_VARIABLE_REGEX = r"\[(?:parameters|variables)\(\s*'([^\.\/]+?)'\s*\)\]"
@@ -200,7 +199,7 @@ def process_env_vars_from_template(params: dict,
     # add in the env vars from the template
     template_env_vars = case_insensitive_dict_get(
         image_properties, config.ACI_FIELD_TEMPLATE_ENVS
-    )
+    ) or []
 
     if template_env_vars:
         for env_var in template_env_vars:
@@ -456,6 +455,75 @@ def filter_non_pod_resources(resources: List[dict]) -> List[dict]:
     """
     important_resource_names = ["Pod", "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicaSet"]
     return [resource for resource in resources if resource and resource.get("kind") in important_resource_names]
+def process_env_vars_from_config(container) -> List[Dict[str, str]]:
+    env_vars = []
+    # add in the env vars from the template
+    template_env_vars = case_insensitive_dict_get(
+        container, config.ACI_FIELD_TEMPLATE_ENVS
+    ) or []
+    for env_var in template_env_vars:
+        name = case_insensitive_dict_get(env_var, "name")
+        value = case_insensitive_dict_get(env_var, "value") or case_insensitive_dict_get(env_var, "secureValue")
+
+        if not name:
+            eprint(
+                f"Environment variable with value: {value} is missing a name"
+            )
+        elif not value:
+            eprint(f'Environment variable {name} does not have a value. Please check the template file.')
+
+        env_vars.append({
+            config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
+            config.ACI_FIELD_CONTAINERS_ENVS_VALUE: value,
+            config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY:
+                "re2" if case_insensitive_dict_get(env_var, "regex") else "string",
+        })
+
+    return env_vars
+
+
+def process_fragment_imports(rego_imports) -> None:
+    for rego_import in rego_imports:
+        feed = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED
+        )
+        if not isinstance(feed, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED}"] '
+                + "can only be a string value."
+            )
+
+        iss = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER
+        )
+        if not isinstance(iss, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER}"] '
+                + "can only be a string value."
+            )
+
+        minimum_svn = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN
+        )
+
+        if not minimum_svn or not minimum_svn.isdigit():
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN}"] '
+                + "can only be an integer value."
+            )
+
+        includes = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES
+        )
+        if not isinstance(includes, list):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES}"] '
+                + "can only be a list value."
+            )
 
 
 def process_mounts(image_properties: dict, volumes: List[dict]) -> List[Dict[str, str]]:
@@ -526,6 +594,59 @@ def process_configmap(image_properties: dict) -> List[Dict[str, str]]:
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_CONFIGMAP_LOCATION,
             config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY: False,
             }]
+
+
+def process_mounts_from_config(image_properties: dict) -> List[Dict[str, str]]:
+    mounts = []
+    # get the mount types from the mounts section of the ARM template
+    volume_mounts = (
+        case_insensitive_dict_get(
+            image_properties, config.ACI_FIELD_TEMPLATE_VOLUME_MOUNTS
+        )
+        or []
+    )
+
+    if volume_mounts and not isinstance(volume_mounts, list):
+        # parameter definition is in parameter file but not arm
+        # template
+        eprint(
+            f'Parameter ["{config.ACI_FIELD_TEMPLATE_VOLUME_MOUNTS}"] must be a list'
+        )
+
+    # get list of mount information based on mount name
+    for mount in volume_mounts:
+        mount_type = case_insensitive_dict_get(
+            mount, config.ACI_FIELD_TEMPLATE_MOUNTS_TYPE
+        )
+
+        if not mount_type:
+            eprint(
+                f'Field ["{config.ACI_FIELD_TEMPLATE_MOUNTS_TYPE}"] is empty or cannot be found in mount'
+            )
+
+        mount_path = case_insensitive_dict_get(
+            mount, config.ACI_FIELD_TEMPLATE_MOUNTS_PATH
+        )
+
+        if not mount_path:
+            eprint(
+                f'Field ["{config.ACI_FIELD_TEMPLATE_MOUNTS_PATH}"] is empty or cannot be found in mount'
+            )
+
+        mounts.append(
+            {
+                config.ACI_FIELD_CONTAINERS_MOUNTS_TYPE: case_insensitive_dict_get(
+                    mount, config.ACI_FIELD_TEMPLATE_MOUNTS_TYPE
+                ),
+                config.ACI_FIELD_CONTAINERS_MOUNTS_PATH: case_insensitive_dict_get(
+                    mount, config.ACI_FIELD_TEMPLATE_MOUNTS_PATH
+                ),
+                config.ACI_FIELD_CONTAINERS_MOUNTS_READONLY: case_insensitive_dict_get(
+                    mount, config.ACI_FIELD_TEMPLATE_MOUNTS_READONLY
+                ),
+            }
+        )
+    return mounts
 
 
 def get_values_for_params(input_parameter_json: dict, all_params: dict) -> Dict[str, Any]:
@@ -860,23 +981,26 @@ def decompose_confidential_properties(cce_policy: str) -> Tuple[List[Dict], List
         # this is expected, we do not want json
         pass
 
+    return extract_containers_and_fragments_from_text(cce_policy)
+
+
+def extract_containers_and_fragments_from_text(text: str) -> Tuple[List[Dict], List[Dict]]:
     try:
-        container_text = extract_containers_from_text(cce_policy, container_start)
+        container_text = extract_containers_from_text(text, config.REGO_CONTAINER_START)
         # replace tabs with 4 spaces, YAML parser can take in JSON with trailing commas but not tabs
         # so we need to get rid of the tabs
         container_text = container_text.replace("\t", "    ")
-
         containers = yaml.load(container_text, Loader=yaml.FullLoader)
-
         fragment_text = extract_containers_from_text(
-            cce_policy, fragment_start
+            text, config.REGO_FRAGMENT_START
         ).replace("\t", "    ")
 
         fragments = yaml.load(
             fragment_text,
             Loader=yaml.FullLoader,
         )
-    except yaml.YAMLError:
+    except yaml.YAMLError as e:
+        eprint(f"Error parsing rego file: {e}")
         # reading the rego file failed, so we'll just return the default outputs
         containers = []
         fragments = []
@@ -1262,7 +1386,6 @@ def print_existing_policy_from_yaml(virtual_node_yaml_path: str) -> None:
 
 
 def process_seccomp_policy(policy2):
-
     # helper function to add fields to a dictionary if they don't exist
     def defaults(obj, default):
         for key in default:
