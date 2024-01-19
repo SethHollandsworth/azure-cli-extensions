@@ -158,6 +158,12 @@ def load_arguments(self, _):
             help="Fragments to add to the generated policy in JSON format",
 
         )
+        c.argument(
+            "upload_fragment",
+            options_list=("--upload-fragment", "-u"),
+            required=False,
+            help="Upload a policy fragment to a container registry",
+        )
 
     with self.argument_context("confcom katapolicygen") as c:
         c.argument(

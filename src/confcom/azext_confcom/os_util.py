@@ -194,11 +194,11 @@ def attach_fragment_to_image(image_name: str, filename: str):
     # attach the fragment to the image
     item = subprocess.run(
         ["oras", "attach", "--artifact-type", "policy/fragment", image_name, filename],
-        check=True,
+        check=False,
         capture_output=True,
     )
     if item.returncode != 0:
-        eprint(f"Could not attach fragment to image: {image_name}")
+        eprint(f"Could not attach fragment to image: {image_name}. Failed with {item.stderr}")
 
     # extract digest from stdout
     digest = item.stdout.decode("utf8").strip("\n").split("\n")[-1]

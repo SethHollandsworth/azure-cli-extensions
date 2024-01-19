@@ -21,6 +21,7 @@ from azext_confcom.init_checks import run_initial_docker_checks
 from azext_confcom import security_policy
 from azext_confcom.security_policy import OutputType
 from azext_confcom.kata_proxy import KataPolicyGenProxy
+from azext_confcom.cose_proxy import CoseSignToolProxy
 
 
 logger = get_logger(__name__)
@@ -49,6 +50,7 @@ def acipolicygen_confcom(
     key: str = None,
     fragments_json: str = None,
     generate_fragment: bool = False,
+    upload_fragment: bool = False,
 ):
 
     if sum(map(bool, [input_path, arm_template, image_name])) != 1:
@@ -160,10 +162,13 @@ def acipolicygen_confcom(
             fragment_text = policy.generate_fragment(namespace, svn, fragments)
             filename = f"{namespace}.rego"
             os_util.write_str_to_file(filename, fragment_text)
-            # print(f"{fragment_text}\n\n")
+
             if key:
-                os_util.sign_fragment(key)
-                os_util.attach_fragment_to_image(image_name, filename)
+                cose_proxy = CoseSignToolProxy()
+                cose_proxy.cose_sign(filename, key)
+                if upload_fragment:
+                    os_util.attach_fragment_to_image(image_name, filename)
+
         else:
             # output to terminal
             print(f"{policy.get_serialized_output(output_type)}\n\n")

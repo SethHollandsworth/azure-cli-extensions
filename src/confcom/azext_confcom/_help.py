@@ -105,6 +105,10 @@ helps[
           type: string
           short-summary: 'Path to JSON file containing fragments to use for generating the policy'
 
+        -name: --upload-fragment -u
+          type: boolean
+          short-summary: 'When enabled, the generated policy fragment will be uploaded to the registry of the image being used'
+
     examples:
         - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template
           text: az confcom acipolicygen --template-file "./template.json"
