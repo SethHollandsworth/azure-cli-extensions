@@ -139,7 +139,7 @@ def load_arguments(self, _):
             "configmaps",
             options_list=("--configmaps"),
             required=False,
-            help="Kubernetes config maps json string (map[string]ConfigMap)",
+            help="Kubernetes config map filename",
         )
         c.argument(
             "kubernetes_port",
@@ -205,7 +205,7 @@ def load_arguments(self, _):
             "secrets",
             options_list=("--secrets"),
             required=False,
-            help="Kubernetes secrets map json string (map[string]Secret)",
+            help="Kubernetes secrets filename",
         )
 
     with self.argument_context("confcom katapolicygen") as c:
