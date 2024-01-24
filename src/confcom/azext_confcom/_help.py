@@ -101,13 +101,21 @@ helps[
           type: string
           short-summary: 'Path to key file to use for signing the generated policy fragment'
 
+        - name: --chain -c
+          type: string
+          short-summary: 'Path to certificate chain file to use for signing the generated policy fragment'
+
         -name: --fragments-json -f
           type: string
           short-summary: 'Path to JSON file containing fragments to use for generating the policy'
 
-        -name: --upload-fragment -u
+        -name: --upload-fragment
           type: boolean
           short-summary: 'When enabled, the generated policy fragment will be uploaded to the registry of the image being used'
+
+        -name: --use-fragments -u
+          type: boolean
+          short-summary: 'When enabled, image-attached fragments will be pulled and used for generating the policy or the path specified by --fragments-json will be used'
 
     examples:
         - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template

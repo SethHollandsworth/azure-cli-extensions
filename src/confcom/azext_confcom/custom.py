@@ -48,6 +48,8 @@ def acipolicygen_confcom(
     namespace: str = None,
     svn: str = None,
     key: str = None,
+    chain: str = None,
+    feed: str = None,
     fragments_json: str = None,
     generate_fragment: bool = False,
     upload_fragment: bool = False,
@@ -165,7 +167,8 @@ def acipolicygen_confcom(
 
             if key:
                 cose_proxy = CoseSignToolProxy()
-                cose_proxy.cose_sign(filename, key)
+                iss = cose_proxy.create_issuer(chain)
+                cose_proxy.cose_sign(filename, key, chain, feed, iss)
                 if upload_fragment:
                     os_util.attach_fragment_to_image(image_name, filename)
 

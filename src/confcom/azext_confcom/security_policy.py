@@ -36,6 +36,7 @@ from azext_confcom.template_util import (
     get_diff_size
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
+from azext_confcom.oras_proxy import OrasProxy
 
 logger = get_logger()
 
@@ -419,6 +420,9 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             for image in container_images:
                 image.parse_all_parameters_and_variables(AciPolicy.all_params, AciPolicy.all_vars)
                 image_name = f"{image.base}:{image.tag}"
+
+                self.pull_all_image_attached_fragments(image_name)
+                exit(1)
                 image_info, tar = get_image_info(progress, message_queue, tar_mapping, image)
 
                 # verify and populate the working directory property
@@ -524,6 +528,14 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
     def pull_image(self, image: ContainerImage) -> Any:
         client = self._get_docker_client()
         return client.images.pull(image.base, image.tag)
+
+    def pull_all_image_attached_fragments(self, image):
+        oras_proxy = OrasProxy()
+
+        fragments = oras_proxy.discover(image)
+        for fragment_digest in fragments:
+            fragment_content = oras_proxy.pull(image, fragment_digest)
+            print("fragment: ", fragment_content)
 
 
 # pylint: disable=R0914,

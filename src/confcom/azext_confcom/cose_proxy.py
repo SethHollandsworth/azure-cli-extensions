@@ -65,12 +65,12 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
     def __init__(self):
         script_directory = os.path.dirname(os.path.realpath(__file__))
-        DEFAULT_LIB = "./bin/CoseSignTool"
+        DEFAULT_LIB = "./bin/sign1util"
 
         if host_os == "Linux":
-            DEFAULT_LIB += "-Linux/release/CoseSignTool"
+            DEFAULT_LIB += ""
         elif host_os == "Windows":
-            DEFAULT_LIB += "-Windows/release/CoseSignTool.exe"
+            DEFAULT_LIB += ".exe"
         elif host_os == "Darwin":
             eprint("The extension for MacOS has not been implemented.")
         else:
@@ -88,20 +88,24 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             st = os.stat(self.policy_bin)
             os.chmod(self.policy_bin, st.st_mode | stat.S_IXUSR)
 
-    # Takes in a path to a fragment file and a path to a cert file
-    # Writes a file called payload-file.csm to the current directory which is the payload COSE signed and wrapped
-    # CoseSignTool has no expected stdout so we only print stderr if there is an error
     def cose_sign(
         self,
         payload_path: str,
+        key_path: str,
         cert_path: str,
+        feed: str,
+        iss: str,
+        out_path: str = "payload.rego.cose",
     ) -> bool:
         policy_bin_str = str(self.policy_bin)
 
-        password = getpass.getpass("Enter password for certificate: ")
-        # TODO: try this out with a password protected cert
-        # TODO: figure out how to make it non-interactive for certs without a password
-        arg_list = [policy_bin_str, "sign", "/Payload", payload_path, "/PfxCertificate", cert_path, "/Password", password, "/EmbedPayload", "/SignatureFile", "payload-file.csm"]
+        arg_list = [policy_bin_str, "create", "-algo", "ES384", "-chain", cert_path, "-claims", payload_path, "-key", key_path, "-out", out_path,]
+
+        if feed:
+            arg_list.extend(["-feed", feed])
+
+        if iss:
+            arg_list.extend(["-issuer", iss])
 
         item = subprocess.run(
             arg_list,
@@ -116,3 +120,44 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             sys.exit(item.returncode)
 
         return True
+
+    def get_payload(
+        self,
+        signature_path: str,
+    ) -> str:
+        policy_bin_str = str(self.policy_bin)
+
+        arg_list = [policy_bin_str, "get", "/SignatureFile", signature_path, "/Roots", "/RevocationMode", "none"]
+
+        item = subprocess.run(
+            arg_list,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+        # get the exit code from the subprocess
+        if item.returncode != 0:
+            eprint("Error getting the policy fragment: ", item.stderr)
+            sys.exit(item.returncode)
+
+        return item.stdout.decode("utf-8")
+
+    def create_issuer(self, cert_path: str) -> str:
+        policy_bin_str = str(self.policy_bin)
+
+        arg_list = [policy_bin_str, "did-x509", "-chain", cert_path, "-policy", "EKU"]
+
+        item = subprocess.run(
+            arg_list,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+        # get the exit code from the subprocess
+        if item.returncode != 0:
+            eprint("Error creating the issuer: ", item.stderr)
+            sys.exit(item.returncode)
+
+        return item.stdout.decode("utf-8")
