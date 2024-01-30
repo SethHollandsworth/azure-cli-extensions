@@ -127,6 +127,50 @@ helps[
         - name: Input an ARM Template file and use a tar file as the image source instead of the Docker daemon
           text: az confcom acipolicygen --template-file "./template.json" --tar "./image.tar"
 """
+# TODO: add examples above and below for using fragments
+helps[
+    "confcom acifragmentgen"
+] = """
+    type: command
+    short-summary: Create a Confidential Container Policy Fragment for ACI.
+
+    parameters:
+        - name: --image -i
+          type: string
+          short-summary: 'Image to use for the generated policy fragment'
+
+        - name: --namespace -n
+          type: string
+          short-summary: 'Namespace to use for the generated policy fragment'
+
+        - name: --svn
+          type: string
+          short-summary: 'Minimum Allowed Software Version Number for the generated policy fragment'
+
+        - name: feed
+          type: string
+          short-summary: 'Feed to use for the generated policy fragment'
+
+        - name: --key -k
+          type: string
+          short-summary: 'Path to key file to use for signing the generated policy fragment'
+
+        - name: --chain -c
+          type: string
+          short-summary: 'Path to certificate chain file to use for signing the generated policy fragment'
+
+        - name: --fragments-json -f
+          type: string
+          short-summary: 'Path to JSON file containing fragments to use for generating the policy'
+
+        - name: --upload-fragment
+          type: boolean
+          short-summary: 'When enabled, the generated policy fragment will be uploaded to the registry of the image being used'
+
+    examples:
+        - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template
+          text: az confcom acipolicygen --template-file "./template.json"
+"""
 
 helps[
     "confcom katapolicygen"

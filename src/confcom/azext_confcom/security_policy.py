@@ -421,8 +421,9 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 image.parse_all_parameters_and_variables(AciPolicy.all_params, AciPolicy.all_vars)
                 image_name = f"{image.base}:{image.tag}"
 
-                self.pull_all_image_attached_fragments(image_name)
-                exit(1)
+                # TODO:
+                # self.pull_all_image_attached_fragments(image_name)
+
                 image_info, tar = get_image_info(progress, message_queue, tar_mapping, image)
 
                 # verify and populate the working directory property

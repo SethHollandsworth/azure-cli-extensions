@@ -131,8 +131,8 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         item = subprocess.run(
             arg_list,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
             check=False,
         )
 
@@ -146,12 +146,14 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
     def create_issuer(self, cert_path: str) -> str:
         policy_bin_str = str(self.policy_bin)
 
-        arg_list = [policy_bin_str, "did-x509", "-chain", cert_path, "-policy", "EKU"]
+        arg_list = [policy_bin_str, "did-x509", "-chain", cert_path, "-policy", "CN"]
+
+        print("arg_list: ", arg_list)
 
         item = subprocess.run(
             arg_list,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
             check=False,
         )
 

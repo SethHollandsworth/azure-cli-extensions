@@ -27,6 +27,8 @@ def load_arguments(self, _):
             options_list=("--input", "-i"),
             required=False,
             help="Input JSON config file",
+            # nargs="*"
+            action="append"
         )
         c.argument(
             "arm_template",
@@ -128,22 +130,42 @@ def load_arguments(self, _):
             help="Use buffered image reader for dmverity hashing. This will speed up the hashing process but use much more memory.",
         )
         c.argument(
-            "generate_fragment",
-            options_list=("--generate-fragment", "-g"),
+            "fragments_json",
+            options_list=("--fragments-json", "-j"),
             required=False,
-            help="Generate a policy fragment",
+            help="Path to JSON file containing fragment information",
+        )
+
+    with self.argument_context("confcom acifragmentgen") as c:
+        c.argument(
+            "image_name",
+            options_list=("--image", "-i"),
+            required=True,
+            help="Image Name",
+        )
+        c.argument(
+            "tar_mapping_location",
+            options_list=("--tar",),
+            required=False,
+            help="Tar File locations in JSON format where the key is the name and tag of the image and the value is the path to the tar file",
         )
         c.argument(
             "namespace",
             options_list=("--namespace", "-n"),
-            required=False,
+            required=True,
             help="Namespace for the generated policy fragment",
         )
         c.argument(
             "svn",
             options_list=("--svn"),
-            required=False,
+            required=True,
             help="Software Version Number for the generated policy fragment",
+        )
+        c.argument(
+            "feed",
+            options_list=("--feed", "-f"),
+            required=False,
+            help="Feed for the generated policy fragment",
         )
         c.argument(
             "key",
@@ -152,11 +174,21 @@ def load_arguments(self, _):
             help="Key for signing the generated policy fragment",
         )
         c.argument(
-            "fragments_json",
-            options_list=("--fragments-json", "-f"),
+            "chain",
+            options_list=("--chain", "-c"),
             required=False,
+<<<<<<< HEAD
             help="Fragments to add to the generated policy in JSON format",
 
+=======
+            help="Certificate chain for signing the generated policy fragment",
+        )
+        c.argument(
+            "fragments_json",
+            options_list=("--fragments-json", "-j"),
+            required=False,
+            help="Path to JSON file containing fragment information",
+>>>>>>> b4f4a8676 (updating with new flags)
         )
         c.argument(
             "upload_fragment",

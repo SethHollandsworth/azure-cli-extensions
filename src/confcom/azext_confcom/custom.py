@@ -53,6 +53,7 @@ def acipolicygen_confcom(
     fragments_json: str = None,
     generate_fragment: bool = False,
     upload_fragment: bool = False,
+    use_fragments: bool = False,
 ):
 
     if sum(map(bool, [input_path, arm_template, image_name])) != 1:
@@ -72,7 +73,7 @@ def acipolicygen_confcom(
 
     if generate_fragment and (not namespace or not svn):
         error_out("Must provide both namespace and svn for generating policy fragments")
-    if generate_fragment:
+    if use_fragments:
         # make sure the ORAS CLI is installed
         os_util.check_oras_cli()
 
@@ -156,21 +157,6 @@ def acipolicygen_confcom(
                 # this is always going to be the unencoded policy
                 print(str_to_sha256(policy.get_serialized_output(OutputType.RAW)))
                 logger.info("CCE Policy successfully injected into ARM Template")
-        elif generate_fragment and image_name:
-            fragments = []
-            if fragments_json:
-                fragments = os_util.load_json_from_file(fragments_json)
-
-            fragment_text = policy.generate_fragment(namespace, svn, fragments)
-            filename = f"{namespace}.rego"
-            os_util.write_str_to_file(filename, fragment_text)
-
-            if key:
-                cose_proxy = CoseSignToolProxy()
-                iss = cose_proxy.create_issuer(chain)
-                cose_proxy.cose_sign(filename, key, chain, feed, iss)
-                if upload_fragment:
-                    os_util.attach_fragment_to_image(image_name, filename)
 
         else:
             # output to terminal
@@ -186,6 +172,46 @@ def acipolicygen_confcom(
                 policy.save_to_file(save_to_file, output_type)
 
     sys.exit(exit_code)
+
+
+def acifragmentgen_confcom(
+    image_name: str,
+    tar_mapping_location: str,
+    namespace: str,
+    svn: str,
+    feed: str,
+    key: str,
+    chain: str,
+    fragments_json: str = None,
+    upload_fragment: bool = False,
+):
+    tar_mapping = tar_mapping_validation(tar_mapping_location)
+
+    if image_name:
+        policy = security_policy.load_policy_from_image_name(
+            image_name
+        )
+        policy.populate_policy_content_for_all_images(
+            individual_image=bool(image_name), tar_mapping=tar_mapping
+        )
+        fragments = []
+        if fragments_json:
+            fragments = os_util.load_json_from_file(fragments_json)
+
+        fragment_text = policy.generate_fragment(namespace, svn, fragments)
+        filename = f"{namespace}.rego"
+        os_util.write_str_to_file(filename, fragment_text)
+
+        if key:
+            cose_proxy = CoseSignToolProxy()
+            iss = cose_proxy.create_issuer(chain)
+            print("iss: ", iss)
+
+            cose_proxy.cose_sign(filename, key, chain, feed, iss)
+            if upload_fragment:
+                os_util.attach_fragment_to_image(image_name, filename)
+
+    sys.exit(0)
 
 
 def katapolicygen_confcom(
