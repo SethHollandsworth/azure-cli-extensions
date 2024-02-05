@@ -4,15 +4,14 @@
 # --------------------------------------------------------------------------------------------
 
 import subprocess
-from typing import List
 import os
 import stat
 import sys
+import tempfile
 from pathlib import Path
 import platform
 from zipfile import ZipFile
 import requests
-import getpass
 from azext_confcom.errors import eprint
 
 
@@ -99,7 +98,20 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
     ) -> bool:
         policy_bin_str = str(self.policy_bin)
 
-        arg_list = [policy_bin_str, "create", "-algo", "ES384", "-chain", cert_path, "-claims", payload_path, "-key", key_path, "-out", out_path,]
+        arg_list = [
+            policy_bin_str,
+            "create",
+            "-algo",
+            "ES384",
+            "-chain",
+            cert_path,
+            "-claims",
+            payload_path,
+            "-key",
+            key_path,
+            "-out",
+            out_path,
+        ]
 
         if feed:
             arg_list.extend(["-feed", feed])
@@ -161,5 +173,53 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         if item.returncode != 0:
             eprint("Error creating the issuer: ", item.stderr)
             sys.exit(item.returncode)
+
+        return item.stdout.decode("utf-8")
+
+    def generate_import_from_path(self, fragment_path: str):
+    # TODO: make sure the fragment is signed correctly
+        policy_bin_str = str(self.policy_bin)
+
+        arg_list_chain = [policy_bin_str, "chain", fragment_path]
+
+        item = subprocess.run(
+            arg_list_chain,
+            check=False,
+            capture_output=True,
+        )
+
+        chain = item.stdout.decode("utf-8")
+
+        with tempfile.TemporaryFile() as f:
+            f.write(chain.encode("utf-8"))
+            f.seek(0)
+
+            # count the number of certs in the chain
+            num_certs = chain.count("-----BEGIN CERTIFICATE-----")
+
+            arg_list = [
+                policy_bin_str,
+                "did-x509",
+                "-in",
+                fragment_path,
+                "-chain",
+                f.name,
+                "-policy",
+                "eku",
+                "-index",
+                str(num_certs - 1)
+            ]
+
+            item = subprocess.run(
+                arg_list,
+                stdout=sys.stdout,
+                stderr=sys.stderr,
+                check=False,
+            )
+
+            # get the exit code from the subprocess
+            if item.returncode != 0:
+                eprint("Error generating import statement")
+                sys.exit(item.returncode)
 
         return item.stdout.decode("utf-8")

@@ -130,6 +130,12 @@ def load_arguments(self, _):
             help="Use buffered image reader for dmverity hashing. This will speed up the hashing process but use much more memory.",
         )
         c.argument(
+            "include_fragments",
+            options_list=("--include-fragments", "-f"),
+            required=False,
+            help="Include fragments in the generated policy",
+        )
+        c.argument(
             "fragments_json",
             options_list=("--fragments-json", "-j"),
             required=False,
@@ -140,8 +146,14 @@ def load_arguments(self, _):
         c.argument(
             "image_name",
             options_list=("--image", "-i"),
-            required=True,
+            required=False,
             help="Image Name",
+        )
+        c.argument(
+            "config",
+            options_list=("--config", "-c"),
+            required=False,
+            help="Config file for information about the intended generated policy fragment",
         )
         c.argument(
             "tar_mapping_location",
@@ -184,11 +196,45 @@ def load_arguments(self, _):
             help="Certificate chain for signing the generated policy fragment",
         )
         c.argument(
-            "fragments_json",
-            options_list=("--fragments-json", "-j"),
+            "fragment_path",
+            options_list=("--fragment-path", "-p"),
             required=False,
+<<<<<<< HEAD
             help="Path to JSON file containing fragment information",
 >>>>>>> b4f4a8676 (updating with new flags)
+=======
+            help="Path to a policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry",
+        )
+        c.argument(
+            "generate_import",
+            options_list=("--generate-import", "-g"),
+            required=False,
+            help="Generate an import statement for a policy fragment",
+        )
+        c.argument(
+            "disable_stdio",
+            options_list=("--disable-stdio",),
+            required=False,
+            help="Disabling container stdio will disable the ability to see the output of the container in the terminal for Confidential ACI",
+        )
+        c.argument(
+            "debug_mode",
+            options_list=("--debug-mode",),
+            required=False,
+            help="Debug mode will enable processes in a container group that are helpful for debugging",
+        )
+        c.argument(
+            "output_filename",
+            options_list=("--output-filename", "-o"),
+            required=False,
+            help="Output filename for the generated policy fragment",
+        )
+        c.argument(
+            "outraw",
+            options_list=("--outraw"),
+            required=False,
+            help="Output policy fragment in clear text compact JSON instead of default base64 format",
+>>>>>>> 20e0cab0e (updated spec for policy fragments)
         )
         c.argument(
             "upload_fragment",

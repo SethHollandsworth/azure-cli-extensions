@@ -113,9 +113,13 @@ helps[
           type: boolean
           short-summary: 'When enabled, the generated policy fragment will be uploaded to the registry of the image being used'
 
-        -name: --use-fragments -u
+        - name: --include-fragments -f
           type: boolean
           short-summary: 'When enabled, image-attached fragments will be pulled and used for generating the policy or the path specified by --fragments-json will be used'
+
+        - name: --fragments-json -j
+          type: string
+          short-summary: 'Path to JSON file containing fragment information to use for generating a policy'
 
     examples:
         - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template
@@ -139,6 +143,14 @@ helps[
           type: string
           short-summary: 'Image to use for the generated policy fragment'
 
+        - name: --config -c
+          type: string
+          short-summary: 'Path to a JSON file containing the configuration for the generated policy fragment'
+
+        - name: --tar
+          type: string
+          short-summary: 'Path to either a tarball containing image layers or a JSON file containing paths to tarballs of image layers'
+
         - name: --namespace -n
           type: string
           short-summary: 'Namespace to use for the generated policy fragment'
@@ -159,9 +171,29 @@ helps[
           type: string
           short-summary: 'Path to certificate chain file to use for signing the generated policy fragment'
 
-        - name: --fragments-json -f
+        - name: --fragment-path, -p
           type: string
-          short-summary: 'Path to JSON file containing fragments to use for generating the policy'
+          short-summary: 'Path to a policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry'
+
+        - name: --generate-import
+          type: boolean
+          short-summary: 'Path to a policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry'
+
+        - name: --disable-stdio
+          type: boolean
+          short-summary: 'When enabled, the containers in the container group do not have access to stdio.'
+
+        - name: --debug-mode
+          type: boolean
+          short-summary: 'When enabled, the generated security policy adds the ability to use /bin/sh or /bin/bash to debug the container. It also enabled stdio access, ability to dump stack traces, and enables runtime logging. It is recommended to only use this option for debugging purposes.'
+
+        - name: --output-filename
+          type: string
+          short-summary: 'Save output policy to given file path.'
+
+        - name: --outraw
+          type: boolean
+          short-summary: 'Output policy in clear text compact JSON instead of default pretty print format'
 
         - name: --upload-fragment
           type: boolean

@@ -4,7 +4,6 @@
 # --------------------------------------------------------------------------------------------
 
 import subprocess
-from typing import List
 import os
 import stat
 import sys

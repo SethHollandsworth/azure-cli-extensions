@@ -36,7 +36,7 @@ from azext_confcom.template_util import (
     get_diff_size
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
-from azext_confcom.oras_proxy import OrasProxy
+
 
 logger = get_logger()
 
@@ -177,12 +177,12 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         # encode to base64
         return os_util.str_to_base64(policy_str)
 
-    def generate_fragment(self, namespace: str, svn: str, fragments_json) -> str:
+    def generate_fragment(self, namespace: str, svn: str, fragments_json, output_type: int) -> str:
         return config.CUSTOMER_REGO_FRAGMENT % (
             namespace,
             pretty_print_func(svn),
             pretty_print_func(fragments_json),
-            self.get_serialized_output(OutputType.PRETTY_PRINT, rego_boilerplate=False),
+            self.get_serialized_output(output_type, rego_boilerplate=False),
         )
 
     def _add_rego_boilerplate(self, output: str) -> str:
@@ -530,14 +530,6 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         client = self._get_docker_client()
         return client.images.pull(image.base, image.tag)
 
-    def pull_all_image_attached_fragments(self, image):
-        oras_proxy = OrasProxy()
-
-        fragments = oras_proxy.discover(image)
-        for fragment_digest in fragments:
-            fragment_content = oras_proxy.pull(image, fragment_digest)
-            print("fragment: ", fragment_content)
-
 
 # pylint: disable=R0914,
 def load_policy_from_arm_template_str(
@@ -861,3 +853,74 @@ def load_policy_from_str(data: str, debug_mode: bool = False) -> AciPolicy:
         rego_fragments=rego_fragments or config.DEFAULT_REGO_FRAGMENTS,
         debug_mode=debug_mode,
     )
+
+
+def load_policy_from_config_file(config_file, debug_mode: bool = False, disable_stdio: bool = False):
+    config_content = os_util.load_json_from_file(config_file)
+    return load_policy_from_config_str(config_content, debug_mode, disable_stdio)
+
+
+
+def load_policy_from_config_str(config_dict, debug_mode: bool, disable_stdio: bool):
+    containers = []
+
+    rego_fragments = case_insensitive_dict_get(
+        config_dict, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
+    )
+
+    container_list = case_insensitive_dict_get(
+        config_dict, config.ACI_FIELD_CONTAINERS
+    )
+
+    for container in container_list:
+        image_properties = case_insensitive_dict_get(
+            container, config.ACI_FIELD_TEMPLATE_PROPERTIES
+        )
+        image_name = case_insensitive_dict_get(
+            image_properties, config.ACI_FIELD_TEMPLATE_IMAGE
+        )
+
+        if not image_name:
+            eprint(
+                f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found'
+            )
+
+        exec_processes = []
+        extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
+        extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
+
+        # TODO: extra processing for regex env vars
+        # TODO: extra processing for mounts since we don't have a volume field
+
+        containers.append(
+            {
+                config.ACI_FIELD_CONTAINERS_ID: image_name,
+                config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE: image_name,
+                config.ACI_FIELD_CONTAINERS_ENVS: process_env_vars_from_template(
+                    AciPolicy.all_params, AciPolicy.all_vars, image_properties, False),
+                config.ACI_FIELD_CONTAINERS_COMMAND: case_insensitive_dict_get(
+                    image_properties, config.ACI_FIELD_TEMPLATE_COMMAND
+                )
+                or [],
+                config.ACI_FIELD_CONTAINERS_MOUNTS: process_mounts(image_properties, volumes),
+                config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES: exec_processes
+                + config.DEBUG_MODE_SETTINGS.get("execProcesses")
+                if debug_mode
+                else exec_processes,
+                config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
+                config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio,
+                config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT: case_insensitive_dict_get(
+                    image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+                ),
+            }
+        )
+
+    return AciPolicy(
+            {
+                config.ACI_FIELD_VERSION: "1.0",
+                config.ACI_FIELD_CONTAINERS: containers,
+            },
+            disable_stdio=disable_stdio,
+            rego_fragments=rego_fragments,
+            debug_mode=debug_mode,
+        )
