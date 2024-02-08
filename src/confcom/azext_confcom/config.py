@@ -157,6 +157,8 @@ DEFAULT_MOUNT_POLICY = _config["mount"]["default_policy"]
 DEFAULT_REGO_FRAGMENTS = _config["default_rego_fragments"]
 # things that need to be set for debug mode
 DEBUG_MODE_SETTINGS = _config["debugMode"]
+# reserved fragment names for existing pieces of Rego
+RESERVED_FRAGMENT_NAMES = _config["reserved_fragment_names"]
 # customer rego file for data to be injected
 REGO_FILE = "./data/customer_rego_policy.txt"
 REGO_FRAGMENT_FILE = "./data/customer_rego_fragment.txt"

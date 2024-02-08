@@ -164,13 +164,13 @@ def load_arguments(self, _):
         c.argument(
             "namespace",
             options_list=("--namespace", "-n"),
-            required=True,
+            required=False,
             help="Namespace for the generated policy fragment",
         )
         c.argument(
             "svn",
             options_list=("--svn"),
-            required=True,
+            required=False,
             help="Software Version Number for the generated policy fragment",
         )
         c.argument(

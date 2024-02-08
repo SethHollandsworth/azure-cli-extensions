@@ -8,7 +8,11 @@ import sys
 
 from pkg_resources import parse_version
 from knack.log import get_logger
-from azext_confcom.config import DEFAULT_REGO_FRAGMENTS
+from azext_confcom.config import (
+    DEFAULT_REGO_FRAGMENTS,
+    DATA_FOLDER,
+    RESERVED_FRAGMENT_NAMES
+)
 from azext_confcom import os_util
 from azext_confcom.template_util import (
     pretty_print_func,
@@ -198,6 +202,10 @@ def acifragmentgen_confcom(
         error_out("Must provide either an image name or a config file")
     if generate_import and sum(map(bool, [config, image_name])) != 1:
         error_out("Must provide fragment path, config, or image name to generate an import")
+    if not generate_import and (not namespace or not svn):
+        error_out("Must provide namespace and svn to generate a fragment")
+    if namespace in RESERVED_FRAGMENT_NAMES:
+        error_out(f"Namespace '{namespace}' is a reserved fragment name")
 
     output_type = get_fragment_output_type(outraw)
 

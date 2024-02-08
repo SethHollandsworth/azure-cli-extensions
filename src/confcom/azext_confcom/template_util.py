@@ -559,8 +559,6 @@ def extract_containers_from_text(text, start) -> str:
 def extract_confidential_properties(
     container_group_properties,
 ) -> Tuple[List[Dict], List[Dict]]:
-    container_start = "containers := "
-    fragment_start = "fragments := "
     # extract the existing cce policy if that's what was being asked
     confidential_compute_properties = case_insensitive_dict_get(
         container_group_properties, config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES
@@ -588,23 +586,29 @@ def extract_confidential_properties(
         # this is expected, we do not want json
         pass
 
+    return extract_containers_and_fragments_from_text(cce_policy)
+
+
+def extract_containers_and_fragments_from_text(text: str) -> Tuple[List[Dict], List[Dict]]:
+    container_start = "containers := "
+    fragment_start = "fragments := "
+
     try:
-        container_text = extract_containers_from_text(cce_policy, container_start)
+        container_text = extract_containers_from_text(text, container_start)
         # replace tabs with 4 spaces, YAML parser can take in JSON with trailing commas but not tabs
         # so we need to get rid of the tabs
         container_text = container_text.replace("\t", "    ")
-
         containers = yaml.load(container_text, Loader=yaml.FullLoader)
-
         fragment_text = extract_containers_from_text(
-            cce_policy, fragment_start
+            text, fragment_start
         ).replace("\t", "    ")
 
         fragments = yaml.load(
             fragment_text,
             Loader=yaml.FullLoader,
         )
-    except yaml.YAMLError:
+    except yaml.YAMLError as e:
+        eprint(f"Error parsing rego file: {e}")
         # reading the rego file failed, so we'll just return the default outputs
         containers = []
         fragments = []
