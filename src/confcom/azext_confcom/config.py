@@ -159,6 +159,8 @@ DEFAULT_REGO_FRAGMENTS = _config["default_rego_fragments"]
 DEBUG_MODE_SETTINGS = _config["debugMode"]
 # reserved fragment names for existing pieces of Rego
 RESERVED_FRAGMENT_NAMES = _config["reserved_fragment_names"]
+# fragment artifact type
+ARTIFACT_TYPE = "application/x-ms-policy-frag"
 # customer rego file for data to be injected
 REGO_FILE = "./data/customer_rego_policy.txt"
 REGO_FRAGMENT_FILE = "./data/customer_rego_fragment.txt"

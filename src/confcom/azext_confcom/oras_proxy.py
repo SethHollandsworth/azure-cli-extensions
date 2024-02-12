@@ -8,6 +8,7 @@ import json
 import sys
 import platform
 from azext_confcom.errors import eprint
+from azext_confcom.config import ARTIFACT_TYPE
 
 
 host_os = platform.system()
@@ -19,7 +20,7 @@ machine = platform.machine()
 def discover(
     image: str,
 ) -> bool:
-    arg_list = ["oras", "discover", image, "-o", "json", "--artifact-type", "policy/fragment"]
+    arg_list = ["oras", "discover", image, "-o", "json", "--artifact-type", ARTIFACT_TYPE]
 
     item = subprocess.run(
         arg_list,

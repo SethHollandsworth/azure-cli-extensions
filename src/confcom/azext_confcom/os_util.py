@@ -13,6 +13,7 @@ from tarfile import TarFile
 from azext_confcom.errors import (
     eprint,
 )
+from azext_confcom.config import ARTIFACT_TYPE
 
 
 def bytes_to_base64(data: bytes) -> str:
@@ -193,7 +194,7 @@ def attach_fragment_to_image(image_name: str, filename: str):
         image_name += ":latest"
     # attach the fragment to the image
     item = subprocess.run(
-        ["oras", "attach", "--artifact-type", "policy/fragment", image_name, filename],
+        ["oras", "attach", "--artifact-type", ARTIFACT_TYPE, image_name, filename],
         check=False,
         capture_output=True,
     )
