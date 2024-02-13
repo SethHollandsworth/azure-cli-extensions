@@ -128,9 +128,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         # get the exit code from the subprocess
         if item.returncode != 0:
-            eprint("Error signing the policy fragment: ", item.stderr)
-            sys.exit(item.returncode)
-
+            eprint(f"Error signing the policy fragment: {item.stderr}", exit_code=item.returncode)
         return True
 
     def get_payload(
@@ -150,8 +148,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         # get the exit code from the subprocess
         if item.returncode != 0:
-            eprint("Error getting the policy fragment: ", item.stderr)
-            sys.exit(item.returncode)
+            eprint(f"Error getting the policy fragment: {item.stderr}", exit_code=item.returncode)
 
         return item.stdout.decode("utf-8")
 
@@ -159,8 +156,6 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         policy_bin_str = str(self.policy_bin)
 
         arg_list = [policy_bin_str, "did-x509", "-chain", cert_path, "-policy", "CN"]
-
-        print("arg_list: ", arg_list)
 
         item = subprocess.run(
             arg_list,
@@ -171,8 +166,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         # get the exit code from the subprocess
         if item.returncode != 0:
-            eprint("Error creating the issuer: ", item.stderr)
-            sys.exit(item.returncode)
+            eprint(f"Error creating the issuer: {item.stderr}", exit_code=item.returncode)
 
         return item.stdout.decode("utf-8")
 
@@ -219,7 +213,5 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
             # get the exit code from the subprocess
             if item.returncode != 0:
-                eprint("Error generating import statement")
-                sys.exit(item.returncode)
-
+                eprint("Error generating import statement", exit_code=item.returncode)
         return item.stdout.decode("utf-8")

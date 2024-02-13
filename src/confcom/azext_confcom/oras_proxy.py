@@ -42,9 +42,7 @@ def discover(
                 f"Error pulling the policy fragment from {image}.\n\n"
                 + "Please log into the registry and try again.\n\n"
             )
-        eprint("Error retrieving fragments from remote repo: ", item.stderr)
-        sys.exit(item.returncode)
-
+        eprint(f"Error retrieving fragments from remote repo: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
     return hashes
 
 # pull the policy fragment from the remote repo and return its contents as a string
@@ -62,14 +60,12 @@ def pull(
 
     # get the exit code from the subprocess
     if item.returncode != 0:
-        # TODO: fix this so eprint can take a custom exit code
         if "401: Unauthorized" in item.stderr.decode("utf-8"):
             eprint(
                 f"Error pulling the policy fragment: {image}@{image_hash}.\n\n"
                 + "Please log into the registry and try again.\n\n"
             )
-        eprint(f"Error while pulling fragment: {item.stderr.decode('utf-8')}")
-        sys.exit(item.returncode)
+        eprint(f"Error while pulling fragment: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
 
     # extract the file name from stdout
     lines = item.stdout.decode("utf-8").splitlines()
