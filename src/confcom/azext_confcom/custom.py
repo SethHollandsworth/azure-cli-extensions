@@ -20,6 +20,8 @@ from azext_confcom.template_util import (
     str_to_sha256,
     inject_policy_into_template,
     print_existing_policy_from_arm_template,
+    case_insensitive_dict_get,
+    combine_fragments_with_policy
 )
 from azext_confcom.init_checks import run_initial_docker_checks
 from azext_confcom import security_policy
@@ -80,7 +82,7 @@ def acipolicygen_confcom(
         error_out("Must provide both namespace and svn for generating policy fragments")
     if include_fragments:
         # make sure the ORAS CLI is installed
-        os_util.check_oras_cli()
+        oras_proxy.check_oras_cli()
 
     if print_existing_policy or outraw or outraw_pretty_print:
         logger.warning(
@@ -140,6 +142,19 @@ def acipolicygen_confcom(
 
     exit_code = 0
 
+    # gather information about the fragments being used in the new policy
+    if include_fragments:
+        # TODO: support for reading a single path instead of a list of paths in the json
+        fragments_list = os_util.load_json_from_file(fragments_json)
+        all_fragments = []
+        for fragment in fragments_list:
+            feed_name = case_insensitive_dict_get(fragment, "feed")
+            contents = oras_proxy.pull_all_image_attached_fragments(feed_name)
+            all_fragments.extend(contents)
+
+        fragment_policy_list = combine_fragments_with_policy(all_fragments)
+
+
     # standardize the output so we're only operating on arrays
     # this makes more sense than making the "from_file" and "from_image" outputting arrays
     # since they can only ever output a single image's policy
@@ -188,6 +203,7 @@ def acifragmentgen_confcom(
     feed: str,
     key: str,
     chain: str,
+    minimum_svn: int,
     fragment_path: str = None,
     generate_import: bool = False,
     disable_stdio: bool = False,
@@ -195,17 +211,20 @@ def acifragmentgen_confcom(
     output_filename: str = None,
     outraw: bool = False,
     upload_fragment: bool = False,
+    no_print: bool = False,
 ):
     if sum(map(bool, [key, chain])) == 1:
         error_out("Must provide both a key and a chain to sign the fragment")
-    if not image_name and not config:
+    if not generate_import and (not image_name and not config):
         error_out("Must provide either an image name or a config file")
-    if generate_import and sum(map(bool, [config, image_name])) != 1:
+    if generate_import and sum(map(bool, [fragment_path, config, image_name])) != 1:
         error_out("Must provide fragment path, config, or image name to generate an import")
     if not generate_import and (not namespace or not svn):
         error_out("Must provide namespace and svn to generate a fragment")
     if namespace in RESERVED_FRAGMENT_NAMES:
         error_out(f"Namespace '{namespace}' is a reserved fragment name")
+    if generate_import and not minimum_svn:
+        error_out("Must provide minimum_svn to generate an import")
 
     output_type = get_fragment_output_type(outraw)
 
@@ -214,22 +233,11 @@ def acifragmentgen_confcom(
         if fragment_path:
             fragment_paths.append(fragment_path)
 
-        if image_name:
-            fragments = oras_proxy.pull_all_image_attached_fragments(image_name)
-        elif config:
-            fragments = oras_proxy.pull_all_image_attached_fragments_from_config(config)
-
-        for count, fragment in enumerate(fragments):
-            os_util.write_str_to_file(
-                f"{image_name}-fragment{count}.rego",
-                fragment["content"]
-            )
-
         for fragment_path in fragment_paths:
             cose_client = CoseSignToolProxy()
-            import_statement = cose_client.generate_import_from_path(fragment_path)
+            import_statement = cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)
             print(import_statement)
-
+        sys.exit(0)
 
     tar_mapping = tar_mapping_validation(tar_mapping_location)
 
@@ -248,7 +256,7 @@ def acifragmentgen_confcom(
 
     fragment_text = policy.generate_fragment(namespace, svn, fragments, output_type)
 
-    if output_type != security_policy.OutputType.DEFAULT:
+    if output_type != security_policy.OutputType.DEFAULT and not no_print:
         print(fragment_text)
 
     # take ".rego" off the end of the filename if it's there, it'll get added back later
@@ -260,11 +268,10 @@ def acifragmentgen_confcom(
     if key:
         cose_proxy = CoseSignToolProxy()
         iss = cose_proxy.create_issuer(chain)
-        print("iss: ", iss)
 
         cose_proxy.cose_sign(filename, key, chain, feed, iss)
         if upload_fragment:
-            os_util.attach_fragment_to_image(image_name, filename)
+            oras_proxy.attach_fragment_to_image(image_name, filename)
 
     sys.exit(0)
 

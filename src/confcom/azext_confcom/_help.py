@@ -167,7 +167,7 @@ helps[
           type: string
           short-summary: 'Path to key file to use for signing the generated policy fragment'
 
-        - name: --chain -c
+        - name: --chain
           type: string
           short-summary: 'Path to certificate chain file to use for signing the generated policy fragment'
 

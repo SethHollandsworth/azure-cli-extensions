@@ -7,12 +7,25 @@ import subprocess
 import os
 import stat
 import sys
-import tempfile
+import json
 from pathlib import Path
 import platform
 from zipfile import ZipFile
 import requests
 from azext_confcom.errors import eprint
+from azext_confcom.template_util import (
+    pretty_print_func,
+)
+from azext_confcom.config import (
+    REGO_CONTAINER_START,
+    REGO_FRAGMENT_START,
+    POLICY_FIELD_CONTAINERS,
+    POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS,
+    POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER,
+    POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED,
+    POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN,
+    ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_INCLUDES,
+)
 
 
 host_os = platform.system()
@@ -131,27 +144,6 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             eprint(f"Error signing the policy fragment: {item.stderr}", exit_code=item.returncode)
         return True
 
-    def get_payload(
-        self,
-        signature_path: str,
-    ) -> str:
-        policy_bin_str = str(self.policy_bin)
-
-        arg_list = [policy_bin_str, "get", "/SignatureFile", signature_path, "/Roots", "/RevocationMode", "none"]
-
-        item = subprocess.run(
-            arg_list,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            check=False,
-        )
-
-        # get the exit code from the subprocess
-        if item.returncode != 0:
-            eprint(f"Error getting the policy fragment: {item.stderr}", exit_code=item.returncode)
-
-        return item.stdout.decode("utf-8")
-
     def create_issuer(self, cert_path: str) -> str:
         policy_bin_str = str(self.policy_bin)
 
@@ -170,11 +162,15 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         return item.stdout.decode("utf-8")
 
-    def generate_import_from_path(self, fragment_path: str):
-    # TODO: make sure the fragment is signed correctly
+    # generate an import statement from a signed policy fragment
+    def generate_import_from_path(self, fragment_path: str, minimum_svn: int) -> str:
+        # TODO: make sure the fragment is signed correctly
+        if not os.path.exists(fragment_path):
+            eprint(f"The fragment file at {fragment_path} does not exist")
+
         policy_bin_str = str(self.policy_bin)
 
-        arg_list_chain = [policy_bin_str, "chain", fragment_path]
+        arg_list_chain = [policy_bin_str, "check", "--in", fragment_path, "--verbose"]
 
         item = subprocess.run(
             arg_list_chain,
@@ -182,36 +178,84 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             capture_output=True,
         )
 
-        chain = item.stdout.decode("utf-8")
+        # get the exit code from the subprocess
+        if item.returncode != 0:
+            eprint("Error getting information from signed fragment file", exit_code=item.returncode)
 
-        with tempfile.TemporaryFile() as f:
-            f.write(chain.encode("utf-8"))
-            f.seek(0)
+        stdout = item.stdout.decode("utf-8")
+        # extract issuer, feed, and payload from the fragment
+        issuer = stdout.split("iss: ")[1].split("\n")[0]
+        feed = stdout.split("feed: ")[1].split("\n")[0]
+        payload = stdout.split("payload:")[1]
 
-            # count the number of certs in the chain
-            num_certs = chain.count("-----BEGIN CERTIFICATE-----")
+        includes = []
+        if REGO_CONTAINER_START in payload:
+            includes.append(POLICY_FIELD_CONTAINERS)
 
-            arg_list = [
-                policy_bin_str,
-                "did-x509",
-                "-in",
-                fragment_path,
-                "-chain",
-                f.name,
-                "-policy",
-                "eku",
-                "-index",
-                str(num_certs - 1)
-            ]
+        if REGO_FRAGMENT_START in payload:
+            includes.append(POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS)
 
-            item = subprocess.run(
-                arg_list,
-                stdout=sys.stdout,
-                stderr=sys.stderr,
-                check=False,
-            )
+        # put it all together
+        import_statement = {
+            POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER: issuer,
+            POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED: feed,
+            POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN: minimum_svn,
+            ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_INCLUDES: includes,
+        }
 
-            # get the exit code from the subprocess
-            if item.returncode != 0:
-                eprint("Error generating import statement", exit_code=item.returncode)
-        return item.stdout.decode("utf-8")
+
+        return pretty_print_func(import_statement)
+
+    def extract_payload_from_path(self, fragment_path: str) -> str:
+        policy_bin_str = str(self.policy_bin)
+        if not os.path.exists(fragment_path):
+            eprint(f"The fragment file at {fragment_path} does not exist")
+
+        arg_list_chain = [policy_bin_str, "check", "--in", fragment_path, "--verbose"]
+
+        item = subprocess.run(
+            arg_list_chain,
+            check=False,
+            capture_output=True,
+        )
+
+        # get the exit code from the subprocess
+        if item.returncode != 0:
+            eprint("Error getting information from signed fragment file", exit_code=item.returncode)
+
+        stdout = item.stdout.decode("utf-8")
+        return stdout.split("payload:")[1]
+
+        # chain = item.stdout.decode("utf-8")
+
+        # with tempfile.TemporaryFile() as f:
+        #     f.write(chain.encode("utf-8"))
+        #     f.seek(0)
+
+        #     # count the number of certs in the chain
+        #     num_certs = chain.count("-----BEGIN CERTIFICATE-----")
+
+        #     arg_list = [
+        #         policy_bin_str,
+        #         "did-x509",
+        #         "-in",
+        #         fragment_path,
+        #         "-chain",
+        #         f.name,
+        #         "-policy",
+        #         "eku",
+        #         "-index",
+        #         str(num_certs - 1)
+        #     ]
+
+        #     item = subprocess.run(
+        #         arg_list,
+        #         stdout=sys.stdout,
+        #         stderr=sys.stderr,
+        #         check=False,
+        #     )
+
+        #     # get the exit code from the subprocess
+        #     if item.returncode != 0:
+        #         eprint("Error generating import statement", exit_code=item.returncode)
+        # return item.stdout.decode("utf-8")

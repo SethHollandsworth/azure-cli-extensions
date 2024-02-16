@@ -8,12 +8,10 @@ import binascii
 import shutil
 import json
 import os
-import subprocess
 from tarfile import TarFile
 from azext_confcom.errors import (
     eprint,
 )
-from azext_confcom.config import ARTIFACT_TYPE
 
 
 def bytes_to_base64(data: bytes) -> str:

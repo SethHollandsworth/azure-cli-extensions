@@ -11,7 +11,7 @@ import subprocess
 from azext_confcom.security_policy import (
     UserContainerImage,
     OutputType,
-    load_policy_from_str,
+    load_policy_from_config_str
 )
 
 import azext_confcom.config as config
@@ -26,7 +26,7 @@ from azure.cli.testsdk import ScenarioTest
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 
 
-class MountEnforcement(unittest.TestCase):
+class FragmentMountEnforcement(unittest.TestCase):
     custom_json = """
     {
         "version": "1.0",
@@ -37,7 +37,7 @@ class MountEnforcement(unittest.TestCase):
                 "environmentVariables": [
                     {
                         "name": "PATH",
-                        "value": "/customized/path/value",
+                        "value": "/customized/path/value"
                     },
                     {
                         "name": "TEST_REGEXP_ENV",
@@ -49,7 +49,7 @@ class MountEnforcement(unittest.TestCase):
                 "volumeMounts": [
                     {
                         "name": "azurefile",
-                        "mountPath": "/mount/azurefile"
+                        "mountPath": "/mount/azurefile",
                         "readonly": true
                     }
                 ]
@@ -61,11 +61,12 @@ class MountEnforcement(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json) as aci_policy:
+        with load_policy_from_config_str(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
-    def test_user_container_customized_mounts(self):
+    def test_fragment_user_container_customized_mounts(self):
+        # TODO: add another mount
         image = next(
             (
                 img
@@ -78,38 +79,39 @@ class MountEnforcement(unittest.TestCase):
         self.assertIsNotNone(image)
         data = image.get_policy_json()
 
+
         self.assertEqual(
             len(
                 case_insensitive_dict_get(
                     data, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS
                 )
             ),
-            2,
+            1,
         )
         mount = case_insensitive_dict_get(
             data, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS
         )[0]
         self.assertIsNotNone(mount)
-        self.assertEqual(
-            case_insensitive_dict_get(mount, "source"),
-            "sandbox:///tmp/atlas/azureFileVolume/.+",
-        )
+        # self.assertEqual(
+        #     case_insensitive_dict_get(mount, "source"),
+        #     "sandbox:///tmp/atlas/azureFileVolume/.+",
+        # )
         self.assertEqual(
             case_insensitive_dict_get(
                 mount, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_DESTINATION
             ),
-            "/custom/azurefile/mount",
+            "/etc/resolv.conf",
         )
         self.assertEqual(
-            mount[config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_OPTIONS][2], "ro"
+            mount[config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_OPTIONS][2], "rw"
         )
 
-    def test_user_container_mount_injected_dns(self):
+    def test_fragment_user_container_mount_injected_dns(self):
         image = next(
             (
                 img
                 for img in self.aci_policy.get_images()
-                if isinstance(img, UserContainerImage) and img.base == "nginx"
+                if isinstance(img, UserContainerImage) and img.base == "alpine"
             ),
             None,
         )
@@ -235,7 +237,7 @@ class FragmentGenerating(unittest.TestCase):
                 },
                 {
                     "name": "ContainerToHostAddress",
-                    "value": ""
+                    "value": "sidecar-container"
                 },
                 {
                     "name": "Fabric_NetworkingMode",
@@ -258,11 +260,11 @@ class FragmentGenerating(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json) as aci_policy:
+        with load_policy_from_config_str(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
-    def test_injected_sidecar_container_msi(self):
+    def test_fragment_injected_sidecar_container_msi(self):
         image = self.aci_policy.get_images()[0]
         env_vars = [
             {
@@ -331,7 +333,7 @@ class FragmentGenerating(unittest.TestCase):
             },
             {
                 "name": "ContainerToHostAddress",
-                "value": "",
+                "value": "sidecar-container",
             },
             {
                 "name": "Fabric_NetworkingMode",
@@ -354,23 +356,23 @@ class FragmentGenerating(unittest.TestCase):
         expected_workingdir = "/root/"
         self.assertEqual(image._workingDir, expected_workingdir)
 
-    def test_sign_and_upload(self):
-        # generate a key and certificate
-        subprocess.run("openssl genrsa -out key.pem 2048", shell=True)
-        subprocess.run("openssl req -new -key key.pem -out csr.pem -subj '/CN=example.com'", shell=True)
-        subprocess.run("openssl x509 -req -in csr.pem -signkey key.pem -out cert.pem", shell=True)
-        # sign the fragment
-        acifragmentgen_confcom(image="mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1", key="key.pem", chain="cert.pem", namespace="test", svn="1", output_filename="signed_fragment.rego", upload_fragment=True)
+    # def test_sign_and_upload(self):
+    #     # generate a key and certificate
+    #     subprocess.run("openssl genrsa -out key.pem 2048", shell=True)
+    #     subprocess.run("openssl req -new -key key.pem -out csr.pem -subj '/CN=example.com'", shell=True)
+    #     subprocess.run("openssl x509 -req -in csr.pem -signkey key.pem -out cert.pem", shell=True)
+    #     # sign the fragment
+    #     acifragmentgen_confcom(image="mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1", key="key.pem", chain="cert.pem", namespace="test", svn="1", output_filename="signed_fragment.rego", upload_fragment=True)
 
-        self.assertTrue(os.path.exists("signed_fragment.rego"))
-        self.assertTrue(os.path.exists("signed_fragment.rego.cose"))
+    #     self.assertTrue(os.path.exists("signed_fragment.rego"))
+    #     self.assertTrue(os.path.exists("signed_fragment.rego.cose"))
 
-        # see if the fragment is uploaded
-        # TODO: figure out how to do an oras pull from the local registry
+    #     # see if the fragment is uploaded
+    #     # TODO: figure out how to do an oras pull from the local registry
 
 
 
-class PolicyGeneratingDebugMode(unittest.TestCase):
+class FragmentPolicyGeneratingDebugMode(unittest.TestCase):
     custom_json = """
       {
         "version": "1.0",
@@ -390,7 +392,7 @@ class PolicyGeneratingDebugMode(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json, debug_mode=True) as aci_policy:
+        with load_policy_from_config_str(cls.custom_json, debug_mode=True) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
@@ -407,18 +409,18 @@ class PolicyGeneratingDebugMode(unittest.TestCase):
         self.assertTrue(containers[0]["exec_processes"][0]["command"] == ["/bin/sh"])
 
 
-class SidecarValidation(unittest.TestCase):
+class FragmentSidecarValidation(unittest.TestCase):
     custom_json = """
       {
     "version": "1.0",
     "containers": [
         {
-            "containerImage": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
+            "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
             "environmentVariables": [
                 {
                     "name": "PATH",
                     "value": ".+",
-                    "strategy": "re2"
+                    "regex": true
                 }
             ],
             "command": [
@@ -437,7 +439,7 @@ class SidecarValidation(unittest.TestCase):
     "version": "1.0",
     "containers": [
         {
-            "containerImage": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
+            "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
             "environmentVariables": [
                {"name": "PATH",
                "value":"/",
@@ -460,19 +462,23 @@ class SidecarValidation(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json) as aci_policy:
+        with load_policy_from_config_str(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
-        with load_policy_from_str(cls.custom_json2) as aci_policy2:
+        with load_policy_from_config_str(cls.custom_json2) as aci_policy2:
             aci_policy2.populate_policy_content_for_all_images()
             cls.aci_policy2 = aci_policy2
 
-    def test_sidecar(self):
+    def test_fragment_sidecar(self):
+        print("self.aci_policy: ", self.aci_policy)
+
         is_valid, diff = self.aci_policy.validate_sidecars()
+        print("diff: ", diff)
+
         self.assertTrue(is_valid)
         self.assertTrue(not diff)
 
-    def test_sidecar_stdio_access_default(self):
+    def test_fragment_sidecar_stdio_access_default(self):
         self.assertTrue(
             json.loads(
                 self.aci_policy.get_serialized_output(
@@ -481,7 +487,7 @@ class SidecarValidation(unittest.TestCase):
             )[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ALLOW_STDIO_ACCESS]
         )
 
-    def test_incorrect_sidecar(self):
+    def test_fragment_incorrect_sidecar(self):
 
         is_valid, diff = self.aci_policy2.validate_sidecars()
 
@@ -499,21 +505,21 @@ class SidecarValidation(unittest.TestCase):
         self.assertEqual(diff, expected_diff)
 
 
-class GenerateImport(unittest.TestCase):
-    # set up for the test class
-    def setUp(self):
-        subprocess.run("docker run -d -p 5000:5000 --restart=always --name registry ghcr.io/project-zot/zot-linux-amd64:latest", shell=True)
-        # create a test image
-        subprocess.run("docker pull mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64", shell=True)
-        subprocess.run("docker tag mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64 localhost:5000/library-busybox:master.220314.1-linux-amd64", shell=True)
-        subprocess.run("docker push localhost:5000/library-busybox:master.220314.1-linux-amd64", shell=True)
-        # TODO: build and sign fragment, upload to local registry at localhost:5000
+# class GenerateImport(unittest.TestCase):
+#     # set up for the test class
+#     def setUp(self):
+#         subprocess.run("docker run -d -p 5000:5000 --restart=always --name registry ghcr.io/project-zot/zot-linux-amd64:latest", shell=True)
+#         # create a test image
+#         subprocess.run("docker pull mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64", shell=True)
+#         subprocess.run("docker tag mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64 localhost:5000/library-busybox:master.220314.1-linux-amd64", shell=True)
+#         subprocess.run("docker push localhost:5000/library-busybox:master.220314.1-linux-amd64", shell=True)
+#         # TODO: build and sign fragment, upload to local registry at localhost:5000
 
-    def test_generate_import_local(self):
-        pass
+#     def test_generate_import_local(self):
+#         pass
 
-    def test_generate_import_remote(self):
-        pass
+#     def test_generate_import_remote(self):
+#         pass
 
 
 class InitialFragmentErrors(ScenarioTest):

@@ -187,7 +187,7 @@ def load_arguments(self, _):
         )
         c.argument(
             "chain",
-            options_list=("--chain", "-c"),
+            options_list=("--chain"),
             required=False,
 <<<<<<< HEAD
             help="Fragments to add to the generated policy in JSON format",
@@ -212,6 +212,12 @@ def load_arguments(self, _):
             help="Generate an import statement for a policy fragment",
         )
         c.argument(
+            "minimum_svn",
+            options_list=("--minimum-svn",),
+            required=False,
+            help="Used with --generate-import to specify the minimum SVN for the import statement",
+        )
+        c.argument(
             "disable_stdio",
             options_list=("--disable-stdio",),
             required=False,
@@ -225,7 +231,7 @@ def load_arguments(self, _):
         )
         c.argument(
             "output_filename",
-            options_list=("--output-filename", "-o"),
+            options_list=("--output-filename"),
             required=False,
             help="Output filename for the generated policy fragment",
         )
@@ -241,6 +247,12 @@ def load_arguments(self, _):
             options_list=("--upload-fragment", "-u"),
             required=False,
             help="Upload a policy fragment to a container registry",
+        )
+        c.argument(
+            "no_print",
+            options_list=("--no-print",),
+            required=False,
+            help="Do not print the generated policy fragment to stdout",
         )
 
     with self.argument_context("confcom katapolicygen") as c:

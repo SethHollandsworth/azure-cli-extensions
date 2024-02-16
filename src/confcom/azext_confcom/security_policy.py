@@ -33,7 +33,9 @@ from azext_confcom.template_util import (
     process_env_vars_from_template,
     get_image_info,
     get_tar_location_from_mapping,
-    get_diff_size
+    get_diff_size,
+    process_env_vars_from_config,
+    process_mounts_from_config
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
@@ -421,9 +423,6 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 image.parse_all_parameters_and_variables(AciPolicy.all_params, AciPolicy.all_vars)
                 image_name = f"{image.base}:{image.tag}"
 
-                # TODO:
-                # self.pull_all_image_attached_fragments(image_name)
-
                 image_info, tar = get_image_info(progress, message_queue, tar_mapping, image)
 
                 # verify and populate the working directory property
@@ -507,6 +506,8 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                             }
                         image.set_user(user)
 
+                # TODO: eliminate containers if the image is contained in a fragment
+                # self.pull_all_image_attached_fragments(image_name)
                 # populate tar location
                 if isinstance(tar_mapping, dict):
                     tar_location = get_tar_location_from_mapping(tar_mapping, image_name)
@@ -643,7 +644,7 @@ def load_policy_from_arm_template_str(
 
             if not image_name:
                 eprint(
-                    f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found'
+                    f'Field ["{config.ACI_FIELD_TEMPLATE_IMAGE}"] is empty or cannot be found'
                 )
 
             exec_processes = []
@@ -861,7 +862,8 @@ def load_policy_from_config_file(config_file, debug_mode: bool = False, disable_
 
 
 
-def load_policy_from_config_str(config_dict, debug_mode: bool, disable_stdio: bool):
+def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_stdio: bool = False):
+    config_dict = os_util.load_json_from_str(config_str)
     containers = []
 
     rego_fragments = case_insensitive_dict_get(
@@ -873,36 +875,35 @@ def load_policy_from_config_str(config_dict, debug_mode: bool, disable_stdio: bo
     )
 
     for container in container_list:
-        image_properties = case_insensitive_dict_get(
-            container, config.ACI_FIELD_TEMPLATE_PROPERTIES
-        )
+        # TODO: figure out if we should use "properties" to be more similar to arm template
+        # image_properties = case_insensitive_dict_get(
+        #     container, config.ACI_FIELD_TEMPLATE_PROPERTIES
+        # )
         image_name = case_insensitive_dict_get(
-            image_properties, config.ACI_FIELD_TEMPLATE_IMAGE
+            container, config.ACI_FIELD_TEMPLATE_IMAGE
         )
 
         if not image_name:
             eprint(
-                f'Field ["{config.ACI_FIELD_TEMPLATE_PARAMETERS}"] is empty or cannot be found'
+                f'Field ["{config.ACI_FIELD_TEMPLATE_IMAGE}"] is empty or cannot be found'
             )
 
         exec_processes = []
-        extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
-        extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
-
-        # TODO: extra processing for regex env vars
-        # TODO: extra processing for mounts since we don't have a volume field
+        extract_probe(exec_processes, container, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
+        extract_probe(exec_processes, container, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
 
         containers.append(
             {
                 config.ACI_FIELD_CONTAINERS_ID: image_name,
                 config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE: image_name,
-                config.ACI_FIELD_CONTAINERS_ENVS: process_env_vars_from_template(
-                    AciPolicy.all_params, AciPolicy.all_vars, image_properties, False),
+                config.ACI_FIELD_CONTAINERS_ENVS: process_env_vars_from_config(
+                    container
+                ),
                 config.ACI_FIELD_CONTAINERS_COMMAND: case_insensitive_dict_get(
-                    image_properties, config.ACI_FIELD_TEMPLATE_COMMAND
+                    container, config.ACI_FIELD_TEMPLATE_COMMAND
                 )
                 or [],
-                config.ACI_FIELD_CONTAINERS_MOUNTS: process_mounts(image_properties, volumes),
+                config.ACI_FIELD_CONTAINERS_MOUNTS: process_mounts_from_config(container),
                 config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES: exec_processes
                 + config.DEBUG_MODE_SETTINGS.get("execProcesses")
                 if debug_mode
@@ -910,7 +911,7 @@ def load_policy_from_config_str(config_dict, debug_mode: bool, disable_stdio: bo
                 config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
                 config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio,
                 config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT: case_insensitive_dict_get(
-                    image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+                    container, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
                 ),
             }
         )
