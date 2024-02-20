@@ -78,7 +78,7 @@ def pull(
 
     return filename
 
-def pull_all_image_attached_fragments(image):
+def pull_all_image_attached_fragments(image, fragment_feeds=[]):
     # TODO: be smart about if we're pulling a fragment directly or trying to discover them from an image tag
     fragments = discover(image)
     fragment_contents = []
@@ -91,7 +91,9 @@ def pull_all_image_attached_fragments(image):
         if new_fragments:
             for new_fragment in new_fragments:
                 feed = new_fragment.get("feed")
-                fragment_contents.extend(pull_all_image_attached_fragments(feed))
+                # if we don't have the feed in the list of feeds we've already pulled, pull it
+                if feed not in fragment_feeds:
+                    fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
         fragment_contents.append(containers)
     return fragment_contents
 

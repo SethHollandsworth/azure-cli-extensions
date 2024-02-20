@@ -60,6 +60,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         existing_rego_fragments: Any = None,
         debug_mode: bool = False,
         disable_stdio: bool = False,
+        fragment_contents: Any = None,
     ) -> None:
         self._docker_client = None
         self._rootfs_proxy = None
@@ -69,6 +70,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         self._fragments = rego_fragments
         self._existing_fragments = existing_rego_fragments
         self._api_version = config.API_VERSION
+        self._fragment_contents = fragment_contents
 
         if debug_mode:
             self._allow_properties_access = config.DEBUG_MODE_SETTINGS.get(
@@ -189,11 +191,12 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
 
     def _add_rego_boilerplate(self, output: str) -> str:
         # determine if we're outputting for a sidecar or not
-        if self._images[0].get_id() and is_sidecar(self._images[0].get_id()):
-            return config.SIDECAR_REGO_POLICY % (
-                pretty_print_func(self._api_version),
-                output
-            )
+        # TODO: determine if ACI can make their fragment given the current interface
+        # if self._images[0].get_id() and is_sidecar(self._images[0].get_id()):
+        #     return config.SIDECAR_REGO_POLICY % (
+        #         pretty_print_func(self._api_version),
+        #         output
+        #     )
         return config.CUSTOMER_REGO_POLICY % (
             pretty_print_func(self._api_version),
             pretty_print_func(self._fragments),
@@ -506,15 +509,18 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                             }
                         image.set_user(user)
 
-                # TODO: eliminate containers if the image is contained in a fragment
-                # self.pull_all_image_attached_fragments(image_name)
-                # populate tar location
-                if isinstance(tar_mapping, dict):
-                    tar_location = get_tar_location_from_mapping(tar_mapping, image_name)
-                # populate layer info
-                image.set_layers(proxy.get_policy_image_layers(
-                    image.base, image.tag, tar_location=tar_location if tar else "", faster_hashing=faster_hashing
-                ))
+                if self.should_eliminate_container_covered_by_fragments(image):
+                    # these containers will get taken out later in the function
+                    # since they are covered by a fragment
+                    continue
+                else:
+                    # populate tar location
+                    if isinstance(tar_mapping, dict):
+                        tar_location = get_tar_location_from_mapping(tar_mapping, image_name)
+                    # populate layer info
+                    image.set_layers(proxy.get_policy_image_layers(
+                        image.base, image.tag, tar_location=tar_location if tar else "", faster_hashing=faster_hashing
+                    ))
 
                 progress.update()
             progress.close()
@@ -524,8 +530,28 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             for message in message_queue:
                 logger.warning(message)
 
+            out_images = list(filter(lambda image: image.get_layers(), self.get_images()))
+            self.set_images(out_images)
+
+    def should_eliminate_container_covered_by_fragments(self, image):
+        for fragment_image in self._fragment_contents:
+            # we're not comparing layers to save computation time
+            fragment_image["layers"] = []
+            # TODO: make this print a warning if there is a fragment image that's close
+            # TODO: is "latest" tag assumed by this point?
+            # save some computation time by checking if the image tag is the same first
+            if fragment_image.get("id") == image.containerImage:
+                image_policy = image.get_policy_json()
+                container_diff = compare_containers(fragment_image, image_policy)
+                if container_diff == {}:
+                    return True
+        return False
+
     def get_images(self) -> List[ContainerImage]:
         return self._images
+
+    def set_images(self, images: List[ContainerImage]) -> None:
+        self._images = images
 
     def pull_image(self, image: ContainerImage) -> Any:
         client = self._get_docker_client()
@@ -540,6 +566,8 @@ def load_policy_from_arm_template_str(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     approve_wildcards: bool = False,
+    rego_imports: Any = None,
+    fragment_contents: Any = None,
 ) -> List[AciPolicy]:
     """Function that converts ARM template string to an ACI Policy"""
     input_arm_json = os_util.load_json_from_str(template_data)
@@ -618,6 +646,9 @@ def load_policy_from_arm_template_str(
             rego_fragments[0][
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN
             ] = infrastructure_svn
+        if rego_imports:
+            # TODO: input validation on format and content of rego_imports
+            rego_fragments.extend(rego_imports)
 
         volumes = (
             case_insensitive_dict_get(
@@ -688,6 +719,7 @@ def load_policy_from_arm_template_str(
                 # fallback to default fragments if the policy is not present
                 existing_rego_fragments=fragments,
                 debug_mode=debug_mode,
+                fragment_contents=fragment_contents,
             )
         )
     return container_groups
@@ -700,6 +732,8 @@ def load_policy_from_arm_template_file(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     approve_wildcards: bool = False,
+    rego_imports: list = [],
+    fragment_contents: list = [],
 ) -> List[AciPolicy]:
     """Utility function: generate policy object from given arm template and parameter file paths"""
     input_arm_json = os_util.load_str_from_file(template_path)
@@ -709,6 +743,7 @@ def load_policy_from_arm_template_file(
     return load_policy_from_arm_template_str(
         input_arm_json, input_parameter_json, infrastructure_svn,
         debug_mode=debug_mode, disable_stdio=disable_stdio, approve_wildcards=approve_wildcards,
+        rego_imports=rego_imports, fragment_contents=fragment_contents,
     )
 
 

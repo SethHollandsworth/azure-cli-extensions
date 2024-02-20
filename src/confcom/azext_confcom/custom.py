@@ -112,6 +112,26 @@ def acipolicygen_confcom(
     # warn user that input infrastructure_svn is less than the configured default value
     check_infrastructure_svn(infrastructure_svn)
 
+    fragments_list = []
+    # gather information about the fragments being used in the new policy
+    if include_fragments:
+        # TODO: support for reading a single path instead of a list of paths in the json
+        fragments_list = os_util.load_json_from_file(fragments_json)
+        fragment_feeds = set([case_insensitive_dict_get(fragment, "feed") for fragment in fragments_list])
+        all_fragments = []
+        cose_proxy = CoseSignToolProxy()
+        for fragment in fragments_list:
+            # pull locally if there is a path, otherwise pull from the remote registry
+            if "path" in fragment:
+                contents = cose_proxy.extract_payload_from_path(fragment["path"])
+                all_fragments.append(contents)
+            else:
+                feed_name = case_insensitive_dict_get(fragment, "feed")
+                contents = oras_proxy.pull_all_image_attached_fragments(feed_name, fragment_feeds)
+                all_fragments.extend(contents)
+
+        fragment_policy_list = combine_fragments_with_policy(all_fragments)
+
     # telling the user what operation we're doing
     logger.warning(
         "Generating security policy for %s: %s in %s",
@@ -134,6 +154,8 @@ def acipolicygen_confcom(
             debug_mode=debug_mode,
             disable_stdio=disable_stdio,
             approve_wildcards=approve_wildcards,
+            rego_imports=fragments_list,
+            fragment_contents=fragment_policy_list,
         )
     elif image_name:
         container_group_policies = security_policy.load_policy_from_image_name(
@@ -141,19 +163,6 @@ def acipolicygen_confcom(
         )
 
     exit_code = 0
-
-    # gather information about the fragments being used in the new policy
-    if include_fragments:
-        # TODO: support for reading a single path instead of a list of paths in the json
-        fragments_list = os_util.load_json_from_file(fragments_json)
-        all_fragments = []
-        for fragment in fragments_list:
-            feed_name = case_insensitive_dict_get(fragment, "feed")
-            contents = oras_proxy.pull_all_image_attached_fragments(feed_name)
-            all_fragments.extend(contents)
-
-        fragment_policy_list = combine_fragments_with_policy(all_fragments)
-
 
     # standardize the output so we're only operating on arrays
     # this makes more sense than making the "from_file" and "from_image" outputting arrays
