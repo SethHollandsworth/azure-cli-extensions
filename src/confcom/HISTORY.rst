@@ -2,6 +2,10 @@
 
 Release History
 ===============
+0.4.0
+++++++
+* adding acifragmentgen as a subcommand
+
 0.3.6
 ++++++
 * updating genpolicy version up through 3.2.0.azl1.genpolicy0. Please note that this is a breaking change for deploying older policies. With the new node image, 0.3.6 or newer will be required.

@@ -200,8 +200,12 @@ helps[
           short-summary: 'When enabled, the generated policy fragment will be uploaded to the registry of the image being used'
 
     examples:
-        - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template
-          text: az confcom acipolicygen --template-file "./template.json"
+        - name: Input an image name to generate a simple fragment
+          text: az confcom acifragmentgen --image mcr.microsoft.com/azuredocs/aci-helloworld
+        - name: Input a config file to generate a fragment with a custom namespace and debug mode enabled
+          text: az confcom acifragmentgen --config "./config.json" --namespace "my-namespace" --debug-mode
+        - name: Generate an import statement with a signed local fragment
+          text: az confcom acifragmentgen --fragment-path "./fragment.json" --generate-import --minimum-svn 1
 """
 
 helps[

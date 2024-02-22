@@ -509,7 +509,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                             }
                         image.set_user(user)
 
-                if self.should_eliminate_container_covered_by_fragments(image):
+                if self._fragment_contents and self.should_eliminate_container_covered_by_fragments(image):
                     # these containers will get taken out later in the function
                     # since they are covered by a fragment
                     continue
@@ -892,7 +892,7 @@ def load_policy_from_str(data: str, debug_mode: bool = False) -> AciPolicy:
 
 
 def load_policy_from_config_file(config_file, debug_mode: bool = False, disable_stdio: bool = False):
-    config_content = os_util.load_json_from_file(config_file)
+    config_content = os_util.load_str_from_file(config_file)
     return load_policy_from_config_str(config_content, debug_mode, disable_stdio)
 
 
