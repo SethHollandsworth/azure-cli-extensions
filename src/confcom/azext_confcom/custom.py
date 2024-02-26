@@ -20,8 +20,7 @@ from azext_confcom.template_util import (
     str_to_sha256,
     inject_policy_into_template,
     print_existing_policy_from_arm_template,
-    case_insensitive_dict_get,
-    combine_fragments_with_policy
+    get_all_fragment_contents
 )
 from azext_confcom.init_checks import run_initial_docker_checks
 from azext_confcom import security_policy
@@ -80,6 +79,8 @@ def acipolicygen_confcom(
 
     if generate_fragment and (not namespace or not svn):
         error_out("Must provide both namespace and svn for generating policy fragments")
+    if fragments_json and not include_fragments:
+        error_out("Using a --fragments-json file requires the --include-fragments flag")
     if include_fragments:
         # make sure the ORAS CLI is installed
         oras_proxy.check_oras_cli()
@@ -115,22 +116,8 @@ def acipolicygen_confcom(
     fragments_list = []
     # gather information about the fragments being used in the new policy
     if include_fragments:
-        # TODO: support for reading a single path instead of a list of paths in the json
         fragments_list = os_util.load_json_from_file(fragments_json)
-        fragment_feeds = set([case_insensitive_dict_get(fragment, "feed") for fragment in fragments_list])
-        all_fragments = []
-        cose_proxy = CoseSignToolProxy()
-        for fragment in fragments_list:
-            # pull locally if there is a path, otherwise pull from the remote registry
-            if "path" in fragment:
-                contents = cose_proxy.extract_payload_from_path(fragment["path"])
-                all_fragments.append(contents)
-            else:
-                feed_name = case_insensitive_dict_get(fragment, "feed")
-                contents = oras_proxy.pull_all_image_attached_fragments(feed_name, fragment_feeds)
-                all_fragments.extend(contents)
-
-        fragment_policy_list = combine_fragments_with_policy(all_fragments)
+        fragment_policy_list = get_all_fragment_contents(fragments_list)
 
     # telling the user what operation we're doing
     logger.warning(
@@ -238,14 +225,9 @@ def acifragmentgen_confcom(
     output_type = get_fragment_output_type(outraw)
 
     if generate_import:
-        fragment_paths = []
-        if fragment_path:
-            fragment_paths.append(fragment_path)
-
-        for fragment_path in fragment_paths:
-            cose_client = CoseSignToolProxy()
-            import_statement = cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)
-            print(import_statement)
+        cose_client = CoseSignToolProxy()
+        import_statement = cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)
+        print(import_statement)
         sys.exit(0)
 
     tar_mapping = tar_mapping_validation(tar_mapping_location)
@@ -411,6 +393,7 @@ def get_output_type(outraw, outraw_pretty_print):
     elif outraw_pretty_print:
         output_type = security_policy.OutputType.PRETTY_PRINT
     return output_type
+
 
 def get_fragment_output_type(outraw):
     output_type = security_policy.OutputType.PRETTY_PRINT

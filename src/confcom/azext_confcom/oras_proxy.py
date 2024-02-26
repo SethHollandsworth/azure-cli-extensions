@@ -5,13 +5,10 @@
 
 import subprocess
 import json
-import sys
 import platform
 from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE
 from azext_confcom.cose_proxy import CoseSignToolProxy
-from azext_confcom.template_util import extract_containers_from_text
-from azext_confcom.config import REGO_CONTAINER_START, REGO_FRAGMENT_START
 
 host_os = platform.system()
 machine = platform.machine()
@@ -47,6 +44,7 @@ def discover(
         eprint(f"Error retrieving fragments from remote repo: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
     return hashes
 
+
 # pull the policy fragment from the remote repo and return its contents as a string
 def pull(
     image: str,
@@ -78,23 +76,25 @@ def pull(
 
     return filename
 
-def pull_all_image_attached_fragments(image, fragment_feeds=[]):
+
+def pull_all_image_attached_fragments(image):
     # TODO: be smart about if we're pulling a fragment directly or trying to discover them from an image tag
+    # TODO: this will be for standalone fragments
     fragments = discover(image)
     fragment_contents = []
     proxy = CoseSignToolProxy()
     for fragment_digest in fragments:
         filename = pull(image, fragment_digest)
         text = proxy.extract_payload_from_path(filename)
-        containers = extract_containers_from_text(text, REGO_CONTAINER_START)
-        new_fragments = extract_containers_from_text(text, REGO_FRAGMENT_START)
-        if new_fragments:
-            for new_fragment in new_fragments:
-                feed = new_fragment.get("feed")
-                # if we don't have the feed in the list of feeds we've already pulled, pull it
-                if feed not in fragment_feeds:
-                    fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
-        fragment_contents.append(containers)
+        # containers = extract_containers_from_text(text, REGO_CONTAINER_START)
+        # new_fragments = extract_containers_from_text(text, REGO_FRAGMENT_START)
+        # if new_fragments:
+        #     for new_fragment in new_fragments:
+        #         feed = new_fragment.get("feed")
+        #         # if we don't have the feed in the list of feeds we've already pulled, pull it
+        #         if feed not in fragment_feeds:
+        #             fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
+        fragment_contents.append(text)
     return fragment_contents
 
 
@@ -105,6 +105,7 @@ def check_oras_cli():
         eprint(
             "ORAS CLI not installed. Please install ORAS CLI: https://oras.land/docs/installation"
         )
+
 
 def attach_fragment_to_image(image_name: str, filename: str):
     if ":" not in image_name:

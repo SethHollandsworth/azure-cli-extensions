@@ -130,8 +130,10 @@ helps[
           text: az confcom acipolicygen --template-file "./template.json" -s "./output-file.txt" --print-policy
         - name: Input an ARM Template file and use a tar file as the image source instead of the Docker daemon
           text: az confcom acipolicygen --template-file "./template.json" --tar "./image.tar"
+        - name: Input an ARM Template file and use a fragments JSON file to generate a policy
+          text: az confcom acipolicygen --template-file "./template.json" --fragments-json "./fragments.json" --include-fragments
 """
-# TODO: add examples above and below for using fragments
+
 helps[
     "confcom acifragmentgen"
 ] = """

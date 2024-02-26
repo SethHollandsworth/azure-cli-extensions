@@ -35,7 +35,8 @@ from azext_confcom.template_util import (
     get_tar_location_from_mapping,
     get_diff_size,
     process_env_vars_from_config,
-    process_mounts_from_config
+    process_mounts_from_config,
+    process_fragment_imports
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
@@ -191,12 +192,11 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
 
     def _add_rego_boilerplate(self, output: str) -> str:
         # determine if we're outputting for a sidecar or not
-        # TODO: determine if ACI can make their fragment given the current interface
-        # if self._images[0].get_id() and is_sidecar(self._images[0].get_id()):
-        #     return config.SIDECAR_REGO_POLICY % (
-        #         pretty_print_func(self._api_version),
-        #         output
-        #     )
+        if self._images and self._images[0].get_id() and is_sidecar(self._images[0].get_id()):
+            return config.SIDECAR_REGO_POLICY % (
+                pretty_print_func(self._api_version),
+                output
+            )
         return config.CUSTOMER_REGO_POLICY % (
             pretty_print_func(self._api_version),
             pretty_print_func(self._fragments),
@@ -647,7 +647,8 @@ def load_policy_from_arm_template_str(
                 config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN
             ] = infrastructure_svn
         if rego_imports:
-            # TODO: input validation on format and content of rego_imports
+            # error check the rego imports for invalid data types
+            process_fragment_imports(rego_imports)
             rego_fragments.extend(rego_imports)
 
         volumes = (
@@ -732,8 +733,8 @@ def load_policy_from_arm_template_file(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     approve_wildcards: bool = False,
-    rego_imports: list = [],
-    fragment_contents: list = [],
+    rego_imports: list = None,
+    fragment_contents: list = None,
 ) -> List[AciPolicy]:
     """Utility function: generate policy object from given arm template and parameter file paths"""
     input_arm_json = os_util.load_str_from_file(template_path)
@@ -755,7 +756,7 @@ def load_policy_from_file(path: str, debug_mode: bool = False) -> AciPolicy:
 
 
 def load_policy_from_image_name(
-    image_names: List[str] or str, debug_mode: bool = False, disable_stdio: bool = False
+    image_names: List[str] | str, debug_mode: bool = False, disable_stdio: bool = False
 ) -> AciPolicy:
     # can either take a list of image names or a single image name
     if isinstance(image_names, str):
@@ -896,7 +897,6 @@ def load_policy_from_config_file(config_file, debug_mode: bool = False, disable_
     return load_policy_from_config_str(config_content, debug_mode, disable_stdio)
 
 
-
 def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_stdio: bool = False):
     config_dict = os_util.load_json_from_str(config_str)
     containers = []
@@ -952,11 +952,11 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
         )
 
     return AciPolicy(
-            {
-                config.ACI_FIELD_VERSION: "1.0",
-                config.ACI_FIELD_CONTAINERS: containers,
-            },
-            disable_stdio=disable_stdio,
-            rego_fragments=rego_fragments,
-            debug_mode=debug_mode,
-        )
+        {
+            config.ACI_FIELD_VERSION: "1.0",
+            config.ACI_FIELD_CONTAINERS: containers,
+        },
+        disable_stdio=disable_stdio,
+        rego_fragments=rego_fragments,
+        debug_mode=debug_mode,
+    )

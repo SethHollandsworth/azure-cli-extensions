@@ -7,7 +7,6 @@ import subprocess
 import os
 import stat
 import sys
-import json
 from pathlib import Path
 import platform
 from zipfile import ZipFile
@@ -73,7 +72,6 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             # stop early so we don't have to iterate through all releases
             if windows_flag and linux_flag:
                 break
-
 
     def __init__(self):
         script_directory = os.path.dirname(os.path.realpath(__file__))
@@ -202,7 +200,6 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN: minimum_svn,
             ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_INCLUDES: includes,
         }
-
 
         return pretty_print_func(import_statement)
 

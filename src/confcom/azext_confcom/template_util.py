@@ -17,6 +17,8 @@ from azext_confcom.errors import (
 )
 from azext_confcom import os_util
 from azext_confcom import config
+from azext_confcom import oras_proxy
+from azext_confcom.cose_proxy import CoseSignToolProxy
 
 # TODO: these can be optimized to not have so many groups in the single match
 # make this global so it can be used in multiple functions
@@ -192,37 +194,33 @@ def process_env_vars_from_template(params: dict,
             if value is None:
                 value = case_insensitive_dict_get(env_var, "secureValue")
 
-    for env_var in template_env_vars:
-        name = case_insensitive_dict_get(env_var, "name")
-        value = case_insensitive_dict_get(env_var, "value") or case_insensitive_dict_get(env_var, "secureValue")
+            if not name:
+                eprint(
+                    f"Environment variable with value: {value} is missing a name"
+                )
 
-        if not name:
-            eprint(
-                f"Environment variable with value: {value} is missing a name"
-            )
+            if value is not None:
+                param_check = find_value_in_params_and_vars(
+                    params, vars_dict, value, ignore_undefined_parameters=True)
+                param_name = re.findall(PARAMETER_AND_VARIABLE_REGEX, value)
 
-        if value is not None:
-            param_check = find_value_in_params_and_vars(
-                params, vars_dict, value, ignore_undefined_parameters=True)
-            param_name = re.findall(PARAMETER_AND_VARIABLE_REGEX, value)
-
-            if param_name and param_check == value:
-                response = approve_wildcards or input(
-                    f'Create a wildcard policy for the environment variable {name} (y/n): ')
-                if approve_wildcards or response.lower() == 'y':
+                if param_name and param_check == value:
+                    response = approve_wildcards or input(
+                        f'Create a wildcard policy for the environment variable {name} (y/n): ')
+                    if approve_wildcards or response.lower() == 'y':
+                        env_vars.append({
+                            config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
+                            config.ACI_FIELD_CONTAINERS_ENVS_VALUE: ".*",
+                            config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "re2",
+                        })
+                else:
                     env_vars.append({
                         config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
-                        config.ACI_FIELD_CONTAINERS_ENVS_VALUE: ".*",
-                        config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "re2",
+                        config.ACI_FIELD_CONTAINERS_ENVS_VALUE: value,
+                        config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
                     })
             else:
-                env_vars.append({
-                    config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
-                    config.ACI_FIELD_CONTAINERS_ENVS_VALUE: value,
-                    config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY: "string",
-                })
-        else:
-            eprint(f'Environment variable {name} does not have a value. Please check the template file.')
+                eprint(f'Environment variable {name} does not have a value. Please check the template file.')
 
     return env_vars
 
@@ -254,6 +252,49 @@ def process_env_vars_from_config(container) -> List[Dict[str, str]]:
 
     return env_vars
 
+
+def process_fragment_imports(rego_imports) -> None:
+    for rego_import in rego_imports:
+        feed = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED
+        )
+        if not isinstance(feed, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED}"] '
+                + "can only be a string value."
+            )
+
+        iss = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER
+        )
+        if not isinstance(iss, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER}"] '
+                + "can only be a string value."
+            )
+
+        minimum_svn = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN
+        )
+
+        if not minimum_svn or not minimum_svn.isdigit():
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN}"] '
+                + "can only be an integer value."
+            )
+
+        includes = case_insensitive_dict_get(
+            rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES
+        )
+        if not isinstance(includes, list):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES}"] '
+                + "can only be a list value."
+            )
 
 def process_mounts(image_properties: dict, volumes: List[dict]) -> List[Dict[str, str]]:
     mount_source_table_keys = config.MOUNT_SOURCE_TABLE.keys()
@@ -1044,3 +1085,37 @@ def combine_fragments_with_policy(all_fragments):
         containers = yaml.load(container_text, Loader=yaml.FullLoader)
         out_fragments.extend(containers)
     return out_fragments
+
+
+def get_all_fragment_contents(fragment_imports):
+    fragment_feeds = [
+        case_insensitive_dict_get(fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED)
+        for fragment in fragment_imports
+    ]
+
+    all_fragments_contents = []
+    cose_proxy = CoseSignToolProxy()
+
+    for fragment in fragment_imports:
+        # pull locally if there is a path, otherwise pull from the remote registry
+        if config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH in fragment:
+            contents = cose_proxy.extract_payload_from_path(
+                fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH]
+            )
+        else:
+            feed_name = case_insensitive_dict_get(
+                fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED
+            )
+            contents = oras_proxy.pull_all_image_attached_fragments(feed_name)
+
+        # add the new fragments to the list of all fragments if they're not already there
+        # the side effect of adding this way is that if we have a local path to a nested fragment
+        # we will pull the use the local version of the fragment instead of pulling from the registry
+        new_fragments = extract_containers_from_text(contents, config.REGO_FRAGMENT_START)
+        for new_fragment in new_fragments:
+            if new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED] not in fragment_feeds:
+                fragment_imports.append(new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED])
+
+        all_fragments_contents.extend(contents)
+
+    return combine_fragments_with_policy(all_fragments_contents)

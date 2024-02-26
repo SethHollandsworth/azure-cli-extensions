@@ -16,4 +16,3 @@ def eprint(*args, exit_code=1, **kwargs):
     # print to stderr with formatting to be noticeable in the terminal
     logger.error(*args, **kwargs)
     sys.exit(exit_code)
-
