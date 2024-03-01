@@ -20,8 +20,8 @@ from azext_confcom.template_util import (
     str_to_sha256,
     inject_policy_into_template,
     print_existing_policy_from_arm_template,
-    get_all_fragment_contents
 )
+from azext_confcom.fragment_util import get_all_fragment_contents
 from azext_confcom.init_checks import run_initial_docker_checks
 from azext_confcom import security_policy
 from azext_confcom.security_policy import OutputType

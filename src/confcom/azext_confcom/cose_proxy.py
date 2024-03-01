@@ -12,9 +12,7 @@ import platform
 from zipfile import ZipFile
 import requests
 from azext_confcom.errors import eprint
-from azext_confcom.template_util import (
-    pretty_print_func,
-)
+from azext_confcom.template_util import pretty_print_func
 from azext_confcom.config import (
     REGO_CONTAINER_START,
     REGO_FRAGMENT_START,
