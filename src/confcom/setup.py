@@ -71,6 +71,8 @@ setup(
             "bin/dmverity-vhd",  # linux for ACI
             "bin/genpolicy-windows.exe",  # windows for AKS
             "bin/genpolicy-linux",  # linux for AKS
+            "bin/sign1util.exe",  # windows for cose tool
+            "bin/sign1util",  # linux for cose tool
             "data/*",
         ]
     },
