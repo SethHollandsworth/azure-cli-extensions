@@ -130,14 +130,13 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         item = subprocess.run(
             arg_list,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
+            capture_output=True,
             check=False,
         )
 
         # get the exit code from the subprocess
         if item.returncode != 0:
-            eprint(f"Error signing the policy fragment: {item.stderr}", exit_code=item.returncode)
+            eprint(f"Error signing the policy fragment: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
         return True
 
     def create_issuer(self, cert_path: str) -> str:
@@ -147,8 +146,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         item = subprocess.run(
             arg_list,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
+            capture_output=True,
             check=False,
         )
 
