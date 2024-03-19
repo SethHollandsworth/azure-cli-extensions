@@ -106,7 +106,8 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         out_path: str = "payload.rego.cose",
     ) -> bool:
         policy_bin_str = str(self.policy_bin)
-
+        # TODO: figure out if we need another arg to get key algorithm
+        # TODO: put issuer, feed, and other fields in here
         arg_list = [
             policy_bin_str,
             "create",
