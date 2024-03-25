@@ -208,6 +208,8 @@ helps[
           text: az confcom acifragmentgen --config "./config.json" --namespace "my-namespace" --debug-mode
         - name: Generate an import statement with a signed local fragment
           text: az confcom acifragmentgen --fragment-path "./fragment.json" --generate-import --minimum-svn 1
+        - name: Generate a fragment and cose sign it with a key and chain
+          text: az confcom acifragmentgen --image mcr.microsoft.com/azuredocs/aci-helloworld --key "./key.pem" --chain "./chain.pem" --svn 1 --namespace contoso --no-print
 """
 
 helps[

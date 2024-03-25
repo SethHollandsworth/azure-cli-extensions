@@ -107,7 +107,9 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
     ) -> bool:
         policy_bin_str = str(self.policy_bin)
         # TODO: figure out if we need another arg to get key algorithm
-        # TODO: put issuer, feed, and other fields in here
+        if out_path == payload_path:
+            out_path = payload_path + ".cose"
+
         arg_list = [
             policy_bin_str,
             "create",
@@ -219,37 +221,3 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         stdout = item.stdout.decode("utf-8")
         return stdout.split("payload:")[1]
-
-        # chain = item.stdout.decode("utf-8")
-
-        # with tempfile.TemporaryFile() as f:
-        #     f.write(chain.encode("utf-8"))
-        #     f.seek(0)
-
-        #     # count the number of certs in the chain
-        #     num_certs = chain.count("-----BEGIN CERTIFICATE-----")
-
-        #     arg_list = [
-        #         policy_bin_str,
-        #         "did-x509",
-        #         "-in",
-        #         fragment_path,
-        #         "-chain",
-        #         f.name,
-        #         "-policy",
-        #         "eku",
-        #         "-index",
-        #         str(num_certs - 1)
-        #     ]
-
-        #     item = subprocess.run(
-        #         arg_list,
-        #         stdout=sys.stdout,
-        #         stderr=sys.stderr,
-        #         check=False,
-        #     )
-
-        #     # get the exit code from the subprocess
-        #     if item.returncode != 0:
-        #         eprint("Error generating import statement", exit_code=item.returncode)
-        # return item.stdout.decode("utf-8")

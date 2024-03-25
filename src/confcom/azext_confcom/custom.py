@@ -243,8 +243,13 @@ def acifragmentgen_confcom(
     policy.populate_policy_content_for_all_images(
         individual_image=bool(image_name), tar_mapping=tar_mapping
     )
-    fragments = []
 
+    # if no feed is provided, use the first image's feed
+    # to assume it's an image-attached fragment
+    if not feed:
+        feed = policy.get_images()[0].containerImage
+
+    fragments = []
     fragment_text = policy.generate_fragment(namespace, svn, fragments, output_type)
 
     if output_type != security_policy.OutputType.DEFAULT and not no_print:
@@ -260,7 +265,7 @@ def acifragmentgen_confcom(
         cose_proxy = CoseSignToolProxy()
         iss = cose_proxy.create_issuer(chain)
 
-        cose_proxy.cose_sign(filename, key, chain, feed, iss)
+        cose_proxy.cose_sign(filename, key, chain, feed, iss, filename)
         if upload_fragment:
             oras_proxy.attach_fragment_to_image(image_name, filename)
 
