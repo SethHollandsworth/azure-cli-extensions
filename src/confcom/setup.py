@@ -19,7 +19,7 @@ except ImportError:
 
     logger.warn("Wheel is not available, disabling bdist_wheel hook")
 
-VERSION = "0.4.0-alpha.1"
+VERSION = "0.4.0-alpha.3"
 
 # The full list of classifiers is available at
 # https://pypi.python.org/pypi?%3Aaction=list_classifiers

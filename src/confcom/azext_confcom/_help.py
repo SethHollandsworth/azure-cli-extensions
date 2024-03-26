@@ -175,11 +175,11 @@ helps[
 
         - name: --fragment-path, -p
           type: string
-          short-summary: 'Path to a policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry'
+          short-summary: 'Path to a policy fragment to be used with --generate-import to make import statements without having access to the OCI registry containing the fragment'
 
         - name: --generate-import
           type: boolean
-          short-summary: 'Path to a policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry'
+          short-summary: 'Generate an import statement for a policy fragment.'
 
         - name: --disable-stdio
           type: boolean
