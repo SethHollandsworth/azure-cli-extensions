@@ -267,7 +267,7 @@ def acifragmentgen_confcom(
 
         cose_proxy.cose_sign(filename, key, chain, feed, iss, filename)
         if upload_fragment:
-            oras_proxy.attach_fragment_to_image(image_name, filename)
+            oras_proxy.attach_fragment_to_image(feed, filename)
 
     sys.exit(0)
 

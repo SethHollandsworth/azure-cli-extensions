@@ -147,7 +147,7 @@ def load_arguments(self, _):
             "image_name",
             options_list=("--image", "-i"),
             required=False,
-            help="Image Name",
+            help="Image Name to be used for the generated policy fragment",
         )
         c.argument(
             "config",
