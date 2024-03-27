@@ -107,6 +107,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
     ) -> bool:
         policy_bin_str = str(self.policy_bin)
         # TODO: figure out if we need another arg to get key algorithm
+        # TODO: acceptable key formats are PKCS1, PKCS8, and EC
         if out_path == payload_path:
             out_path = payload_path + ".cose"
 
