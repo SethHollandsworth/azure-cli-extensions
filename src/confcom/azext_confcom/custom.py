@@ -11,7 +11,8 @@ from knack.log import get_logger
 from azext_confcom.config import (
     DEFAULT_REGO_FRAGMENTS,
     DATA_FOLDER,
-    RESERVED_FRAGMENT_NAMES
+    RESERVED_FRAGMENT_NAMES,
+    SUPPORTED_ALGOS,
 )
 from azext_confcom import os_util
 from azext_confcom.template_util import (
@@ -200,6 +201,7 @@ def acifragmentgen_confcom(
     key: str,
     chain: str,
     minimum_svn: int,
+    algo: str = "ES384",
     fragment_path: str = None,
     generate_import: bool = False,
     disable_stdio: bool = False,
@@ -221,6 +223,8 @@ def acifragmentgen_confcom(
         error_out(f"Namespace '{namespace}' is a reserved fragment name")
     if generate_import and not minimum_svn:
         error_out("Must provide minimum_svn to generate an import")
+    if algo not in SUPPORTED_ALGOS:
+        error_out(f"Algorithm '{algo}' is not supported. Supported algorithms are {SUPPORTED_ALGOS}")
 
     output_type = get_fragment_output_type(outraw)
 
@@ -265,7 +269,7 @@ def acifragmentgen_confcom(
         cose_proxy = CoseSignToolProxy()
         iss = cose_proxy.create_issuer(chain)
 
-        cose_proxy.cose_sign(filename, key, chain, feed, iss, filename)
+        cose_proxy.cose_sign(filename, key, chain, feed, iss, algo, filename)
         if upload_fragment:
             oras_proxy.attach_fragment_to_image(feed, filename)
 

@@ -196,6 +196,12 @@ def load_arguments(self, _):
             help="Certificate chain for signing the generated policy fragment",
         )
         c.argument(
+            "algo",
+            options_list=("--algo"),
+            required=False,
+            help="Algorithm for signing the generated policy fragment",
+        )
+        c.argument(
             "fragment_path",
             options_list=("--fragment-path", "-p"),
             required=False,

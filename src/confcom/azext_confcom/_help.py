@@ -173,6 +173,10 @@ helps[
           type: string
           short-summary: 'Path to certificate chain file to use for signing the generated policy fragment'
 
+        - name: --algo
+          type: string
+          short-summary: 'Algorithm used for signing the generated policy fragment. Default is ES384'
+
         - name: --fragment-path, -p
           type: string
           short-summary: 'Path to a policy fragment to be used with --generate-import to make import statements without having access to the OCI registry containing the fragment'

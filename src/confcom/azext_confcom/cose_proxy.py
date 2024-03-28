@@ -103,11 +103,10 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         cert_path: str,
         feed: str,
         iss: str,
+        algo: str,
         out_path: str = "payload.rego.cose",
     ) -> bool:
         policy_bin_str = str(self.policy_bin)
-        # TODO: figure out if we need another arg to get key algorithm
-        # TODO: acceptable key formats are PKCS1, PKCS8, and EC
         if out_path == payload_path:
             out_path = payload_path + ".cose"
 
@@ -115,7 +114,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             policy_bin_str,
             "create",
             "-algo",
-            "ES384",
+            algo,
             "-chain",
             cert_path,
             "-claims",
