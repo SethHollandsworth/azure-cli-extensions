@@ -45,3 +45,21 @@ After running the command, there will be the following files created:
 - `contoso.rego.cose`
 
 Where `contoso.rego` is the fragment policy and `contoso.rego.cose` is the signed policy in COSE format.
+
+## Generate Security Policy for an ARM Template
+
+To create an import statement for the newly created rego fragment, run the following command:
+
+```bash
+az confcom acifragmentgen --generate-import -p .\contoso.rego.cose --minimum-svn 1
+```
+
+Which will output the fragment's import in json format. Place this import statement into a new `fragments.json` file.
+
+To generate a security policy for an ARM template, run the following command:
+
+```bash
+az confcom acipolicygen -a "template.json" --use-fragments --fragments-json fragments.json
+```
+
+This will insert the fragment policy into the ARM template and include the mentioned fragments in the fragments.json file.
