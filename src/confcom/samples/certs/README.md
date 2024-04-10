@@ -11,14 +11,9 @@
 Inside `openssl_intermediate.cnf` and `openssl_roof.cnf` update the following fields:
 
 `dir` should have the path where you want to create the certs.
+`create_certchain.sh` should have `<your-username>` specified at the top for `RootPath`
 
 ## Run the Script
-
-```bash
-chmod +x create_certchain.sh
-```
-
-then:
 
 ```bash
 ./create_certchain.sh
