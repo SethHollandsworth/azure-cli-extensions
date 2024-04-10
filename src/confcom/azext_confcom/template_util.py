@@ -294,6 +294,7 @@ def process_fragment_imports(rego_imports) -> None:
                 + "can only be a list value."
             )
 
+
 def process_mounts(image_properties: dict, volumes: List[dict]) -> List[Dict[str, str]]:
     mount_source_table_keys = config.MOUNT_SOURCE_TABLE.keys()
     # initialize empty array of mounts

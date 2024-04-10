@@ -34,6 +34,7 @@ from azext_confcom import oras_proxy
 logger = get_logger(__name__)
 
 
+# pylint: disable=R0914
 def acipolicygen_confcom(
     input_path: str,
     arm_template: str,
@@ -115,6 +116,7 @@ def acipolicygen_confcom(
     check_infrastructure_svn(infrastructure_svn)
 
     fragments_list = []
+    fragment_policy_list = []
     # gather information about the fragments being used in the new policy
     if include_fragments:
         fragments_list = os_util.load_json_from_file(fragments_json)
@@ -191,6 +193,7 @@ def acipolicygen_confcom(
     sys.exit(exit_code)
 
 
+# pylint: disable=R0914
 def acifragmentgen_confcom(
     image_name: str,
     config: str,
@@ -414,3 +417,47 @@ def get_fragment_output_type(outraw):
 def error_out(error_string):
     logger.error(error_string)
     sys.exit(1)
+
+
+def acipolicygen_error_check(
+    input_path: str,
+    arm_template: str,
+    arm_template_parameters: str,
+    image_name: str,
+    outraw: bool = False,
+    outraw_pretty_print: bool = False,
+    diff: bool = False,
+    save_to_file: str = None,
+    print_policy_to_terminal: bool = False,
+    print_existing_policy: bool = False,
+    include_fragments: bool = False,
+    fragments_json: str = None,
+):
+
+    if sum(map(bool, [input_path, arm_template, image_name])) != 1:
+        error_out("Can only generate CCE policy from one source at a time")
+    if sum(map(bool, [print_policy_to_terminal, outraw, outraw_pretty_print])) > 1:
+        error_out("Can only print in one format at a time")
+    elif (diff and input_path) or (diff and image_name):
+        error_out("Can only diff CCE policy from ARM Template")
+    elif arm_template_parameters and not arm_template:
+        error_out(
+            "Can only use ARM Template Parameters if ARM Template is also present"
+        )
+    elif save_to_file and arm_template and not (print_policy_to_terminal or outraw or outraw_pretty_print):
+        error_out("Must print policy to terminal when saving to file")
+    if fragments_json and not include_fragments:
+        error_out("Using a --fragments-json file requires the --include-fragments flag")
+    if include_fragments:
+        # make sure the ORAS CLI is installed
+        oras_proxy.check_oras_cli()
+
+    if print_existing_policy or outraw or outraw_pretty_print:
+        logger.warning(
+            "%s %s %s %s %s",
+            "Secrets that are included in the provided arm template or configuration files ",
+            "in the container env or cmd sections will be printed out with this flag.",
+            "These are outputed secrets that you must protect. Be sure that you do not include these secrets in your",
+            "source control. Also verify that no secrets are present in the logs of your command or script.",
+            "For additional information, see http://aka.ms/clisecrets. \n",
+        )

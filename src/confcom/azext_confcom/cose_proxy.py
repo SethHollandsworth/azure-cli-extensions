@@ -6,7 +6,6 @@
 import subprocess
 import os
 import stat
-import sys
 from pathlib import Path
 import platform
 from zipfile import ZipFile

@@ -3,8 +3,6 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-from typing import Any, Tuple, Dict, List
-from hashlib import sha256
 import yaml
 from azext_confcom import config
 from azext_confcom import oras_proxy
@@ -13,6 +11,7 @@ from azext_confcom.template_util import (
     case_insensitive_dict_get,
     extract_containers_from_text,
 )
+
 
 # input is the full rego file as a string
 # output is all of the containers in the rego files as a list of dictionaries
