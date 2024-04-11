@@ -202,6 +202,9 @@ def katapolicygen_confcom(
 ):
     kata_proxy = KataPolicyGenProxy()
 
+    if not (yaml_path or print_version):
+        error_out("Either --yaml-path or --print-version is required")
+
     output = kata_proxy.kata_genpolicy(
         yaml_path,
         config_map_file=config_map_file,
