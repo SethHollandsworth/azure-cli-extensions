@@ -564,6 +564,7 @@ def extract_confidential_properties(
     )
 
     if confidential_compute_properties is None:
+        return ([],[])
         eprint(
             f"""Field ["{config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES}"]
              not found in ["{config.ACI_FIELD_TEMPLATE_PROPERTIES}"]"""
@@ -738,12 +739,12 @@ def inject_policy_into_template(
     aci_list = [
         item
         for item in arm_resources
-        if item["type"] == config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL
+        if item["type"] in config.ACI_FIELD_SUPPORTED_RESOURCES
     ]
 
     if not aci_list:
         eprint(
-            f'Field ["type"] must contain value of ["{config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL}"]'
+            f'Field ["type"] must contain one of "{config.ACI_FIELD_SUPPORTED_RESOURCES}"'
         )
 
     resource = aci_list[count]
@@ -757,11 +758,12 @@ def inject_policy_into_template(
         container_group_properties, config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES
     )
 
-    if confidential_compute_properties is None:
-        eprint(
-            f'Field ["{config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES}"] ' +
-            f'not found in ["{config.ACI_FIELD_TEMPLATE_PROPERTIES}"]'
-        )
+    if not confidential_compute_properties:
+        container_group_properties[config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES] = {}
+        # eprint(
+        #     f'Field ["{config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES}"] ' +
+        #     f'not found in ["{config.ACI_FIELD_TEMPLATE_PROPERTIES}"]'
+        # )
 
     cce_policy = case_insensitive_dict_get(
         confidential_compute_properties, config.ACI_FIELD_TEMPLATE_CCE_POLICY
@@ -836,12 +838,12 @@ def get_container_group_name(
     aci_list = [
         item
         for item in arm_resources
-        if item["type"] == config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL
+        if item["type"] in config.ACI_FIELD_SUPPORTED_RESOURCES
     ]
 
     if not aci_list:
         eprint(
-            f'Field ["type"] must contain value of ["{config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL}"]'
+            f'Field ["type"] must contain one of "{config.ACI_FIELD_SUPPORTED_RESOURCES}"'
         )
 
     resource = aci_list[count]
@@ -869,12 +871,12 @@ def print_existing_policy_from_arm_template(arm_template_path, parameter_data_pa
     aci_list = [
         item
         for item in arm_resources
-        if item["type"] == config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL
+        if item["type"] in config.ACI_FIELD_SUPPORTED_RESOURCES
     ]
 
     if not aci_list:
         eprint(
-            f'Field ["type"] must contain value of ["{config.ACI_FIELD_TEMPLATE_RESOURCE_LABEL}"]'
+            f'Field ["type"] must contain one of "{config.ACI_FIELD_SUPPORTED_RESOURCES}"'
         )
     for i, resource in enumerate(aci_list):
         container_group_properties = case_insensitive_dict_get(
