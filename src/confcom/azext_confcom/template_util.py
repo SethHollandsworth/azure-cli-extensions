@@ -565,10 +565,6 @@ def extract_confidential_properties(
 
     if confidential_compute_properties is None:
         return ([],[])
-        eprint(
-            f"""Field ["{config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES}"]
-             not found in ["{config.ACI_FIELD_TEMPLATE_PROPERTIES}"]"""
-        )
 
     cce_policy = case_insensitive_dict_get(
         confidential_compute_properties, config.ACI_FIELD_TEMPLATE_CCE_POLICY
@@ -759,11 +755,11 @@ def inject_policy_into_template(
     )
 
     if not confidential_compute_properties:
+        # initialize the confcom properties and reassign the variable to the empty dict
         container_group_properties[config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES] = {}
-        # eprint(
-        #     f'Field ["{config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES}"] ' +
-        #     f'not found in ["{config.ACI_FIELD_TEMPLATE_PROPERTIES}"]'
-        # )
+        confidential_compute_properties = case_insensitive_dict_get(
+            container_group_properties, config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES
+        )
 
     cce_policy = case_insensitive_dict_get(
         confidential_compute_properties, config.ACI_FIELD_TEMPLATE_CCE_POLICY
