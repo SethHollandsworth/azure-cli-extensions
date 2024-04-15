@@ -740,7 +740,7 @@ def inject_policy_into_template(
 
     if not aci_list:
         eprint(
-            f'Field ["type"] must contain one of "{config.ACI_FIELD_SUPPORTED_RESOURCES}"'
+            f'Field ["type"] must contain one of {config.ACI_FIELD_SUPPORTED_RESOURCES}'
         )
 
     resource = aci_list[count]
@@ -839,7 +839,7 @@ def get_container_group_name(
 
     if not aci_list:
         eprint(
-            f'Field ["type"] must contain one of "{config.ACI_FIELD_SUPPORTED_RESOURCES}"'
+            f'Field ["type"] must contain one of {config.ACI_FIELD_SUPPORTED_RESOURCES}'
         )
 
     resource = aci_list[count]
@@ -872,7 +872,7 @@ def print_existing_policy_from_arm_template(arm_template_path, parameter_data_pa
 
     if not aci_list:
         eprint(
-            f'Field ["type"] must contain one of "{config.ACI_FIELD_SUPPORTED_RESOURCES}"'
+            f'Field ["type"] must contain one of {config.ACI_FIELD_SUPPORTED_RESOURCES}'
         )
     for i, resource in enumerate(aci_list):
         container_group_properties = case_insensitive_dict_get(

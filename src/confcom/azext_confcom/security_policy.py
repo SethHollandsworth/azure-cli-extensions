@@ -551,7 +551,7 @@ def load_policy_from_arm_template_str(
 
     if not aci_list:
         eprint(
-            f'Field ["type"] must contain one of "{config.ACI_FIELD_SUPPORTED_RESOURCES}"'
+            f'Field ["type"] must contain one of {config.ACI_FIELD_SUPPORTED_RESOURCES}'
         )
 
     # extract variables and parameters in case we need to do substitutions
