@@ -33,26 +33,29 @@ class FragmentMountEnforcement(unittest.TestCase):
         "containers": [
             {
                 "name": "test-container",
-                "image": "alpine:3.16",
-                "environmentVariables": [
-                    {
-                        "name": "PATH",
-                        "value": "/customized/path/value"
-                    },
-                    {
-                        "name": "TEST_REGEXP_ENV",
-                        "value": "test_regexp_env_[[:alpha:]]*",
-                        "regex": true
-                    }
-                ],
-                "command": ["rustc", "--help"],
-                "volumeMounts": [
-                    {
-                        "name": "azurefile",
-                        "mountPath": "/mount/azurefile",
-                        "readonly": true
-                    }
-                ]
+                "properties": {
+                    "image": "alpine:3.16",
+                    "environmentVariables": [
+                        {
+                            "name": "PATH",
+                            "value": "/customized/path/value"
+                        },
+                        {
+                            "name": "TEST_REGEXP_ENV",
+                            "value": "test_regexp_env_[[:alpha:]]*",
+                            "regex": true
+                        }
+                    ],
+                    "command": ["rustc", "--help"],
+                    "volumeMounts": [
+                        {
+                            "name": "azurefile",
+                            "mountPath": "/mount/azurefile",
+                            "mountType": "azureFile",
+                            "readonly": true
+                        }
+                    ]
+                }
             }
         ]
     }
@@ -66,7 +69,6 @@ class FragmentMountEnforcement(unittest.TestCase):
             cls.aci_policy = aci_policy
 
     def test_fragment_user_container_customized_mounts(self):
-        # TODO: add another mount
         image = next(
             (
                 img
@@ -79,31 +81,33 @@ class FragmentMountEnforcement(unittest.TestCase):
         self.assertIsNotNone(image)
         data = image.get_policy_json()
 
-
         self.assertEqual(
             len(
                 case_insensitive_dict_get(
                     data, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS
                 )
             ),
-            1,
+            2,
         )
         mount = case_insensitive_dict_get(
             data, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS
         )[0]
-        self.assertIsNotNone(mount)
-        # self.assertEqual(
-        #     case_insensitive_dict_get(mount, "source"),
-        #     "sandbox:///tmp/atlas/azureFileVolume/.+",
-        # )
+        resolv_mount = case_insensitive_dict_get(
+            data, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS
+        )[1]
+        self.assertIsNotNone(resolv_mount)
+        self.assertEqual(
+            case_insensitive_dict_get(mount, "source"),
+            "sandbox:///tmp/atlas/azureFileVolume/.+",
+        )
         self.assertEqual(
             case_insensitive_dict_get(
-                mount, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_DESTINATION
+                resolv_mount, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_DESTINATION
             ),
             "/etc/resolv.conf",
         )
         self.assertEqual(
-            mount[config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_OPTIONS][2], "rw"
+            resolv_mount[config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_OPTIONS][2], "rw"
         )
 
     def test_fragment_user_container_mount_injected_dns(self):
@@ -124,11 +128,11 @@ class FragmentMountEnforcement(unittest.TestCase):
                     data, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS
                 )
             ),
-            1,
+            2,
         )
         mount = case_insensitive_dict_get(
             data, config.POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS
-        )[0]
+        )[1]
         self.assertIsNotNone(mount)
         self.assertEqual(
             case_insensitive_dict_get(
@@ -154,104 +158,106 @@ class FragmentGenerating(unittest.TestCase):
         "containers": [
             {
                 "name": "sidecar-container",
-                "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1",
-                "environmentVariables": [
-                {
-                    "name": "IDENTITY_API_VERSION",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "IDENTITY_HEADER",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "IDENTITY_SERVER_THUMBPRINT",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "ACI_MI_CLIENT_ID_.+",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "ACI_MI_RES_ID_.+",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "HOSTNAME",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "TERM",
-                    "value": "xterm",
-                    "regex": false
-                },
-                {
-                    "name": "PATH",
-                    "value": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-                },
-                {
-                    "name": "(?i)(FABRIC)_.+",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "Fabric_Id+",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "Fabric_ServiceName",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "Fabric_ApplicationName",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "Fabric_CodePackageName",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "Fabric_ServiceDnsName",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "ACI_MI_DEFAULT",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "TokenProxyIpAddressEnvKeyName",
-                    "value": "[ContainerToHostAddress|Fabric_NodelPOrFQDN]",
-                    "regex": true
-                },
-                {
-                    "name": "ContainerToHostAddress",
-                    "value": "sidecar-container"
-                },
-                {
-                    "name": "Fabric_NetworkingMode",
-                    "value": ".+",
-                    "regex": true
-                },
-                {
-                    "name": "azurecontainerinstance_restarted_by",
-                    "value": ".+",
-                    "regex": true
+                "properties": {
+                    "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1",
+                    "environmentVariables": [
+                    {
+                        "name": "IDENTITY_API_VERSION",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "IDENTITY_HEADER",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "IDENTITY_SERVER_THUMBPRINT",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "ACI_MI_CLIENT_ID_.+",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "ACI_MI_RES_ID_.+",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "HOSTNAME",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "TERM",
+                        "value": "xterm",
+                        "regex": false
+                    },
+                    {
+                        "name": "PATH",
+                        "value": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+                    },
+                    {
+                        "name": "(?i)(FABRIC)_.+",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "Fabric_Id+",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "Fabric_ServiceName",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "Fabric_ApplicationName",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "Fabric_CodePackageName",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "Fabric_ServiceDnsName",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "ACI_MI_DEFAULT",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "TokenProxyIpAddressEnvKeyName",
+                        "value": "[ContainerToHostAddress|Fabric_NodelPOrFQDN]",
+                        "regex": true
+                    },
+                    {
+                        "name": "ContainerToHostAddress",
+                        "value": "sidecar-container"
+                    },
+                    {
+                        "name": "Fabric_NetworkingMode",
+                        "value": ".+",
+                        "regex": true
+                    },
+                    {
+                        "name": "azurecontainerinstance_restarted_by",
+                        "value": ".+",
+                        "regex": true
+                    }
+                ],
+                "command": ["/bin/sh","-c","until ./msiAtlasAdapter; do echo $? restarting; done"],
+                "mounts": null
                 }
-            ],
-            "command": ["/bin/sh","-c","until ./msiAtlasAdapter; do echo $? restarting; done"],
-            "mounts": null
             }
         ]
     }
@@ -349,8 +355,8 @@ class FragmentGenerating(unittest.TestCase):
         self.assertIsNotNone(image)
 
         self.assertEqual(image._command, command)
+        env_names = list(map(lambda x: x['pattern'], image._environmentRules + image._extraEnvironmentRules))
         for env_var in env_vars:
-            env_names = map(lambda x: x['pattern'], image._environmentRules + image._extraEnvironmentRules)
             self.assertIn(env_var['name'] + "=" + env_var['value'], env_names)
 
         expected_workingdir = "/root/"
@@ -379,12 +385,14 @@ class FragmentPolicyGeneratingDebugMode(unittest.TestCase):
         "containers": [
             {
             "name": "test-container",
-                "image": "python:3.6.14-slim-buster",
-            "environmentVariables": [
+            "properties": {
+                    "image": "python:3.6.14-slim-buster",
+                "environmentVariables": [
 
-            ],
-            "command": ["python3"]
+                ],
+                "command": ["python3"]
             }
+        }
         ]
     }
     """
@@ -404,7 +412,7 @@ class FragmentPolicyGeneratingDebugMode(unittest.TestCase):
 
         # see if debug mode is enabled
         containers, _ = extract_containers_and_fragments_from_text(policy)
-        yaml.load(containers, Loader=yaml.FullLoader)
+
         self.assertTrue(containers[0]["allow_stdio_access"])
         self.assertTrue(containers[0]["exec_processes"][0]["command"] == ["/bin/sh"])
 
@@ -415,21 +423,24 @@ class FragmentSidecarValidation(unittest.TestCase):
     "version": "1.0",
     "containers": [
         {
-            "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
-            "environmentVariables": [
-                {
-                    "name": "PATH",
-                    "value": ".+",
-                    "regex": true
-                }
-            ],
-            "command": [
-                "/bin/sh",
-                "-c",
-                "until ./msiAtlasAdapter; do echo $? restarting; done"
-            ],
-            "workingDir": "/root/",
-            "mounts": null
+            "name": "test-container",
+            "properties": {
+                "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
+                "environmentVariables": [
+                    {
+                        "name": "PATH",
+                        "value": ".+",
+                        "regex": true
+                    }
+                ],
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    "until ./msiAtlasAdapter; do echo $? restarting; done"
+                ],
+                "workingDir": "/root/",
+                "mounts": null
+            }
         }
     ]
 }
@@ -439,19 +450,22 @@ class FragmentSidecarValidation(unittest.TestCase):
     "version": "1.0",
     "containers": [
         {
-            "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
-            "environmentVariables": [
-               {"name": "PATH",
-               "value":"/",
-               "strategy":"string"}
-            ],
-            "command": [
-                "/bin/sh",
-                "-c",
-                "until ./msiAtlasAdapter; do echo $? restarting; done"
-            ],
-            "workingDir": "/root/",
-            "mounts": null
+            "name": "test-container",
+            "properties": {
+                "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1",
+                "environmentVariables": [
+                {"name": "PATH",
+                "value":"/",
+                "strategy":"string"}
+                ],
+                "command": [
+                    "/bin/sh",
+                    "-c",
+                    "until ./msiAtlasAdapter; do echo $? restarting; done"
+                ],
+                "workingDir": "/root/",
+                "mounts": null
+            }
         }
     ]
 }
@@ -470,11 +484,7 @@ class FragmentSidecarValidation(unittest.TestCase):
             cls.aci_policy2 = aci_policy2
 
     def test_fragment_sidecar(self):
-        print("self.aci_policy: ", self.aci_policy)
-
         is_valid, diff = self.aci_policy.validate_sidecars()
-        print("diff: ", diff)
-
         self.assertTrue(is_valid)
         self.assertTrue(not diff)
 

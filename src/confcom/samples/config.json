@@ -12,26 +12,28 @@
     "containers": [
         {
             "name": "my-image",
-            "image": "mcr.microsoft.com/aci/skr:2.6",
-            "volumeMounts": [
-                {
-                    "name": "azurefile",
-                    "mountPath": "/mount/azurefile",
-                    "mountType": "azureFile",
-                    "readOnly": true
-                }
-            ],
-            "environmentVariables": [
-                {
-                    "name": "PATH",
-                    "value": "/customized/path/value"
-                },
-                {
-                    "name": "TEST_REGEXP_ENV",
-                    "value": "test_regexp_env(.*)",
-                    "regex": true
-                }
-            ]
+            "properties": {
+                "image": "mcr.microsoft.com/aci/skr:2.6",
+                "volumeMounts": [
+                    {
+                        "name": "azurefile",
+                        "mountPath": "/mount/azurefile",
+                        "mountType": "azureFile",
+                        "readOnly": true
+                    }
+                ],
+                "environmentVariables": [
+                    {
+                        "name": "PATH",
+                        "value": "/customized/path/value"
+                    },
+                    {
+                        "name": "TEST_REGEXP_ENV",
+                        "value": "test_regexp_env(.*)",
+                        "regex": true
+                    }
+                ]
+            }
         }
     ]
 }

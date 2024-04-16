@@ -240,13 +240,12 @@ def process_env_vars_from_config(container) -> List[Dict[str, str]]:
         elif not value:
             eprint(f'Environment variable {name} does not have a value. Please check the template file.')
 
-        if case_insensitive_dict_get(env_var, "regex"):
-            env_vars.append({
-                config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
-                config.ACI_FIELD_CONTAINERS_ENVS_VALUE: value,
-                config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY:
-                    "re2" if case_insensitive_dict_get(env_var, "regex") else "string",
-            })
+        env_vars.append({
+            config.ACI_FIELD_CONTAINERS_ENVS_NAME: name,
+            config.ACI_FIELD_CONTAINERS_ENVS_VALUE: value,
+            config.ACI_FIELD_CONTAINERS_ENVS_STRATEGY:
+                "re2" if case_insensitive_dict_get(env_var, "regex") else "string",
+        })
 
     return env_vars
 

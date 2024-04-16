@@ -910,12 +910,18 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
     )
 
     for container in container_list:
-        # TODO: figure out if we should use "properties" to be more similar to arm template
-        # image_properties = case_insensitive_dict_get(
-        #     container, config.ACI_FIELD_TEMPLATE_PROPERTIES
-        # )
+        container_name = case_insensitive_dict_get(
+            container, config.ACI_FIELD_RESOURCES_NAME
+        )
+        if not container_name:
+            eprint(f'Field ["{config.ACI_FIELD_RESOURCES_NAME}"] is empty or cannot be found')
+
+        container_properties = case_insensitive_dict_get(
+            container, config.ACI_FIELD_TEMPLATE_PROPERTIES
+        )
+
         image_name = case_insensitive_dict_get(
-            container, config.ACI_FIELD_TEMPLATE_IMAGE
+            container_properties, config.ACI_FIELD_TEMPLATE_IMAGE
         )
 
         if not image_name:
@@ -924,21 +930,22 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
             )
 
         exec_processes = []
-        extract_probe(exec_processes, container, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
-        extract_probe(exec_processes, container, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
+        extract_probe(exec_processes, container_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
+        extract_probe(exec_processes, container_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
 
         containers.append(
             {
                 config.ACI_FIELD_CONTAINERS_ID: image_name,
+                config.ACI_FIELD_RESOURCES_NAME: container_name,
                 config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE: image_name,
                 config.ACI_FIELD_CONTAINERS_ENVS: process_env_vars_from_config(
-                    container
+                    container_properties
                 ),
                 config.ACI_FIELD_CONTAINERS_COMMAND: case_insensitive_dict_get(
-                    container, config.ACI_FIELD_TEMPLATE_COMMAND
+                    container_properties, config.ACI_FIELD_TEMPLATE_COMMAND
                 )
                 or [],
-                config.ACI_FIELD_CONTAINERS_MOUNTS: process_mounts_from_config(container),
+                config.ACI_FIELD_CONTAINERS_MOUNTS: process_mounts_from_config(container_properties),
                 config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES: exec_processes
                 + config.DEBUG_MODE_SETTINGS.get("execProcesses")
                 if debug_mode
@@ -946,7 +953,7 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
                 config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES: [],
                 config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS: not disable_stdio,
                 config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT: case_insensitive_dict_get(
-                    container, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+                    container_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
                 ),
             }
         )
