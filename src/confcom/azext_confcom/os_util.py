@@ -50,6 +50,21 @@ def load_yaml_from_str(data: str) -> dict:
             eprint(f"Invalid YAML formatting for data: {data}")
     return {}
 
+
+def load_multiple_yaml_from_file(path: str) -> dict:
+    raw_data = load_str_from_file(path)
+    return load_multiple_yaml_from_str(raw_data)
+
+
+def load_multiple_yaml_from_str(data: str) -> dict:
+    if data:
+        try:
+            return yaml.safe_load_all(data)
+        except yaml.YAMLError:
+            eprint(f"Invalid YAML formatting for data: {data}")
+    return {}
+
+
 def load_json_from_file(path: str) -> dict:
     raw_data = load_str_from_file(path)
     return load_json_from_str(raw_data)
@@ -96,6 +111,14 @@ def write_yaml_to_file(path: str, content: dict) -> None:
 def write_str_to_file(path: str, content: str) -> None:
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
+
+
+def pods_to_yaml(pods: list) -> str:
+    output = ""
+    for i, pod in enumerate(pods):
+        output += yaml.dump(pod)
+        output += "---\n" if i < len(pods) - 1 else ""
+    return output
 
 
 def load_tar_mapping_from_file(path: str) -> dict:

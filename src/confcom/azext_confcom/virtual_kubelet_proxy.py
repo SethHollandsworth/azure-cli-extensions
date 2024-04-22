@@ -12,9 +12,11 @@ import stat
 from pathlib import Path
 import platform
 import requests
+import tempfile
+import yaml
 from knack.log import get_logger
 from azext_confcom.errors import eprint
-
+from azext_confcom import os_util
 
 host_os = platform.system()
 machine = platform.machine()
@@ -108,8 +110,16 @@ class VirtualKubeletProxy:  # pylint: disable=too-few-public-methods
         VirtualKubeletProxy.arm_template_path = output_file_name
         policy_bin_str = str(self.policy_bin)
 
+        new_pod = convert_to_pod_spec(virtual_kubelet_yaml_path)
+
+        f = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
+        yaml_str = os_util.pods_to_yaml(new_pod)
+
+        f.write(bytes(yaml_str, "utf-8"))
+        f.close()
+
         arg_list = [
-            f"{policy_bin_str}", f"{virtual_kubelet_yaml_path}",
+            f"{policy_bin_str}", f"{f.name}",
         ]
 
         if configmaps:
@@ -137,15 +147,40 @@ class VirtualKubeletProxy:  # pylint: disable=too-few-public-methods
         if secrets:
             arg_list += ["--secrets", f"{secrets}"]
 
+        # note that if there are more than 1 pod specs in the yaml file
+        # the binary will fail out
         item = subprocess.run(
             arg_list,
             capture_output=True,
             check=False,
         )
 
+        os.remove(f.name)
         if item.returncode != 0:
             if item.stderr.decode("utf-8") != "" and item.stderr.decode("utf-8") is not None:
                 logger.warning(item.stderr.decode("utf-8"))
             sys.exit(item.returncode)
 
         return
+
+
+def convert_to_pod_spec(template_path: str):
+    yaml_dict = os_util.load_multiple_yaml_from_file(template_path)
+    results = [convert_to_pod_spec_helper(x) for x in yaml_dict]
+    return [add_kind_to_pod_spec(x) for x in results if x]
+
+
+def add_kind_to_pod_spec(pod_spec: dict):
+    pod_spec["kind"] = "Pod"
+    pod_spec["apiVersion"] = "v1"
+    return pod_spec
+
+def convert_to_pod_spec_helper(pod_dict):
+    possible_keys = ["spec", "template", "jobTemplate"]
+
+    if "spec" in pod_dict and "containers" in pod_dict["spec"]:
+        return pod_dict
+    for key in possible_keys:
+        if key in pod_dict:
+            return convert_to_pod_spec_helper(pod_dict[key])
+    return {}
