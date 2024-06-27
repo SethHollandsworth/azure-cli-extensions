@@ -37,9 +37,11 @@ def get_all_fragment_contents(fragment_imports):
     for fragment in fragment_imports:
         # pull locally if there is a path, otherwise pull from the remote registry
         if config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH in fragment:
-            contents = cose_proxy.extract_payload_from_path(
-                fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH]
-            )
+            contents = [
+                cose_proxy.extract_payload_from_path(
+                    fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH]
+                )
+            ]
         else:
             feed_name = case_insensitive_dict_get(
                 fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED
@@ -48,12 +50,20 @@ def get_all_fragment_contents(fragment_imports):
 
         # add the new fragments to the list of all fragments if they're not already there
         # the side effect of adding this way is that if we have a local path to a nested fragment
-        # we will pull the use the local version of the fragment instead of pulling from the registry
-        new_fragments = extract_containers_from_text(contents, config.REGO_FRAGMENT_START)
-        for new_fragment in new_fragments:
-            if new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED] not in fragment_feeds:
-                fragment_imports.append(new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED])
+        # we will pull then use the local version of the fragment instead of pulling from the registry
+        for content in contents:
+            fragment_text = extract_containers_from_text(
+                content, config.REGO_FRAGMENT_START
+            ).replace("\t", "    ")
 
-        all_fragments_contents.extend(contents)
+            fragments = yaml.load(
+                fragment_text,
+                Loader=yaml.FullLoader,
+            )
+            for new_fragment in fragments:
+                if new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED] not in fragment_feeds:
+                    fragment_imports.append(new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED])
+
+            all_fragments_contents.append(content)
 
     return combine_fragments_with_policy(all_fragments_contents)

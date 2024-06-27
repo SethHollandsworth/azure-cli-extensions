@@ -20,7 +20,6 @@ from azext_confcom.template_util import (
     extract_containers_and_fragments_from_text,
 )
 from azext_confcom.custom import acifragmentgen_confcom
-import yaml
 from azure.cli.testsdk import ScenarioTest
 
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
@@ -362,21 +361,6 @@ class FragmentGenerating(unittest.TestCase):
         expected_workingdir = "/root/"
         self.assertEqual(image._workingDir, expected_workingdir)
 
-    # def test_sign_and_upload(self):
-    #     # generate a key and certificate
-    #     subprocess.run("openssl genrsa -out key.pem 2048", shell=True)
-    #     subprocess.run("openssl req -new -key key.pem -out csr.pem -subj '/CN=example.com'", shell=True)
-    #     subprocess.run("openssl x509 -req -in csr.pem -signkey key.pem -out cert.pem", shell=True)
-    #     # sign the fragment
-    #     acifragmentgen_confcom(image="mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1", key="key.pem", chain="cert.pem", namespace="test", svn="1", output_filename="signed_fragment.rego", upload_fragment=True)
-
-    #     self.assertTrue(os.path.exists("signed_fragment.rego"))
-    #     self.assertTrue(os.path.exists("signed_fragment.rego.cose"))
-
-    #     # see if the fragment is uploaded
-    #     # TODO: figure out how to do an oras pull from the local registry
-
-
 
 class FragmentPolicyGeneratingDebugMode(unittest.TestCase):
     custom_json = """
@@ -515,23 +499,6 @@ class FragmentSidecarValidation(unittest.TestCase):
         self.assertEqual(diff, expected_diff)
 
 
-# class GenerateImport(unittest.TestCase):
-#     # set up for the test class
-#     def setUp(self):
-#         subprocess.run("docker run -d -p 5000:5000 --restart=always --name registry ghcr.io/project-zot/zot-linux-amd64:latest", shell=True)
-#         # create a test image
-#         subprocess.run("docker pull mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64", shell=True)
-#         subprocess.run("docker tag mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64 localhost:5000/library-busybox:master.220314.1-linux-amd64", shell=True)
-#         subprocess.run("docker push localhost:5000/library-busybox:master.220314.1-linux-amd64", shell=True)
-#         # TODO: build and sign fragment, upload to local registry at localhost:5000
-
-#     def test_generate_import_local(self):
-#         pass
-
-#     def test_generate_import_remote(self):
-#         pass
-
-
 class InitialFragmentErrors(ScenarioTest):
     def test_invalid_input(self):
         with self.assertRaises(SystemExit) as wrapped_exit:
@@ -544,6 +511,3 @@ class InitialFragmentErrors(ScenarioTest):
         with self.assertRaises(SystemExit) as wrapped_exit:
             self.cmd("az confcom acifragmentgen -i mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -k fakepath/key.pem")
         self.assertEqual(wrapped_exit.exception.code, 1)
-
-
-

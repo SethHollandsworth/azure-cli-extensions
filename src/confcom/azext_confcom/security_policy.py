@@ -542,9 +542,38 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             # save some computation time by checking if the image tag is the same first
             if fragment_image.get("id") == image.containerImage:
                 image_policy = image.get_policy_json()
-                container_diff = compare_containers(fragment_image, image_policy)
+                # container_diff = compare_containers(fragment_image, image_policy)
+                # copy so we can delete fields and not affect the original data
+                # structure
+                container1 = copy.deepcopy(fragment_image)
+                container2 = copy.deepcopy(image_policy)
+
+                # the ID does not matter so delete them from comparison
+                container1.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
+                container2.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
+                # env vars will be compared later so delete them from this
+                # comparison
+                container1.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
+                container2.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
+
+                container_diff = compare_containers(container1, container2)
+
+                # if the rest of the container is good, check the env vars
                 if container_diff == {}:
-                    return True
+                    env_reason_list = compare_env_vars(
+                        fragment_image.get("id"),
+                        case_insensitive_dict_get(
+                            fragment_image,
+                            config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS,
+                        ),
+                        case_insensitive_dict_get(
+                            image_policy, config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS
+                        ),
+                    )
+
+                    # if the env vars are the same, then we can eliminate the container
+                    if env_reason_list == {}:
+                        return True
         return False
 
     def get_images(self) -> List[ContainerImage]:
@@ -897,6 +926,7 @@ def load_policy_from_config_file(config_file, debug_mode: bool = False, disable_
     return load_policy_from_config_str(config_content, debug_mode, disable_stdio)
 
 
+# Used for generating policy fragments
 def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_stdio: bool = False):
     config_dict = os_util.load_json_from_str(config_str)
     containers = []

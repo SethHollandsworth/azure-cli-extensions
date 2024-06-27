@@ -106,8 +106,6 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         out_path: str = "payload.rego.cose",
     ) -> bool:
         policy_bin_str = str(self.policy_bin)
-        if out_path == payload_path:
-            out_path = payload_path + ".cose"
 
         arg_list = [
             policy_bin_str,

@@ -32,7 +32,7 @@ After completion, this will create the following files to be used in the confcom
 You may need to change the path to the chain and key files in the following command:
 
 ```bash
-az confcom acifragmentgen --chain ./samples/certs/intermediateCA/certs/www.contoso.com.chain.cert.pem --key ./samples/certs/intermediate/private/ec_p384_private.pem --svn 1 --namespace contoso --config ./samples/config.json --upload-fragment
+az confcom acifragmentgen --chain ./samples/certs/intermediateCA/certs/www.contoso.com.chain.cert.pem --key ./samples/certs/intermediateCA/private/ec_p384_private.pem --svn 1 --namespace contoso --config ./samples/config.json --upload-fragment
 ```
 
 After running the command, there will be the following files created:
@@ -56,7 +56,7 @@ Which will output the fragment's import in json format. Place this import statem
 To generate a security policy for an ARM template, run the following command:
 
 ```bash
-az confcom acipolicygen -a "template.json" --use-fragments --fragments-json fragments.json
+az confcom acipolicygen -a "template.json" --include_fragments --fragments-json fragments.json
 ```
 
 This will insert the fragment policy into the ARM template and include the mentioned fragments in the fragments.json file.

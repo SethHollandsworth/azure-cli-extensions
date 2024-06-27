@@ -120,6 +120,9 @@ def acipolicygen_confcom(
     # gather information about the fragments being used in the new policy
     if include_fragments:
         fragments_list = os_util.load_json_from_file(fragments_json)
+        # convert to list if it's just a dict
+        if not isinstance(fragments_list, list):
+            fragments_list = [fragments_list]
         fragment_policy_list = get_all_fragment_contents(fragments_list)
 
     # telling the user what operation we're doing
@@ -271,10 +274,11 @@ def acifragmentgen_confcom(
     if key:
         cose_proxy = CoseSignToolProxy()
         iss = cose_proxy.create_issuer(chain)
+        out_path = filename + ".cose"
 
-        cose_proxy.cose_sign(filename, key, chain, feed, iss, algo, filename)
+        cose_proxy.cose_sign(filename, key, chain, feed, iss, algo, out_path)
         if upload_fragment:
-            oras_proxy.attach_fragment_to_image(feed, filename)
+            oras_proxy.attach_fragment_to_image(feed, out_path)
 
     sys.exit(0)
 
