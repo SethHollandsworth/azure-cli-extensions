@@ -113,7 +113,7 @@ class KataPolicyGenProxy:  # pylint: disable=too-few-public-methods
         print_version=False,
         containerd_pull=False,
         containerd_socket_path=None
-    ) -> List[str]:
+    ) -> list[str]:
         policy_bin_str = str(self.policy_bin)
         # get path to data and rules folder
         arg_list = [policy_bin_str]

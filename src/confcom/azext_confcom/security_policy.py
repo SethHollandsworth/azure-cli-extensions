@@ -250,8 +250,14 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             OutputType.PRETTY_PRINT, rego_boilerplate=False
         )
         policy_content = json.loads(policy_str)
+
+        for container in policy_content:
+            # the test sets the sidecar to have the name be the same as the ID, so we need to simulate that
+            container[config.ACI_FIELD_CONTAINERS_NAME] = container[config.ACI_FIELD_CONTAINERS_ID]
         # done this way instead of self.validate() because the input.json is
         # the source of truth
+        print("policy_content: ", policy_content)
+
         return policy.validate(policy_content, sidecar_validation=True)
 
     def validate(self, policy, sidecar_validation=False) -> Tuple[bool, Dict]:
@@ -513,14 +519,14 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                     # these containers will get taken out later in the function
                     # since they are covered by a fragment
                     continue
-                else:
-                    # populate tar location
-                    if isinstance(tar_mapping, dict):
-                        tar_location = get_tar_location_from_mapping(tar_mapping, image_name)
-                    # populate layer info
-                    image.set_layers(proxy.get_policy_image_layers(
-                        image.base, image.tag, tar_location=tar_location if tar else "", faster_hashing=faster_hashing
-                    ))
+
+                # populate tar location
+                if isinstance(tar_mapping, dict):
+                    tar_location = get_tar_location_from_mapping(tar_mapping, image_name)
+                # populate layer info
+                image.set_layers(proxy.get_policy_image_layers(
+                    image.base, image.tag, tar_location=tar_location if tar else "", faster_hashing=faster_hashing
+                ))
 
                 progress.update()
             progress.close()
@@ -941,10 +947,10 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
 
     for container in container_list:
         container_name = case_insensitive_dict_get(
-            container, config.ACI_FIELD_RESOURCES_NAME
+            container, config.ACI_FIELD_CONTAINERS_NAME
         )
         if not container_name:
-            eprint(f'Field ["{config.ACI_FIELD_RESOURCES_NAME}"] is empty or cannot be found')
+            eprint(f'Field ["{config.ACI_FIELD_CONTAINERS_NAME}"] is empty or cannot be found')
 
         container_properties = case_insensitive_dict_get(
             container, config.ACI_FIELD_TEMPLATE_PROPERTIES
@@ -966,7 +972,7 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
         containers.append(
             {
                 config.ACI_FIELD_CONTAINERS_ID: image_name,
-                config.ACI_FIELD_RESOURCES_NAME: container_name,
+                config.ACI_FIELD_CONTAINERS_NAME: container_name,
                 config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE: image_name,
                 config.ACI_FIELD_CONTAINERS_ENVS: process_env_vars_from_config(
                     container_properties

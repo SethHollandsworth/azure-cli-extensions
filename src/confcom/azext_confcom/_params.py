@@ -189,10 +189,6 @@ def load_arguments(self, _):
             "chain",
             options_list=("--chain"),
             required=False,
-<<<<<<< HEAD
-            help="Fragments to add to the generated policy in JSON format",
-
-=======
             help="Certificate chain for signing the generated policy fragment",
         )
         c.argument(
@@ -205,10 +201,6 @@ def load_arguments(self, _):
             "fragment_path",
             options_list=("--fragment-path", "-p"),
             required=False,
-<<<<<<< HEAD
-            help="Path to JSON file containing fragment information",
->>>>>>> b4f4a8676 (updating with new flags)
-=======
             help="Path to a policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry",
         )
         c.argument(
@@ -246,7 +238,6 @@ def load_arguments(self, _):
             options_list=("--outraw"),
             required=False,
             help="Output policy fragment in clear text compact JSON instead of default base64 format",
->>>>>>> 20e0cab0e (updated spec for policy fragments)
         )
         c.argument(
             "upload_fragment",

@@ -10,7 +10,6 @@ from pkg_resources import parse_version
 from knack.log import get_logger
 from azext_confcom.config import (
     DEFAULT_REGO_FRAGMENTS,
-    DATA_FOLDER,
     RESERVED_FRAGMENT_NAMES,
     SUPPORTED_ALGOS,
 )
@@ -34,7 +33,7 @@ from azext_confcom import oras_proxy
 logger = get_logger(__name__)
 
 
-# pylint: disable=R0914
+# pylint: disable=R0914, R0912
 def acipolicygen_confcom(
     input_path: str,
     arm_template: str,
@@ -53,13 +52,6 @@ def acipolicygen_confcom(
     disable_stdio: bool = False,
     print_existing_policy: bool = False,
     faster_hashing: bool = False,
-    namespace: str = None,
-    svn: str = None,
-    key: str = None,
-    chain: str = None,
-    feed: str = None,
-    generate_fragment: bool = False,
-    upload_fragment: bool = False,
     include_fragments: bool = False,
     fragments_json: str = None,
 ):
@@ -79,8 +71,6 @@ def acipolicygen_confcom(
     elif faster_hashing and tar_mapping_location:
         error_out("Cannot use --faster-hashing with --tar")
 
-    if generate_fragment and (not namespace or not svn):
-        error_out("Must provide both namespace and svn for generating policy fragments")
     if fragments_json and not include_fragments:
         error_out("Using a --fragments-json file requires the --include-fragments flag")
     if include_fragments:
