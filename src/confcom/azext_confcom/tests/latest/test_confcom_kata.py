@@ -5,7 +5,6 @@
 
 import os
 import unittest
-import pytest
 from azext_confcom.custom import katapolicygen_confcom
 
 import pytest
@@ -58,13 +57,24 @@ spec:
         os.remove(filename)
         self.assertNotEqual(wrapped_exit.exception.code, 0)
 
-    def test_invalid_settings(self):
+    def test_valid_settings(self):
         filename = "pod2.yaml"
         with open(filename, "w") as f:
             f.write(KataPolicyGen.pod_string)
         with self.assertRaises(SystemExit) as wrapped_exit:
             katapolicygen_confcom(
-                filename, None, settings_file_name="genpolicy-settings.json"
+                filename, None
             )
+        with open(filename, "r") as f:
+            content = f.read()
         os.remove(filename)
-        self.assertEqual(wrapped_exit.exception.code, 1)
+        self.assertEqual(wrapped_exit.exception.code, 0)
+        self.assertNotEqual(content, KataPolicyGen.pod_string)
+
+    def test_print_version(self):
+        with self.assertRaises(SystemExit) as wrapped_exit:
+            katapolicygen_confcom(
+                None, None, print_version=True
+            )
+
+        self.assertEqual(wrapped_exit.exception.code, 0)
