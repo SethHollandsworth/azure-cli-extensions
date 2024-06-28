@@ -601,7 +601,11 @@ class CustomJsonParsing(unittest.TestCase):
 
             self.assertEqual(
                 image.id,
+<<<<<<< HEAD
                 "sha256:31f0133ef3f79022b1a11e429c0aa7fc500692fe94b067ce76f392ddb2eb5475",
+=======
+                "sha256:378a3707f10cca088b84a8d6d550ee2636053761d4e033579e765e65bca287d8",
+>>>>>>> 1dc7fc8e6 (updating tests and readme for new kata interface)
             )
 
     def test_infrastructure_svn(self):
