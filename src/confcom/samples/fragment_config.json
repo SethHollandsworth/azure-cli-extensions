@@ -2,29 +2,24 @@
     "containers": [
         {
             "name": "my-image",
-            "image": "mcr.microsoft.com/aci/aci-confidential-helloworld:v1",
-            "volumeMounts": [
-                {
-                    "name": "azurefile",
-                    "mountPath": "/mount/azurefile",
-                    "mountType": "azureFile"
-                }
-            ],
-            "environmentVariables": [
-                {
-                    "name": "PATH",
-                    "value": "/customized/path/value"
-                },
-                {
-                    "name": "TEST_REGEXP_ENV",
-                    "value": "test_regexp_env(.*)",
-                    "regex": true
-                }
-            ],
-            "command": [
-                "python3",
-                "main.py"
-            ]
+            "properties": {
+                "image": "mcr.microsoft.com/aci/aci-confidential-helloworld:v1",
+                "environmentVariables": [
+                    {
+                        "name": "PATH",
+                        "value": "/customized/path/value"
+                    },
+                    {
+                        "name": "TEST_REGEXP_ENV",
+                        "value": "test_regexp_env(.*)",
+                        "regex": true
+                    }
+                ],
+                "command": [
+                    "python3",
+                    "main.py"
+                ]
+            }
         }
     ]
 }
