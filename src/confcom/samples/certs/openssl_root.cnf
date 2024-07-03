@@ -2,7 +2,7 @@
 default_ca = CA_default                                  # The default CA name
 
 [ CA_default ]                                           # Default settings for the CA
-dir               = <insert-your-path-here>/rootCA                    # CA directory
+dir               = ./rootCA                    # CA directory
 certs             = $dir/certs                           # Certificates directory
 crl_dir           = $dir/crl                             # CRL directory
 new_certs_dir     = $dir/newcerts                        # New certificates directory

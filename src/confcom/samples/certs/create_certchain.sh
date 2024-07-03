@@ -1,6 +1,6 @@
 # Following guide from: https://www.golinuxcloud.com/openssl-create-certificate-chain-linux/
 
-RootPath=/mnt/c/Users/sethho/Documents/forked/azure-cli-extensions/src/confcom/samples/certs
+RootPath=/home/<your-username>/azure-cli-extensions/src/confcom/samples/certs
 
 # create dirs for root CA
 mkdir -p $RootPath/rootCA/{certs,crl,newcerts,private,csr}
