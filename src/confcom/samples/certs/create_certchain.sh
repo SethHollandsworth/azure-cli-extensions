@@ -1,6 +1,6 @@
 # Following guide from: https://www.golinuxcloud.com/openssl-create-certificate-chain-linux/
 
-RootPath=/home/<your-username>/testCA
+RootPath=/mnt/c/Users/sethho/Documents/forked/azure-cli-extensions/src/confcom/samples/certs
 
 # create dirs for root CA
 mkdir -p $RootPath/rootCA/{certs,crl,newcerts,private,csr}
@@ -26,7 +26,7 @@ chmod 400 $RootPath/rootCA/private/ca.key.pem
 # openssl rsa -noout -text -in $RootPath/rootCA/private/ca.key.pem
 
 # generate root cert
-openssl req -config openssl_root.cnf -key $RootPath/rootCA/private/ca.key.pem -new -x509 -days 7300 -sha256 -extensions v3_ca -out $RootPath/rootCA/certs/ca.cert.pem -subj "/C=US/ST=North Carolina/L=Raleigh/O=Microsoft/OU=ACCCT/CN=Root CA"
+openssl req -config openssl_root.cnf -key $RootPath/rootCA/private/ca.key.pem -new -x509 -days 7300 -sha256 -extensions v3_ca -out $RootPath/rootCA/certs/ca.cert.pem -subj "/C=US/ST=Georgia/L=Atlanta/O=Microsoft/OU=ACCCT/CN=Root CA"
 
 # change permissions on root key so it's not globally readable
 chmod 444 $RootPath/rootCA/certs/ca.cert.pem
@@ -39,7 +39,7 @@ openssl genrsa -out $RootPath/intermediateCA/private/intermediate.key.pem 4096
 chmod 400 $RootPath/intermediateCA/private/intermediate.key.pem
 
 # make CSR for intermediate
-openssl req -config openssl_intermediate.cnf -key $RootPath/intermediateCA/private/intermediate.key.pem -new -sha256 -out $RootPath/intermediateCA/certs/intermediate.csr.pem -subj "/C=US/ST=North Carolina/L=Raleigh/O=Microsoft/OU=ACCCT/CN=Intermediate CA"
+openssl req -config openssl_intermediate.cnf -key $RootPath/intermediateCA/private/intermediate.key.pem -new -sha256 -out $RootPath/intermediateCA/certs/intermediate.csr.pem -subj "/C=US/ST=Georgia/L=Atlanta/O=Microsoft/OU=ACCCT/CN=Intermediate CA"
 
 # sign intermediate cert with root
 openssl ca -config openssl_root.cnf -extensions v3_intermediate_ca -days 3650 -notext -md sha256 -in $RootPath/intermediateCA/certs/intermediate.csr.pem -out $RootPath/intermediateCA/certs/intermediate.cert.pem
