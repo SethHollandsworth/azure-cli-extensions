@@ -164,13 +164,14 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         self,
         output_type: OutputType = OutputType.DEFAULT,
         rego_boilerplate=True,
+        include_sidecars: bool = True,
     ) -> str:
         # error check the output type
         if not isinstance(output_type, Enum) or output_type.value not in [item.value for item in OutputType]:
             eprint("Unknown output type for serialization.")
 
         policy_str = self._policy_serialization(
-            output_type == OutputType.PRETTY_PRINT
+            output_type == OutputType.PRETTY_PRINT, include_sidecars=include_sidecars
         )
 
         if rego_boilerplate:
@@ -187,7 +188,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             namespace,
             pretty_print_func(svn),
             pretty_print_func(fragments_json),
-            self.get_serialized_output(output_type, rego_boilerplate=False),
+            self.get_serialized_output(output_type, rego_boilerplate=False, include_sidecars=False),
         )
 
     def _add_rego_boilerplate(self, output: str) -> str:
@@ -377,7 +378,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         output = self.get_serialized_output(output_type)
         os_util.write_str_to_file(file_path, output)
 
-    def _policy_serialization(self, pretty_print=False) -> str:
+    def _policy_serialization(self, pretty_print=False, include_sidecars: bool = True,) -> str:
         policy = []
         regular_container_images = self.get_images()
 
@@ -386,8 +387,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             is_sidecars = is_sidecars and is_sidecar(image.containerImage)
             image_dict = image.get_policy_json()
             policy.append(image_dict)
-
-        if not is_sidecars:
+        if not is_sidecars or include_sidecars:
             # add in the default containers that have their hashes pre-computed
             policy += copy.deepcopy(config.DEFAULT_CONTAINERS)
             if self._disable_stdio:
@@ -518,6 +518,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 if self._fragment_contents and self.should_eliminate_container_covered_by_fragments(image):
                     # these containers will get taken out later in the function
                     # since they are covered by a fragment
+                    print("Container covered by fragment: ", image_name)
                     continue
 
                 # populate tar location
