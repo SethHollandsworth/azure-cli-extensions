@@ -197,7 +197,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_INCLUDES: includes,
         }
 
-        return pretty_print_func(import_statement)
+        return import_statement
 
     def extract_payload_from_path(self, fragment_path: str) -> str:
         policy_bin_str = str(self.policy_bin)

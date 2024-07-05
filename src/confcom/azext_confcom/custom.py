@@ -206,6 +206,7 @@ def acifragmentgen_confcom(
     outraw: bool = False,
     upload_fragment: bool = False,
     no_print: bool = False,
+    fragments_json: str = "",
 ):
     if sum(map(bool, [key, chain])) == 1:
         error_out("Must provide both a key and a chain to sign the fragment")
@@ -227,7 +228,21 @@ def acifragmentgen_confcom(
     if generate_import:
         cose_client = CoseSignToolProxy()
         import_statement = cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)
-        print(import_statement)
+        if fragments_json:
+            fragments_list = []
+            if os.path.isfile(fragments_json):
+                print("Appending import statement to JSON file")
+                fragments_list = os_util.load_json_from_file(fragments_json)
+            else:
+                print("Creating import statement JSON file")
+            # convert to list if it's just a dict
+            if not isinstance(fragments_list, list):
+                fragments_list = [fragments_list]
+            fragments_list.append(import_statement)
+
+            os_util.write_str_to_file(fragments_json, pretty_print_func(fragments_list))
+        else:
+            print(pretty_print_func(import_statement))
         sys.exit(0)
 
     tar_mapping = tar_mapping_validation(tar_mapping_location)

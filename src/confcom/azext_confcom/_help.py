@@ -205,6 +205,10 @@ helps[
           type: boolean
           short-summary: 'When enabled, the generated policy fragment will be uploaded to the registry of the image being used'
 
+        - name: --fragments-json -j
+          type: string
+          short-summary: 'Path to JSON file to write fragment import information. This is used with --generate-import to be fed into a subsequent call to acipolicygen. If not specified, the import statement will print to the console'
+
     examples:
         - name: Input an image name to generate a simple fragment
           text: az confcom acifragmentgen --image mcr.microsoft.com/azuredocs/aci-helloworld

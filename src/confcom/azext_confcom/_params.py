@@ -251,6 +251,12 @@ def load_arguments(self, _):
             required=False,
             help="Do not print the generated policy fragment to stdout",
         )
+        c.argument(
+            "fragments_json",
+            options_list=("--fragments-json", "-j"),
+            required=False,
+            help="Path to JSON file to write fragment import information. This is used with --generate-import. If not specified, the import statement will print to the console",
+        )
 
     with self.argument_context("confcom katapolicygen") as c:
         c.argument(

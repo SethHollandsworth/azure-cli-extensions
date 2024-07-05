@@ -50,6 +50,8 @@ def pull(
     image: str,
     image_hash: str,
 ) -> str:
+    if "@sha256:" in image:
+        image = image.split("@")[0]
     arg_list = ["oras", "pull", f"{image}@{image_hash}"]
 
     item = subprocess.run(

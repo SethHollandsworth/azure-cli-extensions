@@ -387,7 +387,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             is_sidecars = is_sidecars and is_sidecar(image.containerImage)
             image_dict = image.get_policy_json()
             policy.append(image_dict)
-        if not is_sidecars or include_sidecars:
+        if not is_sidecars and include_sidecars:
             # add in the default containers that have their hashes pre-computed
             policy += copy.deepcopy(config.DEFAULT_CONTAINERS)
             if self._disable_stdio:
