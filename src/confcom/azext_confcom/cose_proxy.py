@@ -200,6 +200,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         return import_statement
 
     def extract_payload_from_path(self, fragment_path: str) -> str:
+        payload = ""
         policy_bin_str = str(self.policy_bin)
         if not os.path.exists(fragment_path):
             eprint(f"The fragment file at {fragment_path} does not exist")
@@ -212,6 +213,11 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             capture_output=True,
         )
 
+        # get the exit code from the subprocess
+        if "checkCoseSign1 failed - cbor: invalid COSE_Sign1_Tagged object" in item.stderr.decode("utf-8"):
+            with open(fragment_path, "rb") as f:
+                payload = f.read()
+            return payload
         # get the exit code from the subprocess
         if item.returncode != 0:
             eprint("Error getting information from signed fragment file", exit_code=item.returncode)

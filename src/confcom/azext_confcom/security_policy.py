@@ -19,6 +19,7 @@ from azext_confcom.container import UserContainerImage, ContainerImage
 from azext_confcom.errors import eprint
 from azext_confcom.template_util import (
     extract_confidential_properties,
+    extract_containers_and_fragments_from_text,
     is_sidecar,
     pretty_print_func,
     print_func,
@@ -39,6 +40,7 @@ from azext_confcom.template_util import (
     process_fragment_imports
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
+from azext_confcom.cose_proxy import CoseSignToolProxy
 
 
 logger = get_logger()
@@ -68,9 +70,12 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         self._policy_str = None
         self._policy_str_pp = None
         self._disable_stdio = disable_stdio
+        # list of import statements that are given by --fragments-json
         self._fragments = rego_fragments
+        # list of import statements taken from an ARM template's policy
         self._existing_fragments = existing_rego_fragments
         self._api_version = config.API_VERSION
+        # list of strings that contains the content of all fragments
         self._fragment_contents = fragment_contents
 
         if debug_mode:
@@ -159,6 +164,12 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
 
     def close(self) -> None:
         self._close_docker_client()
+
+    def get_existing_fragments(self) -> dict:
+        return self._existing_fragments
+
+    def get_fragments(self) -> dict:
+        return self._fragments
 
     def get_serialized_output(
         self,
@@ -363,10 +374,10 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         is_valid = not bool(reason_list)
         return is_valid, reason_list
 
-    def compare_fragments(self) -> Dict[str, Any]:
+    def compare_fragments(self, second_fragment=config.DEFAULT_REGO_FRAGMENTS) -> Dict[str, Any]:
         """Utility method: see if the fragments in the policy are the defaults"""
         diff = deepdiff.DeepDiff(
-            self._existing_fragments, config.DEFAULT_REGO_FRAGMENTS, ignore_order=True
+            self._existing_fragments, second_fragment, ignore_order=True
         )
         return readable_diff(diff)
 
@@ -1004,3 +1015,22 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
         rego_fragments=rego_fragments,
         debug_mode=debug_mode,
     )
+
+
+def load_policy_from_rego_file(
+    rego_path: str
+) -> AciPolicy:
+    cose_proxy = CoseSignToolProxy()
+    rego_content = cose_proxy.extract_payload_from_path(rego_path)
+    return load_policy_from_rego_str(rego_content)
+
+
+def load_policy_from_rego_str(
+    rego_str: str
+) -> AciPolicy:
+    containers, fragments = extract_containers_and_fragments_from_text(rego_str)
+
+    return AciPolicy({
+        config.ACI_FIELD_VERSION: "1.0",
+        config.ACI_FIELD_CONTAINERS: containers,
+    }, rego_fragments=fragments)
