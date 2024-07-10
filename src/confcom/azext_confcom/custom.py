@@ -355,7 +355,7 @@ def validate_sidecar_in_policy(policy: security_policy.AciPolicy, outraw_pretty_
     return 2
 
 
-def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: bool):
+def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: bool, second_fragment: security_policy.AciPolicy=DEFAULT_REGO_FRAGMENTS):
     exit_code = 0
     is_valid, output = policy.validate_cce_policy()
 
@@ -369,7 +369,7 @@ def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: boo
         if is_valid
         else formatted_output
     )
-    fragment_diff = policy.compare_fragments()
+    fragment_diff = policy.compare_fragments(second_fragment=second_fragment)
 
     if fragment_diff != {}:
         logger.warning(

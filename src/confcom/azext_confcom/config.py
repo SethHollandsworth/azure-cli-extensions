@@ -131,10 +131,12 @@ POLICY_FIELD_CONTAINERS_ELEMENTS_MOUNTS_CONFIGMAP_TYPE = "emptyDir"
 REGO_CONTAINER_START = "containers := "
 REGO_FRAGMENT_START = "fragments := "
 
-CONFIG_FILE = "./data/internal_config.json"
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
-CONFIG_FILE_PATH = f"{script_directory}/{CONFIG_FILE}"
+# data folder can be overridden by the user for use with standalone tools
+DATA_FOLDER = os.environ.get("DATA_FOLDER") or os.path.join(script_directory, "data")
+
+CONFIG_FILE_PATH = os.path.join(DATA_FOLDER, "internal_config.json")
 
 _config = load_json_from_file(CONFIG_FILE_PATH)
 DEFAULT_WORKING_DIR = _config["containerd"]["defaultWorkingDir"]
@@ -166,19 +168,17 @@ RESERVED_FRAGMENT_NAMES = _config["reserved_fragment_namespaces"]
 # fragment artifact type
 ARTIFACT_TYPE = "application/x-ms-policy-frag"
 # customer rego file for data to be injected
-REGO_FILE = "./data/customer_rego_policy.txt"
-REGO_FRAGMENT_FILE = "./data/customer_rego_fragment.txt"
-script_directory = os.path.dirname(os.path.realpath(__file__))
-REGO_FILE_PATH = f"{script_directory}/{REGO_FILE}"
-REGO_FRAGMENT_FILE_PATH = f"{script_directory}/{REGO_FRAGMENT_FILE}"
+REGO_FILE = "customer_rego_policy.txt"
+REGO_FRAGMENT_FILE = "customer_rego_fragment.txt"
+
+REGO_FILE_PATH = os.path.join(DATA_FOLDER, REGO_FILE)
+REGO_FRAGMENT_FILE_PATH = os.path.join(DATA_FOLDER, REGO_FRAGMENT_FILE)
 CUSTOMER_REGO_POLICY = load_str_from_file(REGO_FILE_PATH)
 CUSTOMER_REGO_FRAGMENT = load_str_from_file(REGO_FRAGMENT_FILE_PATH)
 # sidecar rego file
-SIDECAR_REGO_FILE = "./data/sidecar_rego_policy.txt"
-SIDECAR_REGO_FILE_PATH = f"{script_directory}/{SIDECAR_REGO_FILE}"
+SIDECAR_REGO_FILE = "sidecar_rego_policy.txt"
+SIDECAR_REGO_FILE_PATH = os.path.join(DATA_FOLDER, SIDECAR_REGO_FILE)
 SIDECAR_REGO_POLICY = load_str_from_file(SIDECAR_REGO_FILE_PATH)
-# data folder
-DATA_FOLDER = os.path.join(script_directory, "data")
 
 # api version
 API_VERSION = _config["version_api"]
