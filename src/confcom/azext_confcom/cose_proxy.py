@@ -214,9 +214,9 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         )
 
         # get the exit code from the subprocess
-        if "checkCoseSign1 failed - cbor: invalid COSE_Sign1_Tagged object" in item.stderr.decode("utf-8"):
+        if "cbor: invalid COSE_Sign1_Tagged object" in item.stderr.decode("utf-8"):
             with open(fragment_path, "rb") as f:
-                payload = f.read()
+                payload = f.read().decode("utf-8")
             return payload
         # get the exit code from the subprocess
         if item.returncode != 0:

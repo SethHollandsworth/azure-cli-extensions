@@ -355,31 +355,30 @@ def validate_sidecar_in_policy(policy: security_policy.AciPolicy, outraw_pretty_
     return 2
 
 
-def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: bool, second_fragment: security_policy.AciPolicy=DEFAULT_REGO_FRAGMENTS):
+def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: bool, second_policy: list[dict[str, any]] = None, second_fragment: list[dict[str, any]] = None):
     exit_code = 0
-    is_valid, output = policy.validate_cce_policy()
+    is_valid, output = policy.validate_cce_policy(input_cce_policy=second_policy, include_sidecars=False)
 
     if outraw_pretty_print:
         formatted_output = pretty_print_func(output)
     else:
         formatted_output = print_func(output)
 
-    print(
-        "Existing policy and ARM Template match"
-        if is_valid
-        else formatted_output
-    )
-    fragment_diff = policy.compare_fragments(second_fragment=second_fragment)
-
-    if fragment_diff != {}:
-        logger.warning(
-            "Fragments in the existing policy are not the defaults. If this is expected, ignore this warning."
-        )
     if not is_valid:
         logger.warning(
-            "Existing Policy and ARM Template differ. Consider recreating the base64-encoded policy."
+            f"Existing containers and new containers differ. Consider recreating the base64-encoded policy: {formatted_output}"
         )
         exit_code = 2
+    else:
+        print("Existing containers and new containers match")
+
+    fragment_diff = policy.compare_fragments(second_fragment=second_fragment)
+    if fragment_diff != {}:
+        logger.warning(
+            f"Fragments in the existing policy and new policy differ.",
+        )
+        exit_code = 2
+
     return exit_code
 
 

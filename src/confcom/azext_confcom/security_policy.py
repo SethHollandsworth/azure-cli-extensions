@@ -221,15 +221,15 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             pretty_print_func(self._allow_capability_dropping),
         )
 
-    def validate_cce_policy(self) -> Tuple[bool, Dict]:
+    def validate_cce_policy(self, input_cce_policy: list[dict[str, any]] = None, include_sidecars: bool = True) -> Tuple[bool, Dict]:
         """Utility method: check to see if the existing policy
         that instantiates this function would allow the policy created by the input ARM Template"""
         # this implying the "allow all" policy
-        if self._existing_cce_policy is None:
+        if self._existing_cce_policy is None and not input_cce_policy:
             return True, {}
         # we're comparing the CCE Policy so extract it and pass it in
-        policy = self._existing_cce_policy
-        return self.validate(policy)
+        policy = self._existing_cce_policy or input_cce_policy
+        return self.validate(policy, include_sidecars=include_sidecars)
 
     def validate_sidecars(self) -> Tuple[bool, Dict]:
         """Utility method: check to see if the sidecar images present will pass the given the current ACI Policy"""
@@ -268,11 +268,9 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             container[config.ACI_FIELD_CONTAINERS_NAME] = container[config.ACI_FIELD_CONTAINERS_ID]
         # done this way instead of self.validate() because the input.json is
         # the source of truth
-        print("policy_content: ", policy_content)
-
         return policy.validate(policy_content, sidecar_validation=True)
 
-    def validate(self, policy, sidecar_validation=False) -> Tuple[bool, Dict]:
+    def validate(self, policy, sidecar_validation=False, include_sidecars=True) -> Tuple[bool, Dict]:
         """Utility method: general method to compare two policies.
         One being the current object and the other is passed in as a parameter.
 
@@ -287,7 +285,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             eprint("Policy is not in the expected form to validate against")
 
         policy_str = self.get_serialized_output(
-            OutputType.PRETTY_PRINT, rego_boilerplate=False
+            OutputType.PRETTY_PRINT, rego_boilerplate=False, include_sidecars=include_sidecars
         )
         arm_containers = json.loads(policy_str)
 
@@ -370,14 +368,13 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 continue
 
             reason_list.update(temp_diff_list[diff_sizes.index(min(diff_sizes))])
-
         is_valid = not bool(reason_list)
         return is_valid, reason_list
 
     def compare_fragments(self, second_fragment=config.DEFAULT_REGO_FRAGMENTS) -> Dict[str, Any]:
         """Utility method: see if the fragments in the policy are the defaults"""
         diff = deepdiff.DeepDiff(
-            self._existing_fragments, second_fragment, ignore_order=True
+            self._existing_fragments or self._fragments, second_fragment, ignore_order=True
         )
         return readable_diff(diff)
 
@@ -951,7 +948,7 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
 
     rego_fragments = case_insensitive_dict_get(
         config_dict, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
-    )
+    ) or []
 
     container_list = case_insensitive_dict_get(
         config_dict, config.ACI_FIELD_CONTAINERS

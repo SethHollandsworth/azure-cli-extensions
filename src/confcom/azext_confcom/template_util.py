@@ -491,10 +491,15 @@ def readable_diff(diff_dict) -> Dict[str, Any]:
             # search for the area of the ARM Template with the change i.e. "mounts" or "env_rules"
             for key in diff_dict[category]:
                 key = str(key)
-                key_name = re.search(r"'(.*?)'", key).group(1)
-                human_readable_diff[new_name].setdefault(key_name, []).append(
-                    diff_dict[category][key]
-                )
+                try:
+                    key_name = re.search(r"'(.*?)'", key).group(1)
+                    human_readable_diff[new_name].setdefault(key_name, []).append(
+                        diff_dict[category][key]
+                    )
+                except AttributeError:
+                    human_readable_diff[new_name].setdefault(key, []).append(
+                        diff_dict[category][key]
+                    )
 
     return change_key_names(human_readable_diff)
 
