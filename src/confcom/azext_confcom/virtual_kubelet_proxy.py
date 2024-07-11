@@ -104,7 +104,6 @@ class VirtualKubeletProxy:  # pylint: disable=too-few-public-methods
         kubernetes_service_port_https: str = "",
         kubernetes_tcp_port: str = "",
         output_file_name: str = "arm-template.json",
-        print_json: str = "",
         secrets: str = "",
     ) -> None:
         VirtualKubeletProxy.arm_template_path = output_file_name
@@ -142,8 +141,6 @@ class VirtualKubeletProxy:  # pylint: disable=too-few-public-methods
             arg_list += ["--kubernetes-tcp-port", f"{kubernetes_tcp_port}"]
         if output_file_name:
             arg_list += ["--output-file-name", f"{output_file_name}"]
-        if print_json:
-            arg_list += ["--print-json", f"{print_json}"]
         if secrets:
             arg_list += ["--secrets", f"{secrets}"]
 

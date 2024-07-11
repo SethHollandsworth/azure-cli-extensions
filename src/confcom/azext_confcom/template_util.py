@@ -55,6 +55,7 @@ def case_insensitive_dict_get(dictionary, search_key) -> Any:
             return dictionary[key]
     return None
 
+
 def deep_dict_update(source: dict, destination: dict):
     """
     https://stackoverflow.com/questions/20656135/python-deep-merge-dictionary-data
@@ -62,6 +63,9 @@ def deep_dict_update(source: dict, destination: dict):
     for key, value in source.items():
         if isinstance(value, dict):
             node = destination.setdefault(key, {})
+            if node is None:
+                destination[key] = {}
+                node = destination[key]
             deep_dict_update(value, node)
         else:
             destination[key] = value

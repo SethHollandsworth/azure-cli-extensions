@@ -9,11 +9,11 @@ import sys
 from pkg_resources import parse_version
 from knack.log import get_logger
 from azext_confcom.config import (
-    DEFAULT_REGO_FRAGMENTS, DATA_FOLDER, 
-    VIRTUAL_KUBELET_YAML_METADATA, 
-    VIRTUAL_KUBELET_YAML_ANNOTATIONS, 
-    VIRTUAL_KUBELET_YAML_SKU, 
-    VIRTUAL_KUBELET_YAML_SKU_NAME, 
+    DEFAULT_REGO_FRAGMENTS, DATA_FOLDER,
+    VIRTUAL_KUBELET_YAML_METADATA,
+    VIRTUAL_KUBELET_YAML_ANNOTATIONS,
+    VIRTUAL_KUBELET_YAML_SKU,
+    VIRTUAL_KUBELET_YAML_SKU_NAME,
     VIRTUAL_KUBELET_YAML_POLICY,
 )
 from azext_confcom import os_util
@@ -55,36 +55,12 @@ def acipolicygen_confcom(
     print_existing_policy: bool = False,
     faster_hashing: bool = False,
 
-    configmaps: str = "",
-    kubernetes_port: str = "",
-    kubernetes_port_tcp: str = "",
-    kubernetes_port_tcp_addr: str = "",
-    kubernetes_port_tcp_proto: str = "",
-    kubernetes_service_host: str = "",
-    kubernetes_service_port: str = "",
-    kubernetes_service_port_https: str = "",
-    kubernetes_tcp_port: str = "",
-    output_file_name: str = "arm-template.json",
-    print_json: str = "",
-    secrets: str = "",
+    podspec_config: str = "",
 ):
-    virtual_kubelet_args = [
-        configmaps,
-        kubernetes_port,
-        kubernetes_port_tcp,
-        kubernetes_port_tcp_addr,
-        kubernetes_port_tcp_proto,
-        kubernetes_service_host,
-        kubernetes_service_port,
-        kubernetes_service_port_https,
-        kubernetes_tcp_port,
-        output_file_name,
-        print_json,
-        secrets,
-    ]
 
+    virtual_kubelet_data = os_util.load_json_from_file(podspec_config)
 
-    if any(virtual_kubelet_args) and not virtual_kubelet_yaml_path:
+    if any(virtual_kubelet_data) and not virtual_kubelet_yaml_path:
         error_out(
             "Virtual Kubelet arguments can only be used with a Virtual Kubelet YAML file"
         )
@@ -92,18 +68,7 @@ def acipolicygen_confcom(
         virtual_kubelet_proxy = VirtualKubeletProxy()
         virtual_kubelet_proxy.generate_arm_template(
             virtual_kubelet_yaml_path,
-            configmaps=configmaps,
-            kubernetes_port=kubernetes_port,
-            kubernetes_port_tcp=kubernetes_port_tcp,
-            kubernetes_port_tcp_addr=kubernetes_port_tcp_addr,
-            kubernetes_port_tcp_proto=kubernetes_port_tcp_proto,
-            kubernetes_service_host=kubernetes_service_host,
-            kubernetes_service_port=kubernetes_service_port,
-            kubernetes_service_port_https=kubernetes_service_port_https,
-            kubernetes_tcp_port=kubernetes_tcp_port,
-            output_file_name=output_file_name,
-            print_json=print_json,
-            secrets=secrets,
+            **virtual_kubelet_data,
         )
         arm_template = virtual_kubelet_proxy.get_arm_template_path()
 
@@ -193,17 +158,18 @@ def acipolicygen_confcom(
 
         if validate_sidecar:
             exit_code = validate_sidecar_in_policy(policy, output_type == security_policy.OutputType.PRETTY_PRINT)
-        elif virtual_kubelet_yaml_path:
+        elif virtual_kubelet_yaml_path and not (print_policy_to_terminal or outraw or outraw_pretty_print):
             virtual_kubelet_yaml = os_util.load_yaml_from_file(virtual_kubelet_yaml_path)
             # Metadata to be added to virutal kubelet YAML
             needed_metadata = {
                 VIRTUAL_KUBELET_YAML_METADATA: {
                     VIRTUAL_KUBELET_YAML_ANNOTATIONS: {
-                        VIRTUAL_KUBELET_YAML_SKU: VIRTUAL_KUBELET_YAML_SKU_NAME, 
+                        VIRTUAL_KUBELET_YAML_SKU: VIRTUAL_KUBELET_YAML_SKU_NAME,
                         VIRTUAL_KUBELET_YAML_POLICY: policy.get_serialized_output(),
                     }
                 }
             }
+
             # Update virtual kubelet YAML with metadata
             deep_dict_update(needed_metadata, virtual_kubelet_yaml)
             os_util.write_yaml_to_file(virtual_kubelet_yaml_path, virtual_kubelet_yaml)

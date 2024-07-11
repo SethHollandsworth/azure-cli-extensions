@@ -134,79 +134,13 @@ def load_arguments(self, _):
             required=False,
             help="Path to the virtual kubelet yaml file",
         )
+        c.argument(
+            "podspec_config",
+            options_list=("--podspec-config", "-c"),
+            required=False,
+            help="Path to the podspec config file",
+        )
 
-        c.argument(
-            "configmaps",
-            options_list=("--configmaps"),
-            required=False,
-            help="Kubernetes config map filename",
-        )
-        c.argument(
-            "kubernetes_port",
-            options_list=("--kubernetes-port"),
-            required=False,
-            help="KUBERNETES_PORT environment variable (default 'tcp://10.0.0.1:443')",
-        )
-        c.argument(
-            "kubernetes_port_tcp",
-            options_list=("--kubernetes-port-tcp"),
-            required=False,
-            help="KUBERNETES_PORT_443_TCP environment variable (default 'tcp://10.0.0.1:443')",
-        )
-        c.argument(
-            "kubernetes_port_tcp_addr",
-            options_list=("--kubernetes-port-tcp-addr"),
-            required=False,
-            help="KUBERNETES_PORT_443_TCP_ADDRESS environment variable (default '10.0.0.1')",
-        )
-        c.argument(
-            "kubernetes_port_tcp_proto",
-            options_list=("--kubernetes-port-tcp-proto"),
-            required=False,
-            help="KUBERNETES_PORT_443_TCP_PROTO environment variable (default 'tcp')",
-        )
-        c.argument(
-            "kubernetes_service_host",
-            options_list=("--kubernetes-service-host"),
-            required=False,
-            help="KUBERNETES_SERVICE_HOST environment variable (default '10.0.0.1')",
-        )
-        c.argument(
-            "kubernetes_service_port",
-            options_list=("--kubernetes-service-port"),
-            required=False,
-            help="KUBERNETES_SERVICE_PORT environment variable (default '443')",
-        )
-        c.argument(
-            "kubernetes_service_port_https",
-            options_list=("--kubernetes-service-port-https"),
-            required=False,
-            help="KUBERNETES_SERVICE_PORT_HTTPS environment variable (default '443')",
-        )
-        c.argument(
-            "kubernetes_tcp_port",
-            options_list=("--kubernetes-tcp-port"),
-            required=False,
-            help="KUBERNETES_PORT_443_TCP_PORT environment variable (default '443')",
-        )
-        c.argument(
-            "output_file_name",
-            options_list=("--output-file-name"),
-            required=False,
-            help="Name of the output file (default 'arm-template.json')",
-        )
-        c.argument(
-            "print_json",
-            options_list=("--print-json"),
-            required=False,
-            help="Whether or not to print ARM template",
-        )
-        c.argument(
-            "secrets",
-            options_list=("--secrets"),
-            required=False,
-            help="Kubernetes secrets filename",
-        )
 
     with self.argument_context("confcom katapolicygen") as c:
         c.argument(
