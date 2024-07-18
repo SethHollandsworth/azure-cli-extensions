@@ -200,6 +200,8 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         return import_statement
 
     def extract_payload_from_path(self, fragment_path: str) -> str:
+        # if the file is not signed, return the contents as a string
+        # if the file is signed, return the payload as a string
         payload = ""
         policy_bin_str = str(self.policy_bin)
         if not os.path.exists(fragment_path):

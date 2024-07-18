@@ -8,6 +8,7 @@ import warnings
 import copy
 from typing import Any, List, Dict, Tuple
 from enum import Enum, auto
+from azext_confcom.fragment_util import get_all_fragment_contents
 import docker
 import deepdiff
 from knack.log import get_logger
@@ -526,7 +527,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 if self._fragment_contents and self.should_eliminate_container_covered_by_fragments(image):
                     # these containers will get taken out later in the function
                     # since they are covered by a fragment
-                    print("Container covered by fragment: ", image_name)
+                    message_queue.append(f"Container {image.get_name()} covered by fragment")
                     continue
 
                 # populate tar location
@@ -545,7 +546,8 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             for message in message_queue:
                 logger.warning(message)
 
-            out_images = list(filter(lambda image: image.get_layers(), self.get_images()))
+            out_images = [image for image in container_images if image.get_layers()]
+
             self.set_images(out_images)
 
     def should_eliminate_container_covered_by_fragments(self, image):
@@ -949,6 +951,12 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
     rego_fragments = case_insensitive_dict_get(
         config_dict, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
     ) or []
+    fragments_list = copy.deepcopy(rego_fragments)
+    # gather information about the fragments being used in the new policy
+    # convert to list if it's just a dict
+    if not isinstance(fragments_list, list):
+        fragments_list = [fragments_list]
+    fragment_policy_list = get_all_fragment_contents(fragments_list)
 
     container_list = case_insensitive_dict_get(
         config_dict, config.ACI_FIELD_CONTAINERS
@@ -1011,6 +1019,7 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
         disable_stdio=disable_stdio,
         rego_fragments=rego_fragments,
         debug_mode=debug_mode,
+        fragment_contents=fragment_policy_list,
     )
 
 

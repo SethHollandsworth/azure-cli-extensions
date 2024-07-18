@@ -264,8 +264,7 @@ def acifragmentgen_confcom(
     if not feed:
         feed = policy.get_images()[0].containerImage
 
-    fragments = []
-    fragment_text = policy.generate_fragment(namespace, svn, fragments, output_type)
+    fragment_text = policy.generate_fragment(namespace, svn, policy.get_fragments(), output_type)
 
     if output_type != security_policy.OutputType.DEFAULT and not no_print:
         print(fragment_text)

@@ -574,8 +574,7 @@ class ContainerImage:
         self._extraEnvironmentRules = extraEnvironmentRules
 
     def get_policy_json(self) -> str:
-        if not self._policy_json:
-            self._policy_json_serialization()
+        self._policy_json_serialization()
         return self._policy_json
 
     def get_id(self) -> str:
