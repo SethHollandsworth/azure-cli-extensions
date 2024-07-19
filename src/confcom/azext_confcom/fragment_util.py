@@ -62,7 +62,11 @@ def get_all_fragment_contents(fragment_imports):
             )
             for new_fragment in fragments:
                 if new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED] not in fragment_feeds:
-                    fragment_imports.append(new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED])
+                    # add new fragment to the list of fragments and feeds
+                    fragment_imports.append(new_fragment)
+                    fragment_feeds.append(
+                        new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED]
+                    )
 
             all_fragments_contents.append(content)
 

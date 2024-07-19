@@ -20,6 +20,7 @@ from azext_confcom.template_util import (
     extract_containers_and_fragments_from_text,
 )
 from azext_confcom.custom import acifragmentgen_confcom
+from azext_confcom.fragment_util import get_all_fragment_contents
 from azure.cli.testsdk import ScenarioTest
 
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
@@ -360,6 +361,95 @@ class FragmentGenerating(unittest.TestCase):
 
         expected_workingdir = "/root/"
         self.assertEqual(image._workingDir, expected_workingdir)
+
+    def test_get_all_fragment_contents(self):
+        fragment_path = os.path.join(TEST_DIR, "test-fragment.rego")
+        fragment_path2 = os.path.join(TEST_DIR, "test-fragment2.rego")
+        fragment_text = """
+        package test
+        svn := 2
+        framework_version := "0.2.3"
+        fragments := []
+        containers := [
+            {
+                "name": "test-container",
+                "properties": {
+                    "image": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1",
+                    "environmentVariables": [
+                        {
+                            "name": "IDENTITY_API_VERSION",
+                            "value": ".+",
+                            "regex": true
+                        },
+                    ],
+                    "command": ["/bin/sh","-c","until ./msiAtlasAdapter; do echo $? restarting; done"],
+                    "mounts": null
+                }
+            }
+        ]
+        """
+
+
+        with open(fragment_path, "w") as f:
+            f.write(fragment_text)
+        fragment_imports = [
+            {
+                "feed": "mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1",
+                "path": fragment_path,
+                "includes": [
+                    "containers",
+                    "fragments"
+                ],
+                "issuer": "did:x509:0:sha256:j-KdgpH2yJM2Xw7GyCAoQBYFjVgdjpJT95hWw9jhwF8::subject:CN:Contoso",
+                "minimum_svn": "1"
+            }
+        ]
+        fragment_text2 = f"""
+        package test2
+        svn := 2
+        framework_version := "0.2.3"
+        fragments := {json.dumps(fragment_imports)}
+        containers := [
+            {{
+                "name": "test-container2",
+                "properties": {{
+                    "image": "mcr.microsoft.com/aci/sc-proxy:v1.9.10-master_20180816.1",
+                    "environmentVariables": [
+                        {{
+                            "name": "IDENTITY_API_VERSION",
+                            "value": ".+",
+                            "regex": true
+                        }},
+                    ],
+                    "command": ["/bin/sh"],
+                    "mounts": null
+                }}
+            }}
+        ]
+        """
+        fragment_imports2 = [
+            {
+                "feed": "mcr.microsoft.com/aci/sc-proxy:v1.9.10-master_20180816.1",
+                "path": fragment_path2,
+                "includes": [
+                    "containers",
+                    "fragments"
+                ],
+                "issuer": "did:x509:0:sha256:j-KdgpH2yJM2Xw7GyCAoQBYFjVgdjpJT95hWw9jhwF8::subject:CN:Contoso",
+                "minimum_svn": "1"
+            }
+        ]
+        with open(fragment_path2, "w") as f:
+            f.write(fragment_text2)
+        try:
+            all_fragments_contents = get_all_fragment_contents(fragment_imports2)
+            print("all_fragments_contents: ", all_fragments_contents)
+
+            self.assertTrue("mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1" in all_fragments_contents[1].get("properties").get("image"))
+            self.assertTrue("mcr.microsoft.com/aci/sc-proxy:v1.9.10-master_20180816.1" in all_fragments_contents[0].get("properties").get("image"))
+        finally:
+            os.remove(fragment_path)
+            os.remove(fragment_path2)
 
 
 class FragmentPolicyGeneratingDebugMode(unittest.TestCase):
