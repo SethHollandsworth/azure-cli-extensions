@@ -38,7 +38,8 @@ from azext_confcom.template_util import (
     get_diff_size,
     process_env_vars_from_config,
     process_mounts_from_config,
-    process_fragment_imports
+    process_fragment_imports,
+    infer_latest_tag,
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 from azext_confcom.cose_proxy import CoseSignToolProxy
@@ -551,15 +552,17 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             self.set_images(out_images)
 
     def should_eliminate_container_covered_by_fragments(self, image):
+        image_name = image.containerImage
         for fragment_image in self._fragment_contents:
             # we're not comparing layers to save computation time
             fragment_image["layers"] = []
             # TODO: make this print a warning if there is a fragment image that's close
-            # TODO: is "latest" tag assumed by this point?
+            # add "latest" tag to the image if it's implied
+            image_name = infer_latest_tag(image_name)
             # save some computation time by checking if the image tag is the same first
-            if fragment_image.get("id") == image.containerImage:
+            if fragment_image.get("id") == image_name:
+
                 image_policy = image.get_policy_json()
-                # container_diff = compare_containers(fragment_image, image_policy)
                 # copy so we can delete fields and not affect the original data
                 # structure
                 container1 = copy.deepcopy(fragment_image)

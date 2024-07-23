@@ -59,6 +59,10 @@ def image_has_hash(image: str) -> bool:
     return "@sha256:" in image
 
 
+def infer_latest_tag(image: str) -> str:
+    return f"{image}:latest" if ":" not in image else image
+
+
 def get_image_info(progress, message_queue, tar_mapping, image):
     image_info = None
     raw_image = None

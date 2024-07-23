@@ -9,6 +9,7 @@ import platform
 from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE
 from azext_confcom.cose_proxy import CoseSignToolProxy
+from azext_confcom.template_util import infer_latest_tag
 
 host_os = platform.system()
 machine = platform.machine()
@@ -110,8 +111,7 @@ def check_oras_cli():
 
 
 def attach_fragment_to_image(image_name: str, filename: str):
-    if ":" not in image_name:
-        image_name += ":latest"
+    image_name = infer_latest_tag(image_name)
     # attach the fragment to the image
     item = subprocess.run(
         ["oras", "attach", "--artifact-type", ARTIFACT_TYPE, image_name, filename],
