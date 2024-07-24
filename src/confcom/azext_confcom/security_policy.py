@@ -8,15 +8,15 @@ import warnings
 import copy
 from typing import Any, List, Dict, Tuple
 from enum import Enum, auto
-from azext_confcom.fragment_util import get_all_fragment_contents
+
 import docker
 import deepdiff
 from knack.log import get_logger
 from tqdm import tqdm
+from azext_confcom.fragment_util import get_all_fragment_contents
 from azext_confcom import os_util
 from azext_confcom import config
 from azext_confcom.container import UserContainerImage, ContainerImage
-
 from azext_confcom.errors import eprint
 from azext_confcom.template_util import (
     extract_confidential_properties,
@@ -223,7 +223,11 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             pretty_print_func(self._allow_capability_dropping),
         )
 
-    def validate_cce_policy(self, input_cce_policy: list[dict[str, any]] = None, include_sidecars: bool = True) -> Tuple[bool, Dict]:
+    def validate_cce_policy(
+            self,
+            input_cce_policy: list[dict[str, any]] = None,
+            include_sidecars: bool = True,
+    ) -> Tuple[bool, Dict]:
         """Utility method: check to see if the existing policy
         that instantiates this function would allow the policy created by the input ARM Template"""
         # this implying the "allow all" policy
