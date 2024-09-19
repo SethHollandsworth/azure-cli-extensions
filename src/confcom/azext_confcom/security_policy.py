@@ -166,6 +166,9 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
     def close(self) -> None:
         self._close_docker_client()
 
+    def get_fragments(self) -> List[str]:
+        return self._fragments
+
     def get_serialized_output(
         self,
         output_type: OutputType = OutputType.DEFAULT,
