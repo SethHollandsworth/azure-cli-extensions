@@ -135,6 +135,19 @@ def load_tar_mapping_from_file(path: str) -> dict:
     return raw_json
 
 
+def load_tar_mapping_from_config_file(path: str) -> dict:
+    raw_json = load_json_from_file(path)
+    containers = raw_json.get("containers", [])
+    output_dict = {}
+    for container in containers:
+        tar_path = container.get("path")
+        if tar_path and not os.path.isfile(tar_path):
+            eprint(f"Tarball does not exist at path: {tar_path}")
+        image_name = container.get("properties", {}).get("image", "")
+        output_dict[image_name] = tar_path
+    return output_dict
+
+
 def map_image_from_tar_backwards_compatibility(image_name: str, tar: TarFile, tar_location: str):
     tar_dir = os.path.dirname(tar_location)
     # grab all files in the folder and only take the one that's named with hex values and a json extension

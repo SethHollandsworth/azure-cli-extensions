@@ -298,13 +298,15 @@ def acifragmentgen_confcom(
             print(pretty_print_func(import_statement))
         sys.exit(0)
 
-    tar_mapping = tar_mapping_validation(tar_mapping_location)
+    tar_mapping = tar_mapping_validation(tar_mapping_location, using_config_file=bool(config))
 
     if image_name:
         policy = security_policy.load_policy_from_image_name(
             image_name, debug_mode=debug_mode, disable_stdio=disable_stdio
         )
     elif config:
+        if not tar_mapping:
+            tar_mapping = os_util.load_tar_mapping_from_config_file(config)
         policy = security_policy.load_policy_from_config_file(
             config, debug_mode=debug_mode, disable_stdio=disable_stdio
         )
@@ -436,7 +438,9 @@ def get_diff_outputs(policy: security_policy.AciPolicy, outraw_pretty_print: boo
     return exit_code
 
 
-def tar_mapping_validation(tar_mapping_location: str):
+# TODO: refactor this function to use _validators.py functions and make sure the tar path
+# isn't coming from the config file rather than the flag
+def tar_mapping_validation(tar_mapping_location: str, using_config_file: bool = False):
     tar_mapping = None
     if tar_mapping_location:
         if not os.path.isfile(tar_mapping_location):
@@ -451,7 +455,7 @@ def tar_mapping_validation(tar_mapping_location: str):
         # passing in a single tar location for a single image policy
         else:
             tar_mapping = tar_mapping_location
-    else:
+    elif not using_config_file:
         # only need to do the docker checks if we're not grabbing image info from tar files
         error_msg = run_initial_docker_checks()
         if error_msg:
