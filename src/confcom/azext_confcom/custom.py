@@ -15,6 +15,8 @@ from azext_confcom.config import (
     VIRTUAL_NODE_YAML_POLICY,
     RESERVED_FRAGMENT_NAMES,
     SUPPORTED_ALGOS,
+    POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS,
+
 )
 from azext_confcom import os_util
 from azext_confcom.template_util import (
@@ -282,18 +284,21 @@ def acifragmentgen_confcom(
         cose_client = CoseSignToolProxy()
         import_statement = cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)
         if fragments_json:
+            fragments_file_contents = {}
             fragments_list = []
             if os.path.isfile(fragments_json):
-                print("Appending import statement to JSON file")
-                fragments_list = os_util.load_json_from_file(fragments_json)
+                logger.info("Appending import statement to JSON file")
+                fragments_file_contents= os_util.load_json_from_file(fragments_json)
+                fragments_list = fragments_file_contents.get(POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS, [])
             else:
-                print("Creating import statement JSON file")
+                logger.info("Creating import statement JSON file")
             # convert to list if it's just a dict
             if not isinstance(fragments_list, list):
                 fragments_list = [fragments_list]
             fragments_list.append(import_statement)
 
-            os_util.write_str_to_file(fragments_json, pretty_print_func(fragments_list))
+            fragments_file_contents[POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS] = fragments_list
+            os_util.write_str_to_file(fragments_json, pretty_print_func(fragments_file_contents))
         else:
             print(pretty_print_func(import_statement))
         sys.exit(0)
