@@ -533,6 +533,7 @@ def load_policy_from_arm_template_str(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     approve_wildcards: bool = False,
+    diff_mode: bool = False
 ) -> List[AciPolicy]:
     """Function that converts ARM template string to an ACI Policy"""
     input_arm_json = os_util.load_json_from_str(template_data)
@@ -600,9 +601,17 @@ def load_policy_from_arm_template_str(
         if init_container_list:
             container_list.extend(init_container_list)
 
-        existing_containers, fragments = extract_confidential_properties(
-            container_group_properties
-        )
+        try:
+            existing_containers, fragments = extract_confidential_properties(
+                container_group_properties
+            )
+        except ValueError as e:
+            if diff_mode:
+                # In diff mode, we raise an error if the base64 policy is malformed
+                eprint(f"Unable to decode existing policy. Please check the base64 encoding.\n{e}")
+            else:
+                # In non-diff mode, we ignore the error and proceed without the policy
+                existing_containers, fragments = ([], [])
 
         rego_fragments = copy.deepcopy(config.DEFAULT_REGO_FRAGMENTS)
         if infrastructure_svn:
@@ -693,6 +702,7 @@ def load_policy_from_arm_template_file(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     approve_wildcards: bool = False,
+    diff_mode: bool = False
 ) -> List[AciPolicy]:
     """Utility function: generate policy object from given arm template and parameter file paths"""
     input_arm_json = os_util.load_str_from_file(template_path)
@@ -702,6 +712,7 @@ def load_policy_from_arm_template_file(
     return load_policy_from_arm_template_str(
         input_arm_json, input_parameter_json, infrastructure_svn,
         debug_mode=debug_mode, disable_stdio=disable_stdio, approve_wildcards=approve_wildcards,
+        diff_mode=diff_mode
     )
 
 
@@ -849,14 +860,16 @@ def load_policy_from_virtual_node_yaml_file(
         virtual_node_yaml_path: str,
         debug_mode: bool = False,
         disable_stdio: bool = False,
-        approve_wildcards: bool = False
+        approve_wildcards: bool = False,
+        diff_mode: bool = False
 ) -> List[AciPolicy]:
     yaml_contents_str = os_util.load_str_from_file(virtual_node_yaml_path)
     return load_policy_from_virtual_node_yaml_str(
         yaml_contents_str,
         debug_mode=debug_mode,
         disable_stdio=disable_stdio,
-        approve_wildcards=approve_wildcards
+        approve_wildcards=approve_wildcards,
+        diff_mode=diff_mode
     )
 
 
@@ -864,7 +877,8 @@ def load_policy_from_virtual_node_yaml_str(
         yaml_contents_str: List[str],
         debug_mode: bool = False,
         disable_stdio: bool = False,
-        approve_wildcards: bool = False
+        approve_wildcards: bool = False,
+        diff_mode: bool = False
 ) -> List[AciPolicy]:
     """
     Load a virtual node yaml file and generate a policy object
@@ -892,9 +906,16 @@ def load_policy_from_virtual_node_yaml_str(
         metadata = case_insensitive_dict_get(yaml, "metadata")
         annotations = case_insensitive_dict_get(metadata, config.VIRTUAL_NODE_YAML_ANNOTATIONS)
         existing_policy = case_insensitive_dict_get(annotations, config.VIRTUAL_NODE_YAML_POLICY)
-        if existing_policy:
-            (existing_containers, existing_fragments) = decompose_confidential_properties(existing_policy)
-
+        try:
+            if existing_policy:
+                existing_containers, existing_fragments = decompose_confidential_properties(existing_policy)
+        except ValueError as e:
+            if diff_mode:
+                # In diff mode, we raise an error if the base64 policy is malformed
+                eprint(f"Unable to decode existing policy. Please check the base64 encoding.\n{e}")
+            else:
+                # In non-diff mode, we ignore the error and proceed without the policy
+                existing_containers, fragments = ([], [])
         # because there are many ways to get pod information, we normalize them so the interface is the same
         normalized_yaml = convert_to_pod_spec(yaml)
 
