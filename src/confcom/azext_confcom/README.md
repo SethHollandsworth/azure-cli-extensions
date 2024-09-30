@@ -279,8 +279,8 @@ Mixed-mode policy generation is available in the `confcom` tooling, meaning imag
 
 ## AKS Virtual Node
 
-Azure Kubernetes Service (AKS) allows pods to be scheduled on Azure Container Instances (ACI) 
-using the [AKS Virtual Node](https://learn.microsoft.com/en-us/azure/aks/virtual-nodes) feature. The `confcom` tooling can generate security policies for these ACI-based pods in the same way as for standalone ACI container groups. The key difference is that the `confcom` tooling will ingest an AKS pod specification (`pod.yaml`) instead of an ARM Template. 
+Azure Kubernetes Service (AKS) allows pods to be scheduled on Azure Container Instances (ACI)
+using the [AKS Virtual Node](https://learn.microsoft.com/en-us/azure/aks/virtual-nodes) feature. The `confcom` tooling can generate security policies for these ACI-based pods in the same way as for standalone ACI container groups. The key difference is that the `confcom` tooling will ingest an AKS pod specification (`pod.yaml`) instead of an ARM Template.
 
 Use the following command to generate and print a security policy for an AKS pod running on ACI:
 
@@ -288,7 +288,7 @@ Use the following command to generate and print a security policy for an AKS pod
 az confcom acipolicygen --virtual-node-yaml ./pod.yaml --print-policy
 ```
 
-> [!NOTE]  
+> [!NOTE]
 > The `acipolicygen` command is specific to generating policies for ACI-based containers. For generating security policies for the [Confidential Containers on AKS](https://learn.microsoft.com/en-us/azure/aks/confidential-containers-overview) feature, use the `katapolicygen` command.
 
 ## Security Policy Information Sources
@@ -702,11 +702,17 @@ The `--print-policy` argument is included to display the policy on the command l
 Example 2: This command injects a security policy into the pod spec based on input from a config map so that there is no need to change the pod spec to pass variables into the security policy:
 
 ```bash
-az confcom katapolicygen -y .\\pod.yaml -c .\\config-map.yaml
+az confcom katapolicygen -y ./pod.yaml -c ./config-map.yaml
 ```
 
 Example 3: This command caches the layer hashes and stores them locally on your computer to make future computations faster if the same images are used:
 
 ```bash
-az confcom katapolicygen -y .\\pod.yaml -u
+az confcom katapolicygen -y ./pod.yaml -u
+```
+
+Example 4: This command uses a custom policy file that is an "allow all" policy [found here](https://github.com/kata-containers/kata-containers/blob/main/src/kata-opa/allow-all.rego):
+
+```bash
+az confcom katapolicygen -y ./pod.yaml -p ./allow-all.rego
 ```

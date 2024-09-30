@@ -2,6 +2,12 @@
 
 Release History
 ===============
+1.0.1
+++++++
+* bugfix for malformed policies when not using --diff flag
+* moving arguments validation to dedicated file
+* bugfix for VN2 mounts that must be read-only
+
 1.0.0
 ++++++
 * adding support for Virtual Node
