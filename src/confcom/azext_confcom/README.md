@@ -716,3 +716,21 @@ Example 4: This command uses a custom policy file that is an "allow all" policy 
 ```bash
 az confcom katapolicygen -y ./pod.yaml -p ./allow-all.rego
 ```
+
+Example 5: This command uses a custom policy file that allows exec in the container using a base of the file [found here](https://github.com/kata-containers/kata-containers/blob/main/src/tools/genpolicy/genpolicy-settings.json). Once this file is downloaded, add "/bin/sh" to the `allowed_commands` list:
+
+```yaml
+...
+"ExecProcessRequest": {
+    "allowed_commands": ["/bin/sh"],
+    "regex": []
+},
+
+...
+```
+
+And then use the edited file as follows:
+
+```bash
+az confcom katapolicygen -y ./pod.yaml -j ./genpolicy-exec.rego
+```
