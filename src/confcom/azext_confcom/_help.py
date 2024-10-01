@@ -150,15 +150,15 @@ helps[
 
     examples:
         - name: Input a Kubernetes YAML file to inject a base64 encoded Confidential Container Security Policy into the YAML file
-          text: az confcom katapolicygen --yaml "./pod.json"
+          text: az confcom katapolicygen --yaml "./pod.yaml"
         - name: Input a Kubernetes YAML file to print a base64 encoded Confidential Container Security Policy to stdout
-          text: az confcom katapolicygen --yaml "./pod.json" --print-policy
+          text: az confcom katapolicygen --yaml "./pod.yaml" --print-policy
         - name: Input a Kubernetes YAML file and custom settings file to inject a base64 encoded Confidential Container Security Policy into the YAML file
-          text: az confcom katapolicygen --yaml "./pod.json" -j "./settings.json"
+          text: az confcom katapolicygen --yaml "./pod.yaml" -j "./settings.json"
         - name: Input a Kubernetes YAML file and external config map file
-          text: az confcom katapolicygen --yaml "./pod.json" --config-map-file "./configmap.json"
+          text: az confcom katapolicygen --yaml "./pod.yaml" --config-map-file "./configmap.json"
         - name: Input a Kubernetes YAML file and custom rules file
-          text: az confcom katapolicygen --yaml "./pod.json" -p "./rules.rego"
+          text: az confcom katapolicygen --yaml "./pod.yaml" -p "./rules.rego"
         - name: Input a Kubernetes YAML file with a custom containerd socket path
-          text: az confcom katapolicygen --yaml "./pod.json" --containerd-pull --containerd-socket-path "/my/custom/containerd.sock"
+          text: az confcom katapolicygen --yaml "./pod.yaml" --containerd-pull --containerd-socket-path "/my/custom/containerd.sock"
 """
