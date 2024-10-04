@@ -129,7 +129,10 @@ def acipolicygen_confcom(
     fragment_policy_list = []
     # gather information about the fragments being used in the new policy
     if include_fragments:
-        fragments_list = os_util.load_json_from_file(fragments_json)
+        if fragments_json:
+            fragments_list = os_util.load_json_from_file(fragments_json)
+        else:
+            fragments_list = os_util.load_json_from_file(input_path).get("fragments", [])
         # convert to list if it's just a dict
         if not isinstance(fragments_list, list):
             fragments_list = [fragments_list]
@@ -147,7 +150,10 @@ def acipolicygen_confcom(
     # error checking for making sure an input is provided is above
     if input_path:
         container_group_policies = security_policy.load_policy_from_file(
-            input_path, debug_mode=debug_mode,
+            input_path,
+            debug_mode=debug_mode,
+            infrastructure_svn=infrastructure_svn,
+            disable_stdio=disable_stdio,
         )
     elif arm_template:
         container_group_policies = security_policy.load_policy_from_arm_template_file(

@@ -804,11 +804,21 @@ def load_policy_from_arm_template_file(
     )
 
 
-def load_policy_from_file(path: str, debug_mode: bool = False) -> AciPolicy:
+def load_policy_from_file(
+    path: str,
+    debug_mode: bool = False,
+    disable_stdio: bool = False,
+    infrastructure_svn: str = None,
+) -> AciPolicy:
     """Utility function: generate policy object from given json file path"""
     policy_input_json = os_util.load_str_from_file(path)
 
-    return load_policy_from_str(policy_input_json, debug_mode=debug_mode, )
+    return load_policy_from_str(
+        policy_input_json,
+        debug_mode=debug_mode,
+        disable_stdio=disable_stdio,
+        infrastructure_svn=infrastructure_svn
+    )
 
 
 def load_policy_from_image_name(
@@ -846,7 +856,12 @@ def load_policy_from_image_name(
     )
 
 
-def load_policy_from_str(data: str, debug_mode: bool = False) -> AciPolicy:
+def load_policy_from_str(
+    data: str,
+    debug_mode: bool = False,
+    disable_stdio: bool = False,
+    infrastructure_svn: str = None,
+) -> AciPolicy:
     """Utility function: generate policy object from given json string"""
     policy_input_json = os_util.load_json_from_str(data)
     containers = case_insensitive_dict_get(
@@ -879,7 +894,7 @@ def load_policy_from_str(data: str, debug_mode: bool = False) -> AciPolicy:
 
             iss = case_insensitive_dict_get(
                 fragment, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_ISS
-            )
+            ) or case_insensitive_dict_get(fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER)
             if not isinstance(iss, str):
                 eprint(
                     f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
@@ -890,7 +905,7 @@ def load_policy_from_str(data: str, debug_mode: bool = False) -> AciPolicy:
 
             minimum_svn = case_insensitive_dict_get(
                 fragment, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_MINIMUM_SVN
-            )
+            ) or case_insensitive_dict_get(fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN)
             if not isinstance(minimum_svn, str):
                 eprint(
                     f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
@@ -914,9 +929,10 @@ def load_policy_from_str(data: str, debug_mode: bool = False) -> AciPolicy:
         eprint(f'Field ["{config.ACI_FIELD_CONTAINERS}"] is empty or can not be found.')
 
     for container in containers:
+        image_properties = case_insensitive_dict_get(container, config.ACI_FIELD_TEMPLATE_PROPERTIES)
         image_name = case_insensitive_dict_get(
-            container, config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE
-        )
+            base_object, config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE
+        ) or case_insensitive_dict_get(base_object, config.ACI_FIELD_TEMPLATE_IMAGE)
 
         container_name = case_insensitive_dict_get(
             container, config.ACI_FIELD_CONTAINERS_NAME
@@ -936,6 +952,18 @@ def load_policy_from_str(data: str, debug_mode: bool = False) -> AciPolicy:
             config.DEBUG_MODE_SETTINGS.get("execProcesses") if debug_mode else []
         )
         container[config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES] = []
+        if image_properties:
+            container[config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE] = image_name
+            container[config.ACI_FIELD_CONTAINERS_ENVS] = process_env_vars_from_config(image_properties)
+            container[config.ACI_FIELD_CONTAINERS_COMMAND] = case_insensitive_dict_get(
+                image_properties, config.ACI_FIELD_TEMPLATE_COMMAND
+            ) or []
+            container[config.ACI_FIELD_CONTAINERS_MOUNTS] = process_mounts_from_config(image_properties) + process_configmap(image_properties)
+            container[config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES] = exec_processes + config.DEBUG_MODE_SETTINGS.get("execProcesses") if debug_mode else []
+            container[config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS] = not disable_stdio
+            container[config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT] = case_insensitive_dict_get(
+                image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
+            )
 
     return AciPolicy(
         policy_input_json,
