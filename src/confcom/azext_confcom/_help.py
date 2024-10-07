@@ -125,6 +125,10 @@ helps[
           type: string
           short-summary: 'Path to JSON file containing fragment information to use for generating a policy'
 
+        - name: --exclude-default-fragments -e
+          type: boolean
+          short-summary: 'When enabled, the default fragments are not included in the generated policy'
+
     examples:
         - name: Input an ARM Template file to inject a base64 encoded Confidential Container Security Policy into the ARM Template
           text: az confcom acipolicygen --template-file "./template.json"
@@ -145,11 +149,11 @@ helps[
     short-summary: Create a Confidential Container Policy Fragment for ACI.
 
     parameters:
-        - name: --image -i
+        - name: --image
           type: string
           short-summary: 'Image to use for the generated policy fragment'
 
-        - name: --config -c
+        - name: --input -i
           type: string
           short-summary: 'Path to a JSON file containing the configuration for the generated policy fragment'
 

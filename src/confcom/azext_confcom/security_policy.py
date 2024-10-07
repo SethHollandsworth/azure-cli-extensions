@@ -614,6 +614,7 @@ def load_policy_from_arm_template_str(
     diff_mode: bool = False
     rego_imports: Any = None,
     fragment_contents: Any = None,
+    exclude_default_fragments: bool = False,
 ) -> List[AciPolicy]:
     """Function that converts ARM template string to an ACI Policy"""
     input_arm_json = os_util.load_json_from_str(template_data)
@@ -693,7 +694,7 @@ def load_policy_from_arm_template_str(
                 # In non-diff mode, we ignore the error and proceed without the policy
                 existing_containers, fragments = ([], [])
 
-        rego_fragments = copy.deepcopy(config.DEFAULT_REGO_FRAGMENTS)
+        rego_fragments = copy.deepcopy(config.DEFAULT_REGO_FRAGMENTS) if not exclude_default_fragments else []
         if infrastructure_svn:
             # assumes the first DEFAULT_REGO_FRAGMENT is always the
             # infrastructure fragment
@@ -790,6 +791,7 @@ def load_policy_from_arm_template_file(
     diff_mode: bool = False
     rego_imports: list = None,
     fragment_contents: list = None,
+    exclude_default_fragments: bool = False,
 ) -> List[AciPolicy]:
     """Utility function: generate policy object from given arm template and parameter file paths"""
     input_arm_json = os_util.load_str_from_file(template_path)
@@ -797,10 +799,16 @@ def load_policy_from_arm_template_file(
     if parameter_path:
         input_parameter_json = os_util.load_str_from_file(parameter_path)
     return load_policy_from_arm_template_str(
-        input_arm_json, input_parameter_json, infrastructure_svn,
-        debug_mode=debug_mode, disable_stdio=disable_stdio, approve_wildcards=approve_wildcards,
+        input_arm_json,
+        input_parameter_json,
+        infrastructure_svn,
+        debug_mode=debug_mode,
+        disable_stdio=disable_stdio,
+        approve_wildcards=approve_wildcards,
+        rego_imports=rego_imports,
         diff_mode=diff_mode
-        rego_imports=rego_imports, fragment_contents=fragment_contents,
+        fragment_contents=fragment_contents,
+        exclude_default_fragments=exclude_default_fragments,
     )
 
 
@@ -809,6 +817,7 @@ def load_policy_from_file(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     infrastructure_svn: str = None,
+    exclude_default_fragments: bool = False,
 ) -> AciPolicy:
     """Utility function: generate policy object from given json file path"""
     policy_input_json = os_util.load_str_from_file(path)
@@ -817,7 +826,8 @@ def load_policy_from_file(
         policy_input_json,
         debug_mode=debug_mode,
         disable_stdio=disable_stdio,
-        infrastructure_svn=infrastructure_svn
+        infrastructure_svn=infrastructure_svn,
+        exclude_default_fragments=exclude_default_fragments,
     )
 
 
@@ -861,6 +871,7 @@ def load_policy_from_str(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     infrastructure_svn: str = None,
+    exclude_default_fragments: bool = False,
 ) -> AciPolicy:
     """Utility function: generate policy object from given json string"""
     policy_input_json = os_util.load_json_from_str(data)
@@ -868,9 +879,16 @@ def load_policy_from_str(
         policy_input_json, config.ACI_FIELD_CONTAINERS
     )
 
+    version = case_insensitive_dict_get(
+        policy_input_json, config.ACI_FIELD_VERSION
+    )
+
+    if not version:
+        policy_input_json[config.ACI_FIELD_VERSION] = "1.0"
+
     rego_fragments = case_insensitive_dict_get(
         policy_input_json, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
-    )
+    ) or []
 
     if rego_fragments:
         if not isinstance(rego_fragments, list):
@@ -931,8 +949,8 @@ def load_policy_from_str(
     for container in containers:
         image_properties = case_insensitive_dict_get(container, config.ACI_FIELD_TEMPLATE_PROPERTIES)
         image_name = case_insensitive_dict_get(
-            base_object, config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE
-        ) or case_insensitive_dict_get(base_object, config.ACI_FIELD_TEMPLATE_IMAGE)
+            container, config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE
+        ) or case_insensitive_dict_get(image_properties, config.ACI_FIELD_TEMPLATE_IMAGE)
 
         container_name = case_insensitive_dict_get(
             container, config.ACI_FIELD_CONTAINERS_NAME
@@ -965,9 +983,12 @@ def load_policy_from_str(
                 image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
             )
 
+    if not exclude_default_fragments:
+        rego_fragments.extend(copy.deepcopy(config.DEFAULT_REGO_FRAGMENTS))
+
     return AciPolicy(
         policy_input_json,
-        rego_fragments=rego_fragments or config.DEFAULT_REGO_FRAGMENTS,
+        rego_fragments=rego_fragments,
         debug_mode=debug_mode,
     )
 

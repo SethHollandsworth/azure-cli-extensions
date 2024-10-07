@@ -42,11 +42,7 @@ from azext_confcom import oras_proxy
 logger = get_logger(__name__)
 
 
-<<<<<<< HEAD
 # pylint: disable=too-many-locals, too-many-branches
-=======
-# pylint: disable=R0914, R0912
->>>>>>> ec183f9fd (initial commit of image attached fragments)
 def acipolicygen_confcom(
     input_path: str,
     arm_template: str,
@@ -68,32 +64,9 @@ def acipolicygen_confcom(
     faster_hashing: bool = False,
     include_fragments: bool = False,
     fragments_json: str = None,
+    exclude_default_fragments: bool = False,
 ):
 
-<<<<<<< HEAD
-=======
-    if sum(map(bool, [input_path, arm_template, image_name])) != 1:
-        error_out("Can only generate CCE policy from one source at a time")
-    if sum(map(bool, [print_policy_to_terminal, outraw, outraw_pretty_print])) > 1:
-        error_out("Can only print in one format at a time")
-    elif (diff and input_path) or (diff and image_name):
-        error_out("Can only diff CCE policy from ARM Template")
-    elif arm_template_parameters and not arm_template:
-        error_out(
-            "Can only use ARM Template Parameters if ARM Template is also present"
-        )
-    elif save_to_file and arm_template and not (print_policy_to_terminal or outraw or outraw_pretty_print):
-        error_out("Must print policy to terminal when saving to file")
-    elif faster_hashing and tar_mapping_location:
-        error_out("Cannot use --faster-hashing with --tar")
-
-    if fragments_json and not include_fragments:
-        error_out("Using a --fragments-json file requires the --include-fragments flag")
-    if include_fragments:
-        # make sure the ORAS CLI is installed
-        oras_proxy.check_oras_cli()
-
->>>>>>> ec183f9fd (initial commit of image attached fragments)
     if print_existing_policy or outraw or outraw_pretty_print:
         logger.warning(
             "%s %s %s %s %s",
@@ -154,6 +127,7 @@ def acipolicygen_confcom(
             debug_mode=debug_mode,
             infrastructure_svn=infrastructure_svn,
             disable_stdio=disable_stdio,
+            exclude_default_fragments=exclude_default_fragments,
         )
     elif arm_template:
         container_group_policies = security_policy.load_policy_from_arm_template_file(
@@ -168,7 +142,11 @@ def acipolicygen_confcom(
 =======
             rego_imports=fragments_list,
             fragment_contents=fragment_policy_list,
+<<<<<<< HEAD
 >>>>>>> ec183f9fd (initial commit of image attached fragments)
+=======
+            exclude_default_fragments=exclude_default_fragments,
+>>>>>>> 2265e629b (changing input argument names to align better with acipolicygen)
         )
     elif image_name:
         container_group_policies = security_policy.load_policy_from_image_name(
@@ -250,7 +228,7 @@ def acipolicygen_confcom(
 # pylint: disable=R0914
 def acifragmentgen_confcom(
     image_name: str,
-    config: str,
+    input_path: str,
     tar_mapping_location: str,
     namespace: str,
     svn: str,
@@ -271,10 +249,10 @@ def acifragmentgen_confcom(
 ):
     if sum(map(bool, [key, chain])) == 1:
         error_out("Must provide both a key and a chain to sign the fragment")
-    if not generate_import and (not image_name and not config):
-        error_out("Must provide either an image name or a config file")
-    if generate_import and sum(map(bool, [fragment_path, config, image_name])) != 1:
-        error_out("Must provide fragment path, config, or image name to generate an import")
+    if not generate_import and (not image_name and not input_path):
+        error_out("Must provide either an image name or an input file")
+    if generate_import and sum(map(bool, [fragment_path, input_path, image_name])) != 1:
+        error_out("Must provide fragment path, input file, or image name to generate an import")
     if not generate_import and (not namespace or not svn):
         error_out("Must provide namespace and svn to generate a fragment")
     if namespace in RESERVED_FRAGMENT_NAMES:
@@ -309,17 +287,17 @@ def acifragmentgen_confcom(
             print(pretty_print_func(import_statement))
         sys.exit(0)
 
-    tar_mapping = tar_mapping_validation(tar_mapping_location, using_config_file=bool(config))
+    tar_mapping = tar_mapping_validation(tar_mapping_location, using_config_file=bool(input_path))
 
     if image_name:
         policy = security_policy.load_policy_from_image_name(
             image_name, debug_mode=debug_mode, disable_stdio=disable_stdio
         )
-    elif config:
+    elif input_path:
         if not tar_mapping:
-            tar_mapping = os_util.load_tar_mapping_from_config_file(config)
+            tar_mapping = os_util.load_tar_mapping_from_config_file(input_path)
         policy = security_policy.load_policy_from_config_file(
-            config, debug_mode=debug_mode, disable_stdio=disable_stdio
+            input_path, debug_mode=debug_mode, disable_stdio=disable_stdio
         )
     policy.populate_policy_content_for_all_images(
         individual_image=bool(image_name), tar_mapping=tar_mapping

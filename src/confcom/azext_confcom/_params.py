@@ -165,17 +165,23 @@ def load_arguments(self, _):
             required=False,
             help="Path to JSON file containing fragment information",
         )
+        c.argument(
+            "exclude_default_fragments",
+            options_list=("--exclude-default-fragments", "-e"),
+            required=False,
+            help="Exclude default fragments in the generated policy",
+        )
 
     with self.argument_context("confcom acifragmentgen") as c:
         c.argument(
             "image_name",
-            options_list=("--image", "-i"),
+            options_list=("--image"),
             required=False,
             help="Image Name to be used for the generated policy fragment",
         )
         c.argument(
-            "config",
-            options_list=("--config", "-c"),
+            "input_path",
+            options_list=("--input", "-i"),
             required=False,
             help="Config file for information about the intended generated policy fragment",
         )
