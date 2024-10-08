@@ -124,7 +124,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         containers = case_insensitive_dict_get(
             deserialized_config, config.ACI_FIELD_CONTAINERS
         )
-        if not containers:
+        if containers is None:
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"] is empty or can not be found.'
             )
@@ -877,7 +877,7 @@ def load_policy_from_str(
     policy_input_json = os_util.load_json_from_str(data)
     containers = case_insensitive_dict_get(
         policy_input_json, config.ACI_FIELD_CONTAINERS
-    )
+    ) or []
 
     version = case_insensitive_dict_get(
         policy_input_json, config.ACI_FIELD_VERSION
@@ -943,8 +943,9 @@ def load_policy_from_str(
                     + "can only be a list."
                 )
 
-    if not containers:
-        eprint(f'Field ["{config.ACI_FIELD_CONTAINERS}"] is empty or can not be found.')
+    if not containers and not rego_fragments:
+        eprint(f'Field ["{config.ACI_FIELD_CONTAINERS}"]' +
+        ' and field ["{config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS}"] can not both be empty.')
 
     for container in containers:
         image_properties = case_insensitive_dict_get(container, config.ACI_FIELD_TEMPLATE_PROPERTIES)
