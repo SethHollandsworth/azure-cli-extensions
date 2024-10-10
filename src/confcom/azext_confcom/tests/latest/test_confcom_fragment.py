@@ -7,6 +7,7 @@ import os
 import unittest
 import json
 import subprocess
+from knack.util import CLIError
 
 from azext_confcom.security_policy import (
     UserContainerImage,
@@ -501,13 +502,31 @@ class FragmentSidecarValidation(unittest.TestCase):
 
 class InitialFragmentErrors(ScenarioTest):
     def test_invalid_input(self):
-        with self.assertRaises(SystemExit) as wrapped_exit:
-            self.cmd("az confcom acifragmentgen --image mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -i fakepath/parameters.json")
-        self.assertEqual(wrapped_exit.exception.code, 1)
+        with self.assertRaises(CLIError) as wrapped_exit:
+            self.cmd("az confcom acifragmentgen --image mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -i fakepath/parameters.json --namespace fake_namespace --svn 1")
+        self.assertEqual(wrapped_exit.exception.args[0], "Must provide either an image name or an input file to generate a fragment")
 
-        with self.assertRaises(SystemExit) as wrapped_exit:
-            self.cmd("az confcom acifragmentgen --generate-import")
+        with self.assertRaises(CLIError) as wrapped_exit:
+            self.cmd("az confcom acifragmentgen --generate-import --minimum-svn 1")
+        self.assertEqual(wrapped_exit.exception.args[0], "Must provide either a fragment path, an input file, or " +
+            "an image name to generate an import statement")
 
-        with self.assertRaises(SystemExit) as wrapped_exit:
-            self.cmd("az confcom acifragmentgen --image mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -k fakepath/key.pem")
-        self.assertEqual(wrapped_exit.exception.code, 1)
+        with self.assertRaises(CLIError) as wrapped_exit:
+            self.cmd("az confcom acifragmentgen --image mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -k fakepath/key.pem --namespace fake_namespace --svn 1")
+        self.assertEqual(wrapped_exit.exception.args[0], "Must provide both --key and --chain to sign a fragment")
+
+        with self.assertRaises(CLIError) as wrapped_exit:
+            self.cmd("az confcom acifragmentgen --fragment-path ./fragment.json --image mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 --namespace fake_namespace --svn 1 --minimum-svn 1")
+        self.assertEqual(wrapped_exit.exception.args[0], "Must provide --generate-import to specify a fragment path")
+
+        with self.assertRaises(CLIError) as wrapped_exit:
+            self.cmd("az confcom acifragmentgen --input ./input.json --namespace example --svn 0")
+        self.assertEqual(wrapped_exit.exception.args[0], "--svn must be greater than or equal to 0")
+
+        with self.assertRaises(CLIError) as wrapped_exit:
+            self.cmd("az confcom acifragmentgen --input ./input.json --namespace policy --svn 1")
+        self.assertEqual(wrapped_exit.exception.args[0], "Namespace 'policy' is reserved")
+
+        with self.assertRaises(CLIError) as wrapped_exit:
+            self.cmd("az confcom acifragmentgen --algo fake_algo --key ./key.pem --chain ./cert-chain.pem --namespace example --svn 1 -i ./input.json")
+        self.assertEqual(wrapped_exit.exception.args[0], f"Algorithm 'fake_algo' is not supported. Supported algorithms are {config.SUPPORTED_ALGOS}")

@@ -66,7 +66,6 @@ def acipolicygen_confcom(
     fragments_json: str = None,
     exclude_default_fragments: bool = False,
 ):
-
     if print_existing_policy or outraw or outraw_pretty_print:
         logger.warning(
             "%s %s %s %s %s",
@@ -241,21 +240,6 @@ def acifragmentgen_confcom(
     no_print: bool = False,
     fragments_json: str = "",
 ):
-    if sum(map(bool, [key, chain])) == 1:
-        error_out("Must provide both a key and a chain to sign the fragment")
-    if not generate_import and (not image_name and not input_path):
-        error_out("Must provide either an image name or an input file")
-    if generate_import and sum(map(bool, [fragment_path, input_path, image_name])) != 1:
-        error_out("Must provide fragment path, input file, or image name to generate an import")
-    if not generate_import and (not namespace or not svn):
-        error_out("Must provide namespace and svn to generate a fragment")
-    if namespace in RESERVED_FRAGMENT_NAMES:
-        error_out(f"Namespace '{namespace}' is a reserved fragment name")
-    if generate_import and not minimum_svn:
-        error_out("Must provide minimum_svn to generate an import")
-    if algo not in SUPPORTED_ALGOS:
-        error_out(f"Algorithm '{algo}' is not supported. Supported algorithms are {SUPPORTED_ALGOS}")
-
     output_type = get_fragment_output_type(outraw)
 
     if generate_import:

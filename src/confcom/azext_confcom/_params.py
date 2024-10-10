@@ -13,6 +13,14 @@ from azext_confcom._validators import (
     validate_save_to_file,
     validate_faster_hashing,
     validate_katapolicygen_input,
+    validate_fragment_key_and_chain,
+    validate_fragment_source,
+    validate_fragment_generate_import,
+    validate_fragment_namespace_and_svn,
+    validate_fragment_minimum_svn,
+    validate_fragment_algo,
+    validate_fragment_path,
+    validate_fragment_json,
 )
 
 
@@ -178,12 +186,14 @@ def load_arguments(self, _):
             options_list=("--image"),
             required=False,
             help="Image Name to be used for the generated policy fragment",
+            validator=validate_fragment_source
         )
         c.argument(
             "input_path",
             options_list=("--input", "-i"),
             required=False,
             help="Config file for information about the intended generated policy fragment",
+            validator=validate_fragment_source
         )
         c.argument(
             "tar_mapping_location",
@@ -196,12 +206,14 @@ def load_arguments(self, _):
             options_list=("--namespace", "-n"),
             required=False,
             help="Namespace for the generated policy fragment",
+            validator=validate_fragment_namespace_and_svn,
         )
         c.argument(
             "svn",
             options_list=("--svn"),
             required=False,
             help="Software Version Number for the generated policy fragment",
+            validator=validate_fragment_namespace_and_svn,
         )
         c.argument(
             "feed",
@@ -214,36 +226,42 @@ def load_arguments(self, _):
             options_list=("--key", "-k"),
             required=False,
             help="Key for signing the generated policy fragment",
+            validator=validate_fragment_key_and_chain,
         )
         c.argument(
             "chain",
             options_list=("--chain"),
             required=False,
             help="Certificate chain for signing the generated policy fragment",
+            validator=validate_fragment_key_and_chain,
         )
         c.argument(
             "algo",
             options_list=("--algo"),
             required=False,
             help="Algorithm for signing the generated policy fragment",
+            validator=validate_fragment_algo,
         )
         c.argument(
             "fragment_path",
             options_list=("--fragment-path", "-p"),
             required=False,
             help="Path to a policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry",
+            validator=validate_fragment_path,
         )
         c.argument(
             "generate_import",
             options_list=("--generate-import", "-g"),
             required=False,
             help="Generate an import statement for a policy fragment",
+            validator=validate_fragment_generate_import,
         )
         c.argument(
             "minimum_svn",
             options_list=("--minimum-svn",),
             required=False,
             help="Used with --generate-import to specify the minimum SVN for the import statement",
+            validator=validate_fragment_minimum_svn,
         )
         c.argument(
             "disable_stdio",
@@ -286,6 +304,7 @@ def load_arguments(self, _):
             options_list=("--fragments-json", "-j"),
             required=False,
             help="Path to JSON file to write fragment import information. This is used with --generate-import. If not specified, the import statement will print to the console",
+            validator=validate_fragment_json,
         )
 
     with self.argument_context("confcom katapolicygen") as c:
