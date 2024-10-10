@@ -66,7 +66,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
         existing_rego_fragments: Any = None,
         debug_mode: bool = False,
         disable_stdio: bool = False,
-        is_vn2: bool = False
+        is_vn2: bool = False,
         fragment_contents: Any = None,
     ) -> None:
         self._docker_client = None
@@ -611,7 +611,7 @@ def load_policy_from_arm_template_str(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     approve_wildcards: bool = False,
-    diff_mode: bool = False
+    diff_mode: bool = False,
     rego_imports: Any = None,
     fragment_contents: Any = None,
     exclude_default_fragments: bool = False,
@@ -788,7 +788,7 @@ def load_policy_from_arm_template_file(
     debug_mode: bool = False,
     disable_stdio: bool = False,
     approve_wildcards: bool = False,
-    diff_mode: bool = False
+    diff_mode: bool = False,
     rego_imports: list = None,
     fragment_contents: list = None,
     exclude_default_fragments: bool = False,
@@ -806,7 +806,7 @@ def load_policy_from_arm_template_file(
         disable_stdio=disable_stdio,
         approve_wildcards=approve_wildcards,
         rego_imports=rego_imports,
-        diff_mode=diff_mode
+        diff_mode=diff_mode,
         fragment_contents=fragment_contents,
         exclude_default_fragments=exclude_default_fragments,
     )
@@ -999,7 +999,7 @@ def load_policy_from_virtual_node_yaml_file(
         debug_mode: bool = False,
         disable_stdio: bool = False,
         approve_wildcards: bool = False,
-        diff_mode: bool = False
+        diff_mode: bool = False,
 ) -> List[AciPolicy]:
     yaml_contents_str = os_util.load_str_from_file(virtual_node_yaml_path)
     return load_policy_from_virtual_node_yaml_str(
@@ -1007,7 +1007,7 @@ def load_policy_from_virtual_node_yaml_file(
         debug_mode=debug_mode,
         disable_stdio=disable_stdio,
         approve_wildcards=approve_wildcards,
-        diff_mode=diff_mode
+        diff_mode=diff_mode,
     )
 
 
@@ -1016,7 +1016,7 @@ def load_policy_from_virtual_node_yaml_str(
         debug_mode: bool = False,
         disable_stdio: bool = False,
         approve_wildcards: bool = False,
-        diff_mode: bool = False
+        diff_mode: bool = False,
 ) -> List[AciPolicy]:
     """
     Load a virtual node yaml file and generate a policy object

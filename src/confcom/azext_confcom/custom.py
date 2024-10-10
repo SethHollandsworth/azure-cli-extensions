@@ -137,16 +137,10 @@ def acipolicygen_confcom(
             debug_mode=debug_mode,
             disable_stdio=disable_stdio,
             approve_wildcards=approve_wildcards,
-<<<<<<< HEAD
-            diff_mode=diff
-=======
+            diff_mode=diff,
             rego_imports=fragments_list,
             fragment_contents=fragment_policy_list,
-<<<<<<< HEAD
->>>>>>> ec183f9fd (initial commit of image attached fragments)
-=======
             exclude_default_fragments=exclude_default_fragments,
->>>>>>> 2265e629b (changing input argument names to align better with acipolicygen)
         )
     elif image_name:
         container_group_policies = security_policy.load_policy_from_image_name(
@@ -460,8 +454,6 @@ def get_output_type(outraw, outraw_pretty_print):
     elif outraw_pretty_print:
         output_type = security_policy.OutputType.PRETTY_PRINT
     return output_type
-<<<<<<< HEAD
-=======
 
 
 def get_fragment_output_type(outraw):
@@ -475,7 +467,7 @@ def error_out(error_string):
     logger.error(error_string)
     sys.exit(1)
 
-
+# TODO: move this to _validators.py
 def acipolicygen_error_check(
     input_path: str,
     arm_template: str,
@@ -518,4 +510,3 @@ def acipolicygen_error_check(
             "source control. Also verify that no secrets are present in the logs of your command or script.",
             "For additional information, see http://aka.ms/clisecrets. \n",
         )
->>>>>>> ec183f9fd (initial commit of image attached fragments)

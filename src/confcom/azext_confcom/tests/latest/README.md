@@ -85,7 +85,6 @@ test_incorrect_workingdir_path | mcr.microsoft.com/cbl-mariner/distroless/minima
 test_incorrect_workingdir_data_type | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Fail if working dir is an array
 test_incorrect_command_data_type | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Fail if command is not array of strings
 test_json_missing_containers | N/A | Fail if containers are not specified
-test_json_missing_version | mcr.microsoft.com/azuredocs/aci-dataprocessing-cc:v1 | Fail if version is not included in policy.json
 test_json_missing_containerImage | N/A | Fail if container doesn't have an image specified
 test_json_missing_environmentVariables | mcr.microsoft.com/azuredocs/aci-dataprocessing-cc:v1 | Fail if there are no env vars defined
 test_json_missing_command | mcr.microsoft.com/azuredocs/aci-dataprocessing-cc:v1 | Fail if there is no command specified

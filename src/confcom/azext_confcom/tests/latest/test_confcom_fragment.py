@@ -502,12 +502,12 @@ class FragmentSidecarValidation(unittest.TestCase):
 class InitialFragmentErrors(ScenarioTest):
     def test_invalid_input(self):
         with self.assertRaises(SystemExit) as wrapped_exit:
-            self.cmd("az confcom acifragmentgen -i mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -c fakepath/parameters.json")
+            self.cmd("az confcom acifragmentgen --image mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -i fakepath/parameters.json")
         self.assertEqual(wrapped_exit.exception.code, 1)
 
         with self.assertRaises(SystemExit) as wrapped_exit:
             self.cmd("az confcom acifragmentgen --generate-import")
 
         with self.assertRaises(SystemExit) as wrapped_exit:
-            self.cmd("az confcom acifragmentgen -i mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -k fakepath/key.pem")
+            self.cmd("az confcom acifragmentgen --image mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 -k fakepath/key.pem")
         self.assertEqual(wrapped_exit.exception.code, 1)
