@@ -46,7 +46,8 @@ DEPENDENCIES = [
 
 SecurityPolicyProxy.download_binaries()
 KataPolicyGenProxy.download_binaries()
-CoseSignToolProxy.download_binaries()
+# TODO: add this back in when the repo publishes its executables
+# CoseSignToolProxy.download_binaries()
 
 with open("README.md", "r", encoding="utf-8") as f:
     README = f.read()

@@ -38,7 +38,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
             os.makedirs(bin_folder)
 
         # get the most recent release artifacts from github
-        r = requests.get("https://api.github.com/repos/microsoft/CoseSignTool/releases")
+        r = requests.get("https://api.github.com/microsoft/cosesign1go/releases")
         needed_assets = ["CoseSignTool-Windows-release.zip", "CoseSignTool-Linux-release.zip"]
         windows_flag = False
         linux_flag = False
