@@ -104,7 +104,6 @@ class KataPolicyGenProxy:  # pylint: disable=too-few-public-methods
         print_policy=False,
         use_cached_files=False,
         settings_file_name=None,
-
         rules_file_name=None,
         print_version=False,
         containerd_pull=False,

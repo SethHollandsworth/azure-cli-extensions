@@ -3,7 +3,7 @@
         {
             "name": "my-image",
             "properties": {
-                "image": "mcr.microsoft.com/aci/aci-confidential-helloworld:v1",
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
                 "environmentVariables": [
                     {
                         "name": "PATH",

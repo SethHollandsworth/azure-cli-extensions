@@ -14,7 +14,15 @@
         {
             "name": "my-image",
             "properties": {
-                "image": "mcr.microsoft.com/aci/skr:2.6",
+                "image": "mcr.microsoft.com/aci/skr:2.7",
+                "execProcesses": [
+                    {
+                        "command": [
+                            "echo",
+                            "Hello World"
+                        ]
+                    }
+                ],
                 "volumeMounts": [
                     {
                         "name": "azurefile",

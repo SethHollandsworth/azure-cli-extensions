@@ -14,19 +14,17 @@ host_os = platform.system()
 machine = platform.machine()
 
 
+def call_oras_cli(args, check=False):
+    return subprocess.run(args, check=check, capture_output=True)
+
+
 # discover if there are policy artifacts associated with the image
 # return their digests in a list if there are some
 def discover(
     image: str,
 ) -> bool:
     arg_list = ["oras", "discover", image, "-o", "json", "--artifact-type", ARTIFACT_TYPE]
-
-    item = subprocess.run(
-        arg_list,
-        check=False,
-        capture_output=True,
-    )
-
+    item = call_oras_cli(arg_list, check=False)
     hashes = []
 
     if item.returncode == 0:
@@ -53,12 +51,7 @@ def pull(
     if "@sha256:" in image:
         image = image.split("@")[0]
     arg_list = ["oras", "pull", f"{image}@{image_hash}"]
-
-    item = subprocess.run(
-        arg_list,
-        check=False,
-        capture_output=True,
-    )
+    item = call_oras_cli(arg_list, check=False)
 
     # get the exit code from the subprocess
     if item.returncode != 0:
@@ -101,7 +94,7 @@ def pull_all_image_attached_fragments(image):
 
 
 def check_oras_cli():
-    item = subprocess.run(["oras", "version"], check=True, capture_output=True)
+    item = call_oras_cli(["oras", "version"], check=True)
 
     if item.returncode != 0:
         eprint(
@@ -113,11 +106,8 @@ def attach_fragment_to_image(image_name: str, filename: str):
     if ":" not in image_name:
         image_name += ":latest"
     # attach the fragment to the image
-    item = subprocess.run(
-        ["oras", "attach", "--artifact-type", ARTIFACT_TYPE, image_name, filename],
-        check=False,
-        capture_output=True,
-    )
+    arg_list = ["oras", "attach", "--artifact-type", ARTIFACT_TYPE, image_name, filename]
+    item = call_oras_cli(arg_list, check=False)
     if item.returncode != 0:
         eprint(f"Could not attach fragment to image: {image_name}. Failed with {item.stderr}")
 

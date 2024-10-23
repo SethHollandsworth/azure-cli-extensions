@@ -143,7 +143,7 @@ helps[
 
         - name: --svn
           type: string
-          short-summary: 'Minimum Allowed Software Version Number for the generated policy fragment'
+          short-summary: 'Minimum Allowed Software Version Number for the generated policy fragment. This should be a monotonically increasing integer'
 
         - name: feed
           type: string
@@ -151,15 +151,15 @@ helps[
 
         - name: --key -k
           type: string
-          short-summary: 'Path to key file to use for signing the generated policy fragment'
+          short-summary: 'Path to key file to use for signing the generated policy fragment. This must be used with --chain'
 
         - name: --chain
           type: string
-          short-summary: 'Path to certificate chain file to use for signing the generated policy fragment'
+          short-summary: 'Path to certificate chain file to use for signing the generated policy fragment. This must be used with --key'
 
         - name: --algo
           type: string
-          short-summary: 'Algorithm used for signing the generated policy fragment. Default is ES384'
+          short-summary: 'Algorithm used for signing the generated policy fragment. Default is ES384. This must be used with --key and --chain'
 
         - name: --fragment-path, -p
           type: string

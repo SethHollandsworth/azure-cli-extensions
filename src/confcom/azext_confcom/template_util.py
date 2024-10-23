@@ -455,6 +455,8 @@ def filter_non_pod_resources(resources: List[dict]) -> List[dict]:
     """
     important_resource_names = ["Pod", "Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob", "ReplicaSet"]
     return [resource for resource in resources if resource and resource.get("kind") in important_resource_names]
+
+
 def process_env_vars_from_config(container) -> List[Dict[str, str]]:
     env_vars = []
     # add in the env vars from the template
@@ -778,6 +780,21 @@ def compare_containers(container1, container2) -> Dict[str, Any]:
     return readable_diff(json.loads(diff.to_json()))
 
 
+def get_container_diff(container1, container2) -> Dict[str, Any]:
+    container1_copy = copy.deepcopy(container1)
+    container2_copy = copy.deepcopy(container2)
+
+    # the ID does not matter so delete them from comparison
+    container1_copy.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
+    container2_copy.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
+    # env vars will be compared later so delete them from this
+    # comparison
+    container1_copy.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
+    container2_copy.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
+
+    return compare_containers(container1_copy, container2_copy)
+
+
 def change_key_names(dictionary) -> Dict:
     """Recursive function to rename keys wherever they are in the output diff dictionary"""
     # need to rename fields in the deep diff to be more accessible to customers
@@ -966,9 +983,6 @@ def extract_confidential_properties(
 
 
 def decompose_confidential_properties(cce_policy: str) -> Tuple[List[Dict], List[Dict]]:
-    container_start = "containers := "
-    fragment_start = "fragments := "
-
     cce_policy = os_util.base64_to_str(cce_policy)
     # error check that the decoded policy existing in the template is not in JSON format
     try:

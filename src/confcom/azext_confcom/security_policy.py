@@ -24,7 +24,6 @@ from azext_confcom.template_util import (
     readable_diff,
     case_insensitive_dict_get,
     compare_env_vars,
-    compare_containers,
     get_values_for_params,
     process_mounts,
     process_configmap,
@@ -40,7 +39,8 @@ from azext_confcom.template_util import (
     decompose_confidential_properties,
     process_env_vars_from_config,
     process_mounts_from_config,
-    process_fragment_imports
+    process_fragment_imports,
+    get_container_diff,
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
@@ -153,7 +153,6 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
 
     def get_fragments(self) -> List[str]:
         return self._fragments or []
-
 
     def get_serialized_output(
         self,
@@ -319,20 +318,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 temp_diff = {}
                 matching_policy_container = policy[idx]
 
-                # copy so we can delete fields and not affect the original data
-                # structure
-                container1 = copy.deepcopy(matching_policy_container)
-                container2 = copy.deepcopy(container)
-
-                # the ID does not matter so delete them from comparison
-                container1.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
-                container2.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
-                # env vars will be compared later so delete them from this
-                # comparison
-                container1.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
-                container2.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
-
-                diff_values = compare_containers(container1, container2)
+                diff_values = get_container_diff(matching_policy_container, container)
                 # label the diff with the ID so it can be merged
                 # with the env vars and other container diffs
                 temp_diff[container_name] = diff_values
@@ -559,21 +545,8 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             # save some computation time by checking if the image tag is the same first
             if fragment_image.get("id") == image.containerImage:
                 image_policy = image.get_policy_json()
-                # container_diff = compare_containers(fragment_image, image_policy)
-                # copy so we can delete fields and not affect the original data
-                # structure
-                container1 = copy.deepcopy(fragment_image)
-                container2 = copy.deepcopy(image_policy)
 
-                # the ID does not matter so delete them from comparison
-                container1.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
-                container2.pop(config.POLICY_FIELD_CONTAINERS_ID, None)
-                # env vars will be compared later so delete them from this
-                # comparison
-                container1.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
-                container2.pop(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS, None)
-
-                container_diff = compare_containers(container1, container2)
+                container_diff = get_container_diff(fragment_image, image_policy)
 
                 # if the rest of the container is good, check the env vars
                 if container_diff == {}:
@@ -948,8 +921,10 @@ def load_policy_from_str(
                 )
 
     if not containers and not rego_fragments:
-        eprint(f'Field ["{config.ACI_FIELD_CONTAINERS}"]' +
-        ' and field ["{config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS}"] can not both be empty.')
+        eprint(
+            f'Field ["{config.ACI_FIELD_CONTAINERS}"]' +
+            f' and field ["{config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS}"] can not both be empty.'
+        )
 
     for container in containers:
         image_properties = case_insensitive_dict_get(container, config.ACI_FIELD_TEMPLATE_PROPERTIES)
@@ -975,14 +950,25 @@ def load_policy_from_str(
             config.DEBUG_MODE_SETTINGS.get("execProcesses") if debug_mode else []
         )
         container[config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES] = []
+
         if image_properties:
+            exec_processes = []
+            extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
+            extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
             container[config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE] = image_name
             container[config.ACI_FIELD_CONTAINERS_ENVS] = process_env_vars_from_config(image_properties)
             container[config.ACI_FIELD_CONTAINERS_COMMAND] = case_insensitive_dict_get(
                 image_properties, config.ACI_FIELD_TEMPLATE_COMMAND
             ) or []
-            container[config.ACI_FIELD_CONTAINERS_MOUNTS] = process_mounts_from_config(image_properties) + process_configmap(image_properties)
-            container[config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES] = exec_processes + config.DEBUG_MODE_SETTINGS.get("execProcesses") if debug_mode else []
+            container[config.ACI_FIELD_CONTAINERS_MOUNTS] = (
+                process_mounts_from_config(image_properties) +
+                process_configmap(image_properties)
+            )
+            container[config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES] = (
+                exec_processes +
+                config.DEBUG_MODE_SETTINGS.get("execProcesses")
+                if debug_mode else exec_processes
+            )
             container[config.ACI_FIELD_CONTAINERS_ALLOW_STDIO_ACCESS] = not disable_stdio
             container[config.ACI_FIELD_CONTAINERS_SECURITY_CONTEXT] = case_insensitive_dict_get(
                 image_properties, config.ACI_FIELD_TEMPLATE_SECURITY_CONTEXT
@@ -990,6 +976,13 @@ def load_policy_from_str(
 
     if not exclude_default_fragments:
         rego_fragments.extend(copy.deepcopy(config.DEFAULT_REGO_FRAGMENTS))
+
+    if infrastructure_svn:
+        # assumes the first DEFAULT_REGO_FRAGMENT is always the
+        # infrastructure fragment
+        rego_fragments[0][
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN
+        ] = infrastructure_svn
 
     return AciPolicy(
         policy_input_json,
@@ -1196,6 +1189,8 @@ def load_policy_from_virtual_node_yaml_str(
             )
         )
     return all_policies
+
+
 def load_policy_from_config_file(config_file, debug_mode: bool = False, disable_stdio: bool = False):
     config_content = os_util.load_str_from_file(config_file)
     return load_policy_from_config_str(config_content, debug_mode, disable_stdio)

@@ -10,8 +10,6 @@ from pkg_resources import parse_version
 from knack.log import get_logger
 from azext_confcom.config import (
     DEFAULT_REGO_FRAGMENTS,
-    RESERVED_FRAGMENT_NAMES,
-    SUPPORTED_ALGOS,
     POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS,
 
 )
@@ -75,10 +73,10 @@ def acipolicygen_confcom(
 
     if print_existing_policy and arm_template:
         print_existing_policy_from_arm_template(arm_template, arm_template_parameters)
-        sys.exit(0)
-    elif print_existing_policy and virtual_node_yaml_path:
+        return
+    if print_existing_policy and virtual_node_yaml_path:
         print_existing_policy_from_yaml(virtual_node_yaml_path)
-        sys.exit(0)
+        return
 
     if debug_mode:
         logger.warning("WARNING: %s %s",
@@ -197,7 +195,8 @@ def acipolicygen_confcom(
                 )
                 policy.save_to_file(save_to_file, output_type)
 
-    sys.exit(exit_code)
+    if exit_code != 0:
+        sys.exit(exit_code)
 
 
 # pylint: disable=R0914
@@ -228,14 +227,14 @@ def acifragmentgen_confcom(
         cose_client = CoseSignToolProxy()
         import_statement = cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)
         if fragments_json:
-            fragments_file_contents = {}
-            fragments_list = []
             if os.path.isfile(fragments_json):
                 logger.info("Appending import statement to JSON file")
-                fragments_file_contents= os_util.load_json_from_file(fragments_json)
+                fragments_file_contents = os_util.load_json_from_file(fragments_json)
                 fragments_list = fragments_file_contents.get(POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS, [])
             else:
                 logger.info("Creating import statement JSON file")
+                fragments_file_contents = {}
+                fragments_list = []
             # convert to list if it's just a dict
             if not isinstance(fragments_list, list):
                 fragments_list = [fragments_list]
@@ -245,7 +244,7 @@ def acifragmentgen_confcom(
             os_util.write_str_to_file(fragments_json, pretty_print_func(fragments_file_contents))
         else:
             print(pretty_print_func(import_statement))
-        sys.exit(0)
+        return
 
     tar_mapping = tar_mapping_validation(tar_mapping_location, using_config_file=bool(input_path))
 
@@ -274,8 +273,7 @@ def acifragmentgen_confcom(
         print(fragment_text)
 
     # take ".rego" off the end of the filename if it's there, it'll get added back later
-    if output_filename and output_filename.endswith(".rego"):
-        output_filename = output_filename[:-5]
+    output_filename.replace(".rego", "")
     filename = f"{output_filename or namespace}.rego"
     os_util.write_str_to_file(filename, fragment_text)
 
@@ -287,8 +285,6 @@ def acifragmentgen_confcom(
         cose_proxy.cose_sign(filename, key, chain, feed, iss, algo, out_path)
         if upload_fragment:
             oras_proxy.attach_fragment_to_image(feed, out_path)
-
-    sys.exit(0)
 
 
 def katapolicygen_confcom(
@@ -318,7 +314,6 @@ def katapolicygen_confcom(
         containerd_socket_path=containerd_socket_path,
     )
     print(output)
-    sys.exit(0)
 
 
 def update_confcom(cmd, instance, tags=None):
@@ -418,14 +413,8 @@ def get_output_type(outraw, outraw_pretty_print):
     return output_type
 
 
-
 def get_fragment_output_type(outraw):
     output_type = security_policy.OutputType.PRETTY_PRINT
     if outraw:
         output_type = security_policy.OutputType.RAW
     return output_type
-
-
-def error_out(error_string):
-    logger.error(error_string)
-    sys.exit(1)

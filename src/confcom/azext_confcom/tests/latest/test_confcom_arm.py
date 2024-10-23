@@ -2977,10 +2977,7 @@ class PrintExistingPolicy(unittest.TestCase):
 
             self.assertEqual(exc_info.exception.code, 1)
 
-            with self.assertRaises(SystemExit) as exc_info:
-                acipolicygen_confcom(None, "test_template2.json", None, None, None, None, None, print_existing_policy=True)
-
-            self.assertEqual(exc_info.exception.code, 0)
+            acipolicygen_confcom(None, "test_template2.json", None, None, None, None, None, print_existing_policy=True)
         finally:
             # delete test file
             os.remove("test_template.json")

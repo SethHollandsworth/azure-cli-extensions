@@ -133,7 +133,7 @@ containers := [
       }
     ],
     "exec_processes": [],
-    "id": "mcr.microsoft.com/aci/aci-confidential-helloworld:v1",
+    "id": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
     "layers": [
       "0de62d1aaa53f09c1ba26871cc97bda0ed29ea2eba4eb95c42b800159f0c087c",
       "1db0e60df71bbeda66196a3b518967cbc1b650cda08ada110744e0e07c965a5a",
