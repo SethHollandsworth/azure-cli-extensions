@@ -31,7 +31,6 @@
     - [allow_capabilities_dropping](#allow_capabilities_dropping)
 - [Microsoft Azure CLI 'confcom acifragmentgen' Extension Examples](#microsoft-azure-cli-confcom-acifragmentgen-extension-examples)
 - [Microsoft Azure CLI 'confcom katapolicygen' Extension Examples](#microsoft-azure-cli-confcom-katapolicygen-extension-examples)
-  - [Microsoft Azure CLI 'confcom katapolicygen' Extension Examples]
 
 ## Microsoft Azure CLI 'confcom acipolicygen' Extension Examples
 
@@ -704,7 +703,7 @@ The config file is a JSON file that contains the following information:
 }
 ```
 
-The `--svn` argument is used to specify the security version number of the fragment. The `--namespace` argument is used to specify the namespace of the fragment.
+The `--svn` argument is used to specify the security version number of the fragment and should be an integer. The `--namespace` argument is used to specify the namespace of the fragment and cannot conflict with some built-in names. If a conflicting name occurs, there will be an error message.
 
 Example 2: This command creates a signed security fragment and attaches it to a container image in an ORAS-compliant registry:
 
@@ -712,7 +711,7 @@ Example 2: This command creates a signed security fragment and attaches it to a 
 az confcom acifragmentgen --chain ./samples/certs/intermediateCA/certs/www.contoso.com.chain.cert.pem --key ./samples/certs/intermediateCA/private/ec_p384_private.pem --svn 1 --namespace contoso --config ./samples/config.json --upload-fragment
 ```
 
-Example 3: This command creates a file to be used by `acipolicygen` that says which fragments should be included in the policy. Note that the policy must be COSE signed:
+Example 3: This command creates a file to be used by `acipolicygen` that says which fragments should be included in the policy. Note that the policy must be [COSE](https://www.iana.org/assignments/cose/cose.xhtml) signed:
 
 ```bash
 az confcom acifragmentgen --generate-import -p ./contoso.rego.cose --minimum-svn 1 --fragments-json fragments.json

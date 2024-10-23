@@ -83,6 +83,8 @@ def validate_fragment_namespace_and_svn(namespace):
         raise CLIError("Must provide both --namespace and --svn to generate a fragment")
     if not namespace.generate_import and namespace.namespace in RESERVED_FRAGMENT_NAMES:
         raise CLIError(f"Namespace '{namespace.namespace}' is reserved")
+    if namespace.svn and not namespace.svn.isdigit():
+        raise CLIError("--svn must be an integer")
     if not namespace.generate_import and (namespace.svn and int(namespace.svn) < 0):
         raise CLIError("--svn must be greater than or equal to 0")
 

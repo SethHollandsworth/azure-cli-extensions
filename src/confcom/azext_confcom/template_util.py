@@ -465,11 +465,17 @@ def process_env_vars_from_config(container) -> List[Dict[str, str]]:
     ) or []
     for env_var in template_env_vars:
         name = case_insensitive_dict_get(env_var, "name")
-        value = case_insensitive_dict_get(env_var, "value") or case_insensitive_dict_get(env_var, "secureValue")
+        secure_value = case_insensitive_dict_get(env_var, "secureValue")
+        is_secure = bool(secure_value)
+        value = case_insensitive_dict_get(env_var, "value") or secure_value
 
-        if not name:
+        if not name and not is_secure:
             eprint(
                 f"Environment variable with value: {value} is missing a name"
+            )
+        elif not name and is_secure:
+            eprint(
+                "Environment variable with secure value is missing a name"
             )
         elif not value:
             eprint(f'Environment variable {name} does not have a value. Please check the template file.')

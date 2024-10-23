@@ -36,7 +36,10 @@ def get_all_fragment_contents(fragment_imports):
 
     for fragment in fragment_imports:
         # pull locally if there is a path, otherwise pull from the remote registry
-        if config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH in fragment:
+        if (
+            config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH in fragment and
+            fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH]
+        ):
             contents = [
                 cose_proxy.extract_payload_from_path(
                     fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH]

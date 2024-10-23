@@ -6,6 +6,7 @@
 import subprocess
 import json
 import platform
+from typing import List
 from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE
 from azext_confcom.cose_proxy import CoseSignToolProxy
@@ -22,7 +23,7 @@ def call_oras_cli(args, check=False):
 # return their digests in a list if there are some
 def discover(
     image: str,
-) -> bool:
+) -> List[str]:
     arg_list = ["oras", "discover", image, "-o", "json", "--artifact-type", ARTIFACT_TYPE]
     item = call_oras_cli(arg_list, check=False)
     hashes = []
@@ -63,11 +64,15 @@ def pull(
         eprint(f"Error while pulling fragment: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
 
     # extract the file name from stdout
+    filename = ""
     lines = item.stdout.decode("utf-8").splitlines()
     for line in lines:
         if "Downloaded" in line:
             filename = line.split(" ")[-1]
             break
+
+    if filename == "":
+        eprint("Could not find the filename of the pulled fragment")
 
     return filename
 
@@ -94,12 +99,13 @@ def pull_all_image_attached_fragments(image):
 
 
 def check_oras_cli():
-    item = call_oras_cli(["oras", "version"], check=True)
-
-    if item.returncode != 0:
-        eprint(
-            "ORAS CLI not installed. Please install ORAS CLI: https://oras.land/docs/installation"
-        )
+    text = "ORAS CLI not installed. Please install ORAS CLI: https://oras.land/docs/installation"
+    try:
+        item = call_oras_cli(["oras", "version"], check=True)
+        if item.returncode != 0:
+            eprint(text)
+    except FileNotFoundError:
+        eprint(text)
 
 
 def attach_fragment_to_image(image_name: str, filename: str):

@@ -17,7 +17,7 @@ The image in `fragment_config.json` must be updated to the image you want to att
 
 ## Run the Script
 
-*This step will create the necessary certs to sign the fragment policy. This also only needs to be done once.*
+*This step will create the necessary certificates and private keys to sign the fragment policy, including generating a root private key, intermediate private key, and a server private key. These keys are used to create the certificate chain required for signing. This step only needs to be done once.*
 
 ```bash
 ./create_certchain.sh
@@ -47,7 +47,16 @@ After running the command, there will be the following files created:
 
 Where `contoso.rego` is the fragment policy and `contoso.rego.cose` is the signed policy in COSE format.
 
-The `--upload-fragment` flag will attempt to attach the fragment to the container image in the ORAS-compliant registry.
+The `--upload-fragment` flag will attempt to attach the fragment to the container image in the ORAS-compliant registry. You may need to login to the registry before running the command via something like `az acr login`.
+
+The fragment can be seen in the Azure portal under the container repo's artifacts By going through the following steps:
+
+1. Go to the Azure portal
+2. Go to Azure Container Registry
+3. Go to the specific image's repository
+4. Click the tag of the image the fragment was attached to
+5. Click the `Referrers` tab
+6. The fragment should be listed as an artifact
 
 ## Generate Security Policy for an ARM Template
 
@@ -60,6 +69,19 @@ az confcom acifragmentgen --generate-import -p ./contoso.rego.cose --minimum-svn
 ```
 
 Which will output the fragment's import in json format. **Place this import statement into a new `fragments.json` file.**
+
+example output:
+
+```json
+{
+    "issuer": "did:x509:0:sha256:I__iuL25oXEVFdTP_aBLx_eT1RPHbCQ_ECBQfYZpt9s::eku:1.3.6.1.4.1.311.76.59.1.3",
+    "feed": "contoso.azurecr.io/infra",
+    "minimum_svn": "1",
+    "includes": [
+        "containers"
+    ]
+}
+```
 
 To generate a security policy for an ARM template, run the following command:
 

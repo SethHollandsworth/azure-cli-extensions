@@ -252,7 +252,6 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             container[config.ACI_FIELD_CONTAINERS_NAME] = container[config.ACI_FIELD_CONTAINERS_ID]
         # done this way instead of self.validate() because the input.json is
         # the source of truth
-        print("policy_content: ", policy_content)
 
         return policy.validate(policy_content, sidecar_validation=True)
 
@@ -515,7 +514,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 if self._fragment_contents and self.should_eliminate_container_covered_by_fragments(image):
                     # these containers will get taken out later in the function
                     # since they are covered by a fragment
-                    print("Container covered by fragment: ", image_name)
+                    logger.info("Container covered by fragment: %s", image_name)
                     continue
 
                 # populate tar location
@@ -541,9 +540,18 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             # we're not comparing layers to save computation time
             fragment_image["layers"] = []
             # TODO: make this print a warning if there is a fragment image that's close
-            # TODO: is "latest" tag assumed by this point?
             # save some computation time by checking if the image tag is the same first
-            if fragment_image.get("id") == image.containerImage:
+            container_name = case_insensitive_dict_get(
+                fragment_image,
+                config.POLICY_FIELD_CONTAINERS_NAME
+            )
+            fragment_image_id = fragment_image.get(config.ACI_FIELD_CONTAINERS_ID)
+            if ":" not in fragment_image:
+                fragment_image_id = f"{fragment_image_id}:latest"
+            if (
+                fragment_image_id == image.base + image.tag or
+                container_name == image.get_name()
+            ):
                 image_policy = image.get_policy_json()
 
                 container_diff = get_container_diff(fragment_image, image_policy)
@@ -551,7 +559,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 # if the rest of the container is good, check the env vars
                 if container_diff == {}:
                     env_reason_list = compare_env_vars(
-                        fragment_image.get("id"),
+                        fragment_image_id,
                         case_insensitive_dict_get(
                             fragment_image,
                             config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS,

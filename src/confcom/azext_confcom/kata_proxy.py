@@ -7,7 +7,6 @@ import subprocess
 import os
 import stat
 import sys
-from pathlib import Path
 import platform
 import requests
 from azext_confcom.config import DATA_FOLDER
@@ -86,7 +85,7 @@ class KataPolicyGenProxy:  # pylint: disable=too-few-public-methods
                 "Unknown target platform. The katapolicygen subcommand only works with Linux"
             )
 
-        self.policy_bin = Path(os.path.join(f"{script_directory}", f"{DEFAULT_LIB}"))
+        self.policy_bin = os.path.join(f"{script_directory}", f"{DEFAULT_LIB}")
 
         # check if the extension binary exists
         if not os.path.exists(self.policy_bin):

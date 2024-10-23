@@ -521,7 +521,7 @@ class InitialFragmentErrors(ScenarioTest):
 
         with self.assertRaises(CLIError) as wrapped_exit:
             self.cmd("az confcom acifragmentgen --input ./input.json --namespace example --svn -1")
-        self.assertEqual(wrapped_exit.exception.args[0], "--svn must be greater than or equal to 0")
+        self.assertEqual(wrapped_exit.exception.args[0], "--svn must be an integer")
 
         with self.assertRaises(CLIError) as wrapped_exit:
             self.cmd("az confcom acifragmentgen --input ./input.json --namespace policy --svn 1")
