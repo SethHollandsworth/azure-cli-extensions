@@ -703,7 +703,7 @@ The config file is a JSON file that contains the following information:
 }
 ```
 
-The `--svn` argument is used to specify the security version number of the fragment and should be an integer. The `--namespace` argument is used to specify the namespace of the fragment and cannot conflict with some built-in names. If a conflicting name occurs, there will be an error message. The format of the config file generally follows that of the [ACI resource in an ARM template](https://learn.microsoft.com/en-us/azure/templates/microsoft.containerinstance/containergroups?pivots=deployment-language-arm-template).
+The `--svn` argument is used to specify the security version number of the fragment and should be an integer. The `--namespace` argument is used to specify the namespace of the fragment and cannot conflict with some built-in names. If a conflicting name occurs, there will be an error message. [This list of reserved names can be found here under 'reserved_fragment_namespaces'](./data/internal_config.json). The format of the config file generally follows that of the [ACI resource in an ARM template](https://learn.microsoft.com/en-us/azure/templates/microsoft.containerinstance/containergroups?pivots=deployment-language-arm-template).
 
 Example 2: This command creates a signed security fragment and attaches it to a container image in an ORAS-compliant registry:
 

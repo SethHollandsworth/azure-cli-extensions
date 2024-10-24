@@ -6,6 +6,7 @@
 import subprocess
 import json
 import platform
+import re
 from typing import List
 from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE
@@ -16,7 +17,7 @@ machine = platform.machine()
 
 
 def call_oras_cli(args, check=False):
-    return subprocess.run(args, check=check, capture_output=True)
+    return subprocess.run(args, check=check, capture_output=True, timeout=120)
 
 
 # discover if there are policy artifacts associated with the image
@@ -72,7 +73,7 @@ def pull(
             break
 
     if filename == "":
-        eprint("Could not find the filename of the pulled fragment")
+        eprint(f"Could not find the filename of the pulled fragment for {image}@{image_hash}")
 
     return filename
 
@@ -117,6 +118,9 @@ def attach_fragment_to_image(image_name: str, filename: str):
     if item.returncode != 0:
         eprint(f"Could not attach fragment to image: {image_name}. Failed with {item.stderr}")
 
-    # extract digest from stdout
-    digest = item.stdout.decode("utf8").strip("\n").split("\n")[-1]
-    print(f"Fragment attached to image '{image_name}' with {digest}")
+    # regex to extract the digest from the output
+    digest_result = re.search(r" sha256:[a-f0-9]{64}", item.stdout.decode("utf8"))
+    if digest_result is None:
+        print("Attached fragment to image, but could not extract digest from output.")
+    digest = digest_result.group(0)
+    print(f"Fragment attached to image '{image_name}' with Digest:{digest}")

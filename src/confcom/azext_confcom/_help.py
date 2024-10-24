@@ -95,7 +95,7 @@ helps[
 
         - name: --include-fragments -f
           type: boolean
-          short-summary: 'When enabled, image-attached fragments will be pulled and used for generating the policy or the path specified by --fragments-json will be used'
+          short-summary: 'When enabled, the path specified by --fragments-json will be used to pull fragments from an OCI registry or locally and include them in the generated policy'
 
         - name: --fragments-json -j
           type: string

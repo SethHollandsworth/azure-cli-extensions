@@ -208,7 +208,7 @@ def load_arguments(self, _):
             "tar_mapping_location",
             options_list=("--tar",),
             required=False,
-            help="Tar File locations in JSON format where the key is the name and tag of the image and the value is the path to the tar file",
+            help="Tar file locations in JSON format where the key is the name and tag of the image and the value is the path to the tar file",
         )
         c.argument(
             "namespace",
@@ -234,14 +234,14 @@ def load_arguments(self, _):
             "key",
             options_list=("--key", "-k"),
             required=False,
-            help="Key for signing the generated policy fragment",
+            help="Key for signing the generated policy fragment. Must be in PEM format",
             validator=validate_fragment_key_and_chain,
         )
         c.argument(
             "chain",
             options_list=("--chain"),
             required=False,
-            help="Certificate chain for signing the generated policy fragment",
+            help="Certificate chain for signing the generated policy fragment. Must be in PEM format",
             validator=validate_fragment_key_and_chain,
         )
         c.argument(

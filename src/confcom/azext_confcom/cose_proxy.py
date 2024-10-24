@@ -7,6 +7,7 @@ import subprocess
 import os
 import stat
 import platform
+from typing import List
 from zipfile import ZipFile
 import requests
 from azext_confcom.errors import eprint
@@ -24,6 +25,15 @@ from azext_confcom.config import (
 
 host_os = platform.system()
 machine = platform.machine()
+
+
+def call_cose_sign_tool(args: List[str], error_message: str, check=False):
+    item = subprocess.run(args, check=check, capture_output=True, timeout=120)
+
+    if item.returncode != 0:
+        eprint(f"{error_message}: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
+
+    return item
 
 
 class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
@@ -126,15 +136,8 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
         if iss:
             arg_list.extend(["-issuer", iss])
 
-        item = subprocess.run(
-            arg_list,
-            capture_output=True,
-            check=False,
-        )
+        call_cose_sign_tool(arg_list, "Error signing the policy fragment")
 
-        # get the exit code from the subprocess
-        if item.returncode != 0:
-            eprint(f"Error signing the policy fragment: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
         return True
 
     def create_issuer(self, cert_path: str) -> str:
@@ -142,15 +145,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         arg_list = [policy_bin_str, "did-x509", "-chain", cert_path, "-policy", "CN"]
 
-        item = subprocess.run(
-            arg_list,
-            capture_output=True,
-            check=False,
-        )
-
-        # get the exit code from the subprocess
-        if item.returncode != 0:
-            eprint(f"Error creating the issuer: {item.stderr}", exit_code=item.returncode)
+        item = call_cose_sign_tool(arg_list, "Error creating the issuer")
 
         return item.stdout.decode("utf-8")
 
@@ -164,15 +159,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         arg_list_chain = [policy_bin_str, "check", "--in", fragment_path, "--verbose"]
 
-        item = subprocess.run(
-            arg_list_chain,
-            check=False,
-            capture_output=True,
-        )
-
-        # get the exit code from the subprocess
-        if item.returncode != 0:
-            eprint("Error getting information from signed fragment file", exit_code=item.returncode)
+        item = call_cose_sign_tool(arg_list_chain, "Error getting information from signed fragment file")
 
         stdout = item.stdout.decode("utf-8")
         # extract issuer, feed, and payload from the fragment
@@ -204,15 +191,7 @@ class CoseSignToolProxy:  # pylint: disable=too-few-public-methods
 
         arg_list_chain = [policy_bin_str, "check", "--in", fragment_path, "--verbose"]
 
-        item = subprocess.run(
-            arg_list_chain,
-            check=False,
-            capture_output=True,
-        )
-
-        # get the exit code from the subprocess
-        if item.returncode != 0:
-            eprint("Error getting information from signed fragment file", exit_code=item.returncode)
+        item = call_cose_sign_tool(arg_list_chain, "Error getting information from signed fragment file")
 
         stdout = item.stdout.decode("utf-8")
         return stdout.split("payload:")[1]

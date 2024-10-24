@@ -63,6 +63,9 @@ def get_all_fragment_contents(fragment_imports):
                 fragment_text,
                 Loader=yaml.FullLoader,
             )
+
+            # this adds new feeds to the list of feeds to pull dynamically
+            # it will end when there are no longer nested fragments to pull
             for new_fragment in fragments:
                 if new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED] not in fragment_feeds:
                     fragment_imports.append(new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED])

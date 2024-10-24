@@ -156,14 +156,11 @@ This is how to generate a policy fragment to be included in a CCE Policy for Con
 
 Test Name | Image Used | Purpose
 ---|---|---
-test_user_container_customized_mounts | alpine:3.16 | See if mounts are translated correctly to the appropriate source and destination locations
-test_user_container_mount_injected_dns | alpine:3.16 | See if the resolvconf mount works properly
-test_injected_sidecar_container_msi | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1 | Make sure User mounts and env vars aren't added to sidecar containers
-test_sign | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See if signing a fragment with a given cert and key works properly
-test_debug_processes | python:3.6.14-slim-buster | Enable exec_processes via debug_mode
-test_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See if sidecar validation would pass policy created by given fragment
-test_sidecar_stdio_access_default | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Check that sidecar containers have std I/O access by default
-test_incorrect_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See what output format for failing sidecar validation would be
-test_generate_import_local | python:3.6.14-slim-buster | Generate a fragment from an image that is local
-test_generate_import_remote | python:3.6.14-slim-buster | Generate a fragment from an image that is remote
+test_fragment_user_container_customized_mounts | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | See if mounts are translated correctly to the appropriate source and destination locations
+test_fragment_user_container_mount_injected_dns | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | See if the resolvconf mount works properly
+test_fragment_injected_sidecar_container_msi | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201203.1 | Make sure User mounts and env vars aren't added to sidecar containers, using JSON output format
+test_debug_processes | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Enable exec_processes via debug_mode
+test_fragment_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See if sidecar fragments can be created by a given policy.json
+test_fragment_sidecar_stdio_access_default | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Check that sidecar containers have std I/O access by default
+test_fragment_incorrect_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See what output format for failing sidecar validation would be
 test_invalid_input | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Fail out under various invalid input circumstances

@@ -73,8 +73,10 @@ def validate_fragment_generate_import(namespace):
         namespace.image_name
     ])) != 1:
         raise CLIError(
-            "Must provide either a fragment path, an input file, or " +
-            "an image name to generate an import statement"
+            (
+                "Must provide either a fragment path, an input file, or "
+                "an image name to generate an import statement"
+            )
         )
 
 

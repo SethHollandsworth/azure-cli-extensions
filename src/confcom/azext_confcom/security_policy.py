@@ -300,8 +300,10 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             # a name for the container
             if id_val is None and container_name is None:
                 raise ValueError(
-                    "Container ID and Name cannot both be None to use diff mode. " +
-                    "Try adding a name to the container and regenerate the CCE policy."
+                    (
+                        "Container ID and Name cannot both be None to use diff mode. "
+                        "Try adding a name to the container and regenerate the CCE policy."
+                    )
                 )
 
             idx_arr = [i for i, item in enumerate(policy_ids) if item == id_val]

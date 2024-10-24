@@ -52,7 +52,7 @@ The `--upload-fragment` flag will attempt to attach the fragment to the containe
 The fragment can be seen in the Azure portal under the container repo's artifacts By going through the following steps:
 
 1. Go to the Azure portal
-2. Go to Azure Container Registry
+2. Go to the image's associated Azure Container Registry instance
 3. Go to the specific image's repository
 4. Click the tag of the image the fragment was attached to
 5. Click the `Referrers` tab

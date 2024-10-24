@@ -14,7 +14,7 @@
         {
             "name": "my-image",
             "properties": {
-                "image": "mcr.microsoft.com/aci/skr:2.7",
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
                 "execProcesses": [
                     {
                         "command": [

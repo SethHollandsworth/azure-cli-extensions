@@ -34,7 +34,7 @@ class FragmentMountEnforcement(unittest.TestCase):
             {
                 "name": "test-container",
                 "properties": {
-                    "image": "alpine:3.16",
+                    "image": "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0",
                     "environmentVariables": [
                         {
                             "name": "PATH",
@@ -73,7 +73,7 @@ class FragmentMountEnforcement(unittest.TestCase):
             (
                 img
                 for img in self.aci_policy.get_images()
-                if isinstance(img, UserContainerImage) and img.base == "alpine"
+                if isinstance(img, UserContainerImage) and img.base == "mcr.microsoft.com/cbl-mariner/distroless/minimal"
             ),
             None,
         )
@@ -115,7 +115,7 @@ class FragmentMountEnforcement(unittest.TestCase):
             (
                 img
                 for img in self.aci_policy.get_images()
-                if isinstance(img, UserContainerImage) and img.base == "alpine"
+                if isinstance(img, UserContainerImage) and img.base == "mcr.microsoft.com/cbl-mariner/distroless/minimal"
             ),
             None,
         )
@@ -371,7 +371,7 @@ class FragmentPolicyGeneratingDebugMode(unittest.TestCase):
             {
             "name": "test-container",
             "properties": {
-                    "image": "python:3.6.14-slim-buster",
+                    "image": "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0",
                 "environmentVariables": [
 
                 ],
