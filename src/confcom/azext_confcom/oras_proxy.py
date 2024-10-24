@@ -101,7 +101,7 @@ def pull_all_image_attached_fragments(image):
 def check_oras_cli():
     text = "ORAS CLI not installed. Please install ORAS CLI: https://oras.land/docs/installation"
     try:
-        item = call_oras_cli(["oras", "version"], check=True)
+        item = call_oras_cli(["oras", "version"], check=False)
         if item.returncode != 0:
             eprint(text)
     except FileNotFoundError:

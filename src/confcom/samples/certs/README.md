@@ -2,10 +2,10 @@
 
 ## Prerequisites
 
-- Must have OpenSSL installed
-- Must have Azure CLI installed
-- Must have the [`confcom` extension](../../README.md) installed
-- Must have [ORAS CLI](https://oras.land/docs/installation/) installed
+- Must have OpenSSL installed (tested with version 3.0.2)
+- Must have Azure CLI installed (tested with version 2.46.0)
+- Must have the [`confcom` extension version 1.1.0 or greater](../../README.md) installed
+- Must have [ORAS CLI](https://oras.land/docs/installation/) installed (tested with version 1.1.0)
 
 ## Update Config
 
@@ -13,7 +13,7 @@
 
 `create_certchain.sh` should have `<your-username>` specified at the top for `RootPath`
 
-The image in `fragment_config.json` must be updated to the image you want to attach the fragment to. The default image is hosted on Microsoft Artifact Registry so it will not allow fragment uploads.
+The image in `fragment_config.json` must be updated from `<your-image>` to the image you want to attach the fragment to. This is likely going to be in Azure Container Registry but can be in any of these [supported registries](https://oras.land/docs/compatible_oci_registries/).
 
 ## Run the Script
 

@@ -516,7 +516,7 @@ def process_fragment_imports(rego_imports) -> None:
             rego_import, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN
         )
 
-        if not minimum_svn or not minimum_svn.isdigit():
+        if not minimum_svn or not isinstance(minimum_svn, str) or not minimum_svn.isdigit():
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
                 + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN}"] '
