@@ -217,6 +217,39 @@ helps[
 """
 
 helps[
+    "confcom aciconvert"
+] = """
+    type: command
+    short-summary: Convert either a VN2 yaml file or an ARM Template to a raw JSON input file to then be used with acipolicygen.
+
+    parameters:
+        - name: --template-file -a
+          type: string
+          short-summary: 'Input ARM Template file'
+
+        - name: --parameters -p
+          type: string
+          short-summary: 'Input parameters file to optionally accompany an ARM Template'
+
+        - name: --virtual-node-yaml
+          type: string
+          short-summary: 'Input YAML file for Virtual Node policy generation'
+
+        - name: --image
+          type: string
+          short-summary: 'Input image name'
+
+        - name: --output-filename
+          type: string
+          short-summary: 'Save output JSON to given file path'
+
+        - name: --outraw-pretty-print
+          type: boolean
+          short-summary: 'Output JSON in pretty print format'
+
+"""
+
+helps[
     "confcom katapolicygen"
 ] = """
     type: command

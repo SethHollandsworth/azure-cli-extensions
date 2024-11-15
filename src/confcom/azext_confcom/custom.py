@@ -362,6 +362,46 @@ def katapolicygen_confcom(
     print(output)
 
 
+def convert_to_json_confcom(
+        arm_template: str,
+        arm_template_parameters: str,
+        image_name: str,
+        virtual_node_yaml_path: str,
+        output_filename: str,
+        outraw_pretty_print: bool = False,
+    ):
+    container_group_policies = None
+    if arm_template:
+        container_group_policies = security_policy.load_policy_from_arm_template_file(
+            None,
+            arm_template,
+            arm_template_parameters
+        )
+    elif image_name:
+        container_group_policies = security_policy.load_policy_from_image_name(image_name)
+    elif virtual_node_yaml_path:
+        container_group_policies = security_policy.load_policy_from_virtual_node_yaml_file(virtual_node_yaml_path)
+
+    if not isinstance(container_group_policies, list):
+        container_group_policies = [container_group_policies]
+    # since the intention is to convert to a policy-generating json
+    # we don't need to do layer hashing or parse the image manifest
+
+    for i, policy in enumerate(container_group_policies):
+        json_str = policy.output_data_as_json(outraw_pretty_print)
+        # print to file if specified, otherwise print to stdout
+        if output_filename:
+            output_filename_base = output_filename.replace(".json", "")
+            if i > 0:
+                output_filename = f"{output_filename_base}_({i}).json"
+            else:
+                output_filename = f"{output_filename_base}.json"
+            os_util.write_str_to_file(output_filename, json_str)
+        else:
+            print(json_str)
+
+
+
 def update_confcom(cmd, instance, tags=None):
     with cmd.update_context(instance) as c:
         c.set_param("tags", tags)

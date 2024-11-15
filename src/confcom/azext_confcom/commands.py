@@ -10,6 +10,7 @@ def load_command_table(self, _):
         g.custom_command("acipolicygen", "acipolicygen_confcom")
         g.custom_command("acifragmentgen", "acifragmentgen_confcom")
         g.custom_command("katapolicygen", "katapolicygen_confcom")
+        g.custom_command("aciconvert", "convert_to_json_confcom")
 
     with self.command_group("confcom"):
         pass

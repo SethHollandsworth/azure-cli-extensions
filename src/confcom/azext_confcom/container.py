@@ -602,6 +602,12 @@ class ContainerImage:
     def get_policy_json(self, omit_id: bool = False) -> str:
         return self._populate_policy_json_elements(omit_id=omit_id)
 
+    def get_container_image(self) -> str:
+        return f"{self.base}:{self.tag}"
+
+    def get_exec_processes(self) -> List:
+        return self._exec_processes
+
     def get_id(self) -> str:
         return self._identifier
 

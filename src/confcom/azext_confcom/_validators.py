@@ -34,6 +34,15 @@ def validate_aci_source(namespace):
         raise CLIError("Can only generate CCE policy from one source at a time")
 
 
+def validate_aci_convert_source(namespace):
+    if sum(map(bool, [
+        namespace.image_name,
+        namespace.arm_template,
+        namespace.virtual_node_yaml_path
+    ])) != 1:
+        raise CLIError("Must provide an ARM template or VN2 YAML file to convert to JSON")
+
+
 def validate_faster_hashing(namespace):
     if namespace.faster_hashing and namespace.tar_mapping_location:
         raise CLIError("Cannot use --faster-hashing with --tar")
