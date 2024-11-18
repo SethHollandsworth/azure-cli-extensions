@@ -377,6 +377,10 @@ def convert_to_json_confcom(
             arm_template,
             arm_template_parameters
         )
+        # fill in values for parameters and variables
+        for container_group in container_group_policies:
+            for container in container_group.get_images():
+                container.parse_all_parameters_and_variables(container_group.all_params, container_group.all_vars)
     elif image_name:
         container_group_policies = security_policy.load_policy_from_image_name(image_name)
     elif virtual_node_yaml_path:
