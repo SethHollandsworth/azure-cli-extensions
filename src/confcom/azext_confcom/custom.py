@@ -405,7 +405,6 @@ def convert_to_json_confcom(
             print(json_str)
 
 
-
 def update_confcom(cmd, instance, tags=None):
     with cmd.update_context(instance) as c:
         c.set_param("tags", tags)
