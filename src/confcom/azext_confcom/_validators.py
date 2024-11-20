@@ -40,7 +40,12 @@ def validate_aci_convert_source(namespace):
         namespace.arm_template,
         namespace.virtual_node_yaml_path
     ])) != 1:
-        raise CLIError("Must provide an ARM template or VN2 YAML file to convert to JSON")
+        raise CLIError(
+            "Invalid input: Please provide exactly one of the following options to convert to JSON:\n"
+            "- An ARM template file (use --template-file)\n"
+            "- A Virtual Node YAML file (use --virtual-node-yaml)\n"
+            "- An image name (use --image)"
+        )
 
 
 def validate_faster_hashing(namespace):

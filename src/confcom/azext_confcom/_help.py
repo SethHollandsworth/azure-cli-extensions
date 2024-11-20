@@ -220,7 +220,7 @@ helps[
     "confcom aciconvert"
 ] = """
     type: command
-    short-summary: Convert either a VN2 yaml file or an ARM Template to a raw JSON input file to then be used with acipolicygen.
+    short-summary: Convert a Virtual Node YAML file or an ARM Template into a raw JSON file for use with acipolicygen.
 
     parameters:
         - name: --template-file -a
@@ -247,6 +247,13 @@ helps[
           type: boolean
           short-summary: 'Output JSON in pretty print format'
 
+    examples:
+        - name: Convert an ARM Template file to a JSON file.
+          text: az confcom aciconvert --template-file "./template.json" --output-filename "./output.json"
+        - name: Convert a Virtual Node YAML file to a pretty-printed JSON file.
+          text: az confcom aciconvert --virtual-node-yaml "./pod.yaml" --outraw-pretty-print --output-filename "./output.json"
+        - name: Convert an ARM Template file with a parameters file.
+          text: az confcom aciconvert --template-file "./template.json" --parameters "./parameters.json" --output-filename "./output.json"
 """
 
 helps[
