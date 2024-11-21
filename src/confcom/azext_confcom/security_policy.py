@@ -416,8 +416,8 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             properties["image"] = image.get_container_image()
             if image.get_command():
                 properties["command"] = image.get_command()
-            if image.get_environment_rules():
-                env_rules = image.get_environment_rules()
+            if image._get_environment_rules():
+                env_rules = image._get_environment_rules()
                 split_env_rules = []
                 for env in env_rules:
                     temp_env = {}
