@@ -531,6 +531,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                                     config.POLICY_FIELD_CONTAINERS_ELEMENTS_REQUIRED: False,
                                 }
                             )
+                    image.get_environment_rules().sort(key=lambda env: env.get('pattern', ''))
 
                     # merge signals for user container image
                     signals = image_info.get("StopSignal")
@@ -1014,7 +1015,7 @@ def load_policy_from_str(
         container[config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES] = []
 
         if image_properties:
-            exec_processes = []
+            exec_processes = case_insensitive_dict_get(image_properties, config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES) or []
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
             container[config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE] = image_name

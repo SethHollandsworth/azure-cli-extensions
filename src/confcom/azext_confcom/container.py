@@ -102,6 +102,7 @@ def extract_env_rules(container_json: Any) -> List[Dict]:
                 else False,
             }
         )
+
     return environmentRules
 
 
@@ -701,7 +702,7 @@ class ContainerImage:
                         ],
                     }
                 )
-
+        out_rules.sort(key=lambda x: x[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE])
         return out_rules
 
     def _get_mounts_json(self) -> Dict[str, Any]:
@@ -772,12 +773,20 @@ class UserContainerImage(ContainerImage):
     ) -> "UserContainerImage":
         image = super().from_json(container_json)
         image.__class__ = UserContainerImage
-        # inject default mounts for user container
-        if (image.base not in config.BASELINE_SIDECAR_CONTAINERS) and (not is_vn2):
-            image.get_mounts().extend(_DEFAULT_MOUNTS)
 
-        if (image.base not in config.BASELINE_SIDECAR_CONTAINERS) and (is_vn2):
-            image.get_mounts().extend(_DEFAULT_MOUNTS_VN2)
+        # Get the current mounts of the container
+        current_mounts = image.get_mounts()
+
+        # Check if the default mount is already present
+        # May have been added through aciconvert by customer before acipolicygen is used
+        is_default_mount_present = is_mount_present(current_mounts, "/etc/resolv.conf")
+
+        # inject default mounts for user container
+        if (image.base not in config.BASELINE_SIDECAR_CONTAINERS) and (not is_vn2) and (not is_default_mount_present):
+            current_mounts.extend(_DEFAULT_MOUNTS)
+
+        if (image.base not in config.BASELINE_SIDECAR_CONTAINERS) and (is_vn2) and (not is_default_mount_present):
+            current_mounts.extend(_DEFAULT_MOUNTS_VN2)
 
         # Start with the customer environment rules
         env_rules = _INJECTED_CUSTOMER_ENV_RULES
@@ -790,3 +799,6 @@ class UserContainerImage(ContainerImage):
 
     def _populate_policy_json_elements(self, omit_id: bool = False) -> Dict[str, Any]:
         return super()._populate_policy_json_elements(omit_id=omit_id)
+    
+def is_mount_present(mounts, mount_path):
+    return any(mount.get("mountPath") == mount_path for mount in mounts)

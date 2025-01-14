@@ -24,6 +24,7 @@ from azext_confcom._validators import (
     validate_fragment_json_policy,
     validate_image_target,
     validate_upload_fragment,
+    validate_aci_convert_source
 )
 
 
