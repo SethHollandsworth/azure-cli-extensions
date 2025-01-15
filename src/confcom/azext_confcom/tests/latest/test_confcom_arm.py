@@ -3546,27 +3546,27 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
             ]
             cls.aci_arm_policy2.populate_policy_content_for_all_images()
 
-    # def test_arm_template_policy_regex(self):
-    #     # deep diff the output policies from the regular policy.json and the ARM template
-    #     normalized_aci_policy = json.loads(
-    #         self.aci_policy.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
-    #     )
+    def test_arm_template_policy_regex(self):
+        # deep diff the output policies from the regular policy.json and the ARM template
+        normalized_aci_policy = json.loads(
+            self.aci_policy.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
+        )
 
-    #     normalized_aci_arm_policy = json.loads(
-    #         self.aci_arm_policy.get_serialized_output(
-    #             output_type=OutputType.RAW, rego_boilerplate=False
-    #         )
-    #     )
+        normalized_aci_arm_policy = json.loads(
+            self.aci_arm_policy.get_serialized_output(
+                output_type=OutputType.RAW, rego_boilerplate=False
+            )
+        )
 
-    #     normalized_aci_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        normalized_aci_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
 
-    #     normalized_aci_arm_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
-    #     self.assertEqual(
-    #         deepdiff.DeepDiff(
-    #             normalized_aci_policy, normalized_aci_arm_policy, ignore_order=True
-    #         ),
-    #         {},
-    #     )
+        normalized_aci_arm_policy[0].pop(config.POLICY_FIELD_CONTAINERS_ID)
+        self.assertEqual(
+            deepdiff.DeepDiff(
+                normalized_aci_policy, normalized_aci_arm_policy, ignore_order=True
+            ),
+            {},
+        )
 
     def test_wildcard_env_var(self):
         # Load the first policy
