@@ -9,7 +9,7 @@ import platform
 import re
 from typing import List
 from azext_confcom.errors import eprint
-from azext_confcom.config import ARTIFACT_TYPE
+from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS, ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED
 from azext_confcom.cose_proxy import CoseSignToolProxy
 from azext_confcom.os_util import delete_silently
 
@@ -79,26 +79,40 @@ def discover(
                 f"Error pulling the policy fragment from {image}.\n\n"
                 + "Please log into the registry and try again.\n\n"
             )
-        eprint(f"Error retrieving fragments from remote repo: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
+        elif "Error: invalid reference: missing repository" in item.stderr.decode("utf-8"):
+            return hashes
+        else:
+            eprint(
+                f"Error retrieving fragments from remote repo: {item.stderr.decode('utf-8')}",
+                exit_code=item.returncode
+            )
     return hashes
 
 
 # pull the policy fragment from the remote repo and return its contents as a string
 def pull(
-    image: str,
-    image_hash: str,
+    artifact: str,
+    hash: str = "",
+    tag: str = "",
 ) -> str:
-    if "@sha256:" in image:
-        image = image.split("@")[0]
-    arg_list = ["oras", "pull", f"{image}@{image_hash}"]
-    logger.info(f"Pulling fragment: {image}@{image_hash}")
+    full_path = ""
+    if "@sha256:" in artifact:
+        artifact, hash = artifact.split("@sha256:")
+        full_path = f"{artifact}@{hash}"
+    elif ":" in artifact:
+        artifact, tag = artifact.split(":")
+        full_path = f"{artifact}:{tag}"
+    else:
+        eprint(f"Invalid artifact name: {artifact}")
+    logger.info(f"Pulling fragment: {full_path}")
+    arg_list = ["oras", "pull", full_path]
     item = call_oras_cli(arg_list, check=False)
 
     # get the exit code from the subprocess
     if item.returncode != 0:
         if "401: Unauthorized" in item.stderr.decode("utf-8"):
             eprint(
-                f"Error pulling the policy fragment: {image}@{image_hash}.\n\n"
+                f"Error pulling the policy fragment: {full_path}.\n\n"
                 + "Please log into the registry and try again.\n\n"
             )
         eprint(f"Error while pulling fragment: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
@@ -112,7 +126,7 @@ def pull(
             break
 
     if filename == "":
-        eprint(f"Could not find the filename of the pulled fragment for {image}@{image_hash}")
+        eprint(f"Could not find the filename of the pulled fragment for {full_path}")
 
     return filename
 
@@ -125,7 +139,7 @@ def pull_all_image_attached_fragments(image):
     feeds = []
     proxy = CoseSignToolProxy()
     for fragment_digest in fragments:
-        filename = pull(image, fragment_digest)
+        filename = pull(image, hash=fragment_digest)
         text = proxy.extract_payload_from_path(filename)
         feed = proxy.extract_feed_from_path(filename)
         # containers = extract_containers_from_text(text, REGO_CONTAINER_START)
@@ -138,6 +152,57 @@ def pull_all_image_attached_fragments(image):
         #             fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
         fragment_contents.append(text)
         feeds.append(feed)
+    return fragment_contents, feeds
+
+
+def create_list_of_standalone_imports(fragment_feeds):
+    # the output will be a list of dicts that will reflect the same output as pull_all_standalone_fragments
+    proxy = CoseSignToolProxy()
+    standalone_imports = []
+    for feed in fragment_feeds:
+        filename = pull(artifact=feed)
+        standalone_import = proxy.generate_import_from_path(filename, minimum_svn=-1)
+        standalone_imports.append(standalone_import)
+    return standalone_imports
+
+
+def pull_all_standalone_fragments_from_feeds(fragment_feeds):
+    # the output will be a list of dicts that will reflect the same output as pull_all_standalone_fragments
+    proxy = CoseSignToolProxy()
+    fragment_contents = []
+    default_fragment_feeds = [x.get(ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED) for x in DEFAULT_REGO_FRAGMENTS]
+
+    for feed in fragment_feeds:
+        # special case for the infra fragment feed
+        if feed in default_fragment_feeds:
+            continue
+
+        filename = pull(artifact=feed)
+        text = proxy.extract_payload_from_path(filename)
+        fragment_contents.append(text)
+
+    return fragment_contents
+
+
+def pull_all_standalone_fragments(fragment_imports):
+    fragment_contents = []
+    feeds = []
+    proxy = CoseSignToolProxy()
+
+    for fragment in fragment_imports:
+        path = fragment.get("path")
+        feed = fragment.get("feed")
+        feeds.append(feed)
+
+        if path:
+            text = proxy.extract_payload_from_path(path)
+            fragment_contents.append(text)
+        else:
+            # TODO: update this so we can put in a tag name instead of a hash
+            filename = pull(artifact=feed)
+            text = proxy.extract_payload_from_path(filename)
+            fragment_contents.append(text)
+
     return fragment_contents, feeds
 
 
@@ -183,7 +248,7 @@ def generate_imports_from_image_name(image_name: str, minimum_svn: int) -> List[
     for fragment_hash in fragment_hashes:
         filename = ""
         try:
-            filename = pull(image_name, fragment_hash)
+            filename = pull(image_name, hash=fragment_hash)
             import_statement = cose_proxy.generate_import_from_path(filename, minimum_svn)
             if import_statement not in import_list:
                 import_list.append(import_statement)
@@ -192,3 +257,19 @@ def generate_imports_from_image_name(image_name: str, minimum_svn: int) -> List[
             delete_silently(filename)
 
     return import_list
+
+
+def push_fragment_to_registry(feed_name: str, filename: str) -> None:
+    # push the fragment to the registry
+    arg_list = [
+        "oras",
+        "push",
+        feed_name,
+        "--artifact-type",
+        ARTIFACT_TYPE,
+        filename + ":application/cose-x509+rego"
+    ]
+    item = call_oras_cli(arg_list, check=False)
+    if item.returncode != 0:
+        eprint(f"Could not push fragment to registry: {feed_name}. Failed with {item.stderr}")
+    print(f"Fragment pushed to registry '{feed_name}'")

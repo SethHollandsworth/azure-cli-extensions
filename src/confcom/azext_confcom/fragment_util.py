@@ -43,6 +43,7 @@ def get_all_fragment_contents(
     ]
 
     all_fragments_contents = []
+    remaining_fragments = fragment_feeds.copy()
     # get all the image attached fragments
     for image in image_names:
         # TODO: make sure this doesn't error out if the images aren't in a registry.
@@ -50,9 +51,13 @@ def get_all_fragment_contents(
         fragments, feeds = oras_proxy.pull_all_image_attached_fragments(image)
         for fragment, feed in zip(fragments, feeds):
             if feed in fragment_feeds:
+                remaining_fragments.remove(feed)
                 all_fragments_contents.append(fragment)
             else:
                 logger.warning("Fragment feed %s not in list of feeds to use. Skipping fragment.", feed)
+    # grab the remaining fragments which should be standalone
+    fragments = oras_proxy.pull_all_standalone_fragments_from_feeds(remaining_fragments)
+    all_fragments_contents.extend(fragments)
 
     cose_proxy = CoseSignToolProxy()
     # get all the local fragments
