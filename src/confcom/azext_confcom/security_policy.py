@@ -14,6 +14,9 @@ from tqdm import tqdm
 from azext_confcom import os_util
 from azext_confcom import config
 from azext_confcom.container import UserContainerImage, ContainerImage
+from azext_confcom.oras_proxy import (
+    create_list_of_standalone_imports,
+)
 
 from azext_confcom.errors import eprint
 from azext_confcom.template_util import (
@@ -42,6 +45,7 @@ from azext_confcom.template_util import (
     process_mounts_from_config,
     process_fragment_imports,
     get_container_diff,
+    extract_standalone_fragments,
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
@@ -694,6 +698,12 @@ def load_policy_from_arm_template_str(
         if init_container_list:
             container_list.extend(init_container_list)
 
+        standalone_fragments = extract_standalone_fragments(container_group_properties)
+        if standalone_fragments:
+            standalone_fragment_imports = create_list_of_standalone_imports(standalone_fragments)
+
+            rego_imports.extend(standalone_fragment_imports)
+
         try:
             existing_containers, fragments = extract_confidential_properties(
                 container_group_properties
@@ -954,6 +964,13 @@ def load_policy_from_str(
                     + f'["{config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_INCLUDES}"]'
                     + "can only be a list."
                 )
+    # TODO: see if this works
+    rego_imports = []
+    standalone_fragments = extract_standalone_fragments(policy_input_json)
+    if standalone_fragments:
+        standalone_fragment_imports = create_list_of_standalone_imports(standalone_fragments)
+
+        rego_imports.extend(standalone_fragment_imports)
 
     if not containers and not rego_fragments:
         eprint(
@@ -1023,6 +1040,7 @@ def load_policy_from_str(
         policy_input_json,
         rego_fragments=rego_fragments,
         debug_mode=debug_mode,
+        fragment_contents=rego_imports,
     )
 
 

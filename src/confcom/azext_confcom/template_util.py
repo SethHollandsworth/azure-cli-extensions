@@ -576,6 +576,40 @@ def process_fragment_imports(rego_imports) -> None:
     return rego_imports
 
 
+def process_standalone_fragments(standalone_fragments: List[str]) -> Dict[str, str]:
+    fragment_contents = []
+    feeds = []
+
+    for fragment in standalone_fragments:
+        feed = case_insensitive_dict_get(
+            fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED
+        )
+        if not isinstance(feed, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED}"] '
+                + "can only be a string value."
+            )
+
+        filename = case_insensitive_dict_get(
+            fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FILE
+        )
+        if not isinstance(filename, str):
+            eprint(
+                f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
+                + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FILE}"] '
+                + "can only be a string value."
+            )
+
+        with open(filename, "r", encoding="utf-8") as file:
+            text = file.read()
+
+        fragment_contents.append(text)
+        feeds.append(feed)
+
+    return fragment_contents, feeds
+
+
 def process_mounts(image_properties: dict, volumes: List[dict]) -> List[Dict[str, str]]:
     mount_source_table_keys = config.MOUNT_SOURCE_TABLE.keys()
     # initialize empty array of mounts
@@ -1013,6 +1047,23 @@ def extract_containers_from_text(text, start) -> str:
         character = ending[count]
     # get everything between the square brackets
     return ending[:count]
+
+
+def extract_standalone_fragments(
+    container_group_properties,
+) -> List[str]:
+    # extract the existing cce policy if that's what was being asked
+    confidential_compute_properties = case_insensitive_dict_get(
+        container_group_properties, config.ACI_FIELD_TEMPLATE_CONFCOM_PROPERTIES
+    )
+
+    if confidential_compute_properties is None:
+        return []
+
+    standalone_fragments = case_insensitive_dict_get(
+        confidential_compute_properties, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS
+    ) or []
+    return standalone_fragments
 
 
 def extract_confidential_properties(
