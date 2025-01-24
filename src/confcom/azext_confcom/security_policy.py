@@ -14,6 +14,9 @@ from tqdm import tqdm
 from azext_confcom import os_util
 from azext_confcom import config
 from azext_confcom.container import UserContainerImage, ContainerImage
+from azext_confcom.oras_proxy import (
+    create_list_of_standalone_imports,
+)
 
 from azext_confcom.errors import eprint
 from azext_confcom.template_util import (
@@ -44,6 +47,7 @@ from azext_confcom.template_util import (
     get_container_diff,
     convert_config_v0_to_v1,
     detect_old_format,
+    extract_standalone_fragments,
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
@@ -703,6 +707,14 @@ def load_policy_from_arm_template_str(
         if init_container_list:
             container_list.extend(init_container_list)
 
+        # this is standalone fragments coming from the ARM template itself
+        # TODO: error check that we're not adding a standalone that was already provided by an external file
+        standalone_fragments = extract_standalone_fragments(container_group_properties)
+        if standalone_fragments:
+            standalone_fragment_imports = create_list_of_standalone_imports(standalone_fragments)
+
+            rego_imports.extend(standalone_fragment_imports)
+
         try:
             existing_containers, fragments = extract_confidential_properties(
                 container_group_properties
@@ -921,6 +933,12 @@ def load_policy_from_json(
     ) or ""
 
     # 3) Process rego_fragments
+    standalone_rego_fragment = case_insensitive_dict_get(
+        policy_input_json, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS
+    )
+    if standalone_rego_fragment:
+        rego_fragments.extend(standalone_rego_fragment)
+
     if rego_fragments:
         process_fragment_imports(rego_fragments)
 
