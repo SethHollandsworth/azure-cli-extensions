@@ -8,11 +8,14 @@ import json
 import platform
 import re
 from knack.log import get_logger
+from tempfile import mkdtemp
+import os
 from typing import List
 from azext_confcom.errors import eprint
-from azext_confcom.config import ARTIFACT_TYPE
+from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS, ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED
 from azext_confcom.cose_proxy import CoseSignToolProxy
-from azext_confcom.os_util import delete_silently
+from azext_confcom.os_util import clean_up_temp_folder
+from azext_confcom.template_util import extract_containers_and_fragments_from_text, extract_svn_from_text
 
 host_os = platform.system()
 machine = platform.machine()
@@ -38,7 +41,7 @@ def prepend_docker_registry(image_name: str) -> str:
 
     registry = ""
     # Check if the image name contains a registry (e.g., docker.io, custom registry)
-    if "/" not in name or "." not in name.split("/")[0]:
+    if ("/" not in name or "." not in name.split("/")[0]) and not name.startswith("localhost"):
         # If no registry is specified, assume docker.io/library
         if "/" not in name:
             # Add the `library` namespace for official images
@@ -93,22 +96,39 @@ def discover(
     return image_exists, hashes
 
 
-# pull the policy fragment from the remote repo and return its contents as a string
 def pull(
-    image: str,
-    image_hash: str,
+    artifact: str,
+    hash: str = "",
+    tag: str = "",
 ) -> str:
-    if "@sha256:" in image:
-        image = image.split("@")[0]
-    arg_list = ["oras", "pull", f"{image}@{image_hash}"]
-    logger.info("Pulling fragment: %s@%s", image, image_hash)
+    """
+    pull the policy fragment from the remote repo and return its filepath after downloaded.
+    This file must be cleaned up after use.
+    """
+
+    full_path = ""
+    if "@sha256:" in artifact:
+        artifact, hash = artifact.split("@sha256:")
+        full_path = f"{artifact}@{hash}"
+    elif artifact and hash:
+        full_path = f"{artifact}@{hash}"
+    elif ":" in artifact:
+        artifact, tag = artifact.rsplit(":", maxsplit=1)
+        full_path = f"{artifact}:{tag}"
+    else:
+        eprint(f"Invalid artifact name: {artifact}")
+    logger.info(f"Pulling fragment: {full_path}")
+
+    temp_folder = mkdtemp()
+    arg_list = ["oras", "pull", full_path, "-o", temp_folder]
+
     item = call_oras_cli(arg_list, check=False)
 
     # get the exit code from the subprocess
     if item.returncode != 0:
         if "401: Unauthorized" in item.stderr.decode("utf-8"):
             eprint(
-                f"Error pulling the policy fragment: {image}@{image_hash}.\n\n"
+                f"Error pulling the policy fragment: {full_path}.\n\n"
                 + "Please log into the registry and try again.\n\n"
             )
         eprint(f"Error while pulling fragment: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
@@ -122,9 +142,9 @@ def pull(
             break
 
     if filename == "":
-        eprint(f"Could not find the filename of the pulled fragment for {image}@{image_hash}")
-
-    return filename
+        eprint(f"Could not find the filename of the pulled fragment for {full_path}")
+    out_filename = os.path.join(temp_folder, filename)
+    return out_filename
 
 
 def pull_all_image_attached_fragments(image):
@@ -149,6 +169,54 @@ def pull_all_image_attached_fragments(image):
             #             fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
             fragment_contents.append(text)
             feeds.append(feed)
+    return fragment_contents, feeds
+
+
+def create_list_of_standalone_imports(fragment_feeds):
+    # the output will be a list of dicts that will reflect the same output as pull_all_standalone_fragments
+    proxy = CoseSignToolProxy()
+    standalone_imports = []
+    for feed in fragment_feeds:
+        filename = pull(artifact=feed)
+        standalone_import = proxy.generate_import_from_path(filename, minimum_svn=-1)
+        clean_up_temp_folder(filename)
+        standalone_imports.append(standalone_import)
+    return standalone_imports
+
+
+def pull_all_standalone_fragments(fragment_imports):
+    fragment_contents = []
+    feeds = []
+    proxy = CoseSignToolProxy()
+
+    for fragment in fragment_imports:
+        if fragment in DEFAULT_REGO_FRAGMENTS:
+            continue
+        path = fragment.get("path")
+        feed = fragment.get("feed")
+        minimum_svn = int(fragment.get("minimum_svn"))
+        feeds.append(feed)
+
+        if path:
+            text = proxy.extract_payload_from_path(path)
+        else:
+            filename = pull(artifact=feed)
+            text = proxy.extract_payload_from_path(filename)
+            svn = extract_svn_from_text(text)
+            if svn < minimum_svn:
+                logger.warning(
+                    "found fragment %s but the svn of %s is lower than the the specified minimum_svn of %s",
+                    feed,
+                    svn,
+                    minimum_svn
+                )
+                continue
+            clean_up_temp_folder(filename)
+        # put new fragments to the end of the list
+        fragment_contents.append(text)
+        _, fragments = extract_containers_and_fragments_from_text(text)
+        fragment_imports.extend(fragments)
+
     return fragment_contents, feeds
 
 
@@ -204,3 +272,19 @@ def generate_imports_from_image_name(image_name: str, minimum_svn: str) -> List[
                 delete_silently(filename)
 
     return import_list
+
+
+def push_fragment_to_registry(feed_name: str, filename: str) -> None:
+    # push the fragment to the registry
+    arg_list = [
+        "oras",
+        "push",
+        feed_name,
+        "--artifact-type",
+        ARTIFACT_TYPE,
+        filename + ":application/cose-x509+rego"
+    ]
+    item = call_oras_cli(arg_list, check=False)
+    if item.returncode != 0:
+        eprint(f"Could not push fragment to registry: {feed_name}. Failed with {item.stderr}")
+    print(f"Fragment pushed to registry '{feed_name}'")

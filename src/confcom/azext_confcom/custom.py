@@ -96,12 +96,16 @@ def acipolicygen_confcom(
     fragments_list = []
     # gather information about the fragments being used in the new policy
     if include_fragments:
-        fragments_list = os_util.load_json_from_file(fragments_json or input_path)
-        if isinstance(fragments_list, dict):
-            fragments_list = fragments_list.get("fragments", [])
+        fragments_data = os_util.load_json_from_file(fragments_json or input_path)
+        if isinstance(fragments_data, dict):
+            fragments_list = fragments_data.get("fragments", [])
+            # standalone fragments from external file
+            fragments_list.extend(fragments_data.get("standaloneFragments", []))
 
-        # convert to list if it's just a dict
-        if not isinstance(fragments_list, list):
+        # convert to list if it's just a dict. if it's empty, make it an empty list
+        if not fragments_data:
+            fragments_list = []
+        elif not isinstance(fragments_list, list):
             fragments_list = [fragments_list]
 
     # telling the user what operation we're doing
@@ -249,7 +253,15 @@ def acifragmentgen_confcom(
         import_statements = []
         # images can have multiple fragments attached to them so we need an array to hold the import statements
         if fragment_path:
+            # download and cleanup the fragment form registry if it's not local already
+            downloaded_fragment = False
+            if not os.path.exists(fragment_path):
+                fragment_path = oras_proxy.pull(fragment_path)
+                downloaded_fragment = True
             import_statements = [cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)]
+            if downloaded_fragment:
+                os_util.clean_up_temp_folder(fragment_path)
+
         elif image_name:
             import_statements = oras_proxy.generate_imports_from_image_name(image_name, minimum_svn=minimum_svn)
 
@@ -308,14 +320,12 @@ def acifragmentgen_confcom(
         individual_image=bool(image_name), tar_mapping=tar_mapping
     )
 
-    # if no feed is provided, use the first image's feed
-    # to assume it's an image-attached fragment
-    if not image_target:
-        policy_images = policy.get_images()
-        if not policy_images:
-            logger.error("No images found in the policy or all images are covered by fragments")
-            sys.exit(1)
-        image_target = policy_images[0].containerImage
+    # make sure we have images to generate a fragment
+    policy_images = policy.get_images()
+    if not policy_images:
+        logger.error("No images found in the policy or all images are covered by fragments")
+        sys.exit(1)
+
     if not feed:
         # strip the tag or hash off the image name so there are stable feed names
         feed = get_image_name(image_target)
@@ -336,8 +346,10 @@ def acifragmentgen_confcom(
         out_path = filename + ".cose"
 
         cose_proxy.cose_sign(filename, key, chain, feed, iss, algo, out_path)
-        if upload_fragment:
+        if upload_fragment and image_target:
             oras_proxy.attach_fragment_to_image(image_target, out_path)
+        elif upload_fragment:
+            oras_proxy.push_fragment_to_registry(feed, out_path)
 
 
 def katapolicygen_confcom(
