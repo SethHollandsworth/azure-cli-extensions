@@ -401,6 +401,54 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
             return pretty_print_func(policy)
         return print_func(policy)
 
+    def output_data_as_json(self, pretty_print=False,) -> str:
+        output_json = {
+            "containers": []
+        }
+        regular_container_images = self.get_images()
+
+        for image in regular_container_images:
+            temp_container = {
+                "properties": {}
+            }
+            properties = temp_container["properties"]
+
+            temp_container["name"] = image.get_name()
+            properties["image"] = image.get_container_image()
+            if image.get_command():
+                properties["command"] = image.get_command()
+            if image._get_environment_rules():
+                env_rules = image._get_environment_rules()
+                split_env_rules = []
+                for env in env_rules:
+                    temp_env = {}
+                    rule = temp_env["name"] = env[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE]
+                    if rule.count("=") != 1:
+                        logger.warning("Environment variable rule %s has more than one '='. Please verify its format in the output file", rule)
+                    temp_env["name"] = rule.split("=")[0]
+                    temp_env["value"] = rule.split("=")[1]
+                    temp_env["strategy"] = env[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY]
+                    temp_env["required"] = env[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REQUIRED]
+                    split_env_rules.append(temp_env)
+                properties["environmentVariables"] = split_env_rules
+            if image.get_working_dir():
+                properties["workingDirectory"] = image.get_working_dir()
+            if image.get_mounts():
+                properties["volumeMounts"] = image.get_mounts()
+            if image.get_exec_processes():
+                properties["execProcesses"] = image.get_exec_processes()
+            # if image.get_signals():
+            #     properties["signals"] = image.get_signals()
+            # if image.get_security_context():
+            #     properties["securityContext"] = image.get_security_context()
+            output_json["containers"].append(temp_container)
+
+        if pretty_print:
+            return pretty_print_func(output_json)
+        return print_func(output_json)
+
+
+
     # pylint: disable=R0914, R0915
     def populate_policy_content_for_all_images(
         self, individual_image=False, tar_mapping=None, faster_hashing=False,
@@ -483,6 +531,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                                     config.POLICY_FIELD_CONTAINERS_ELEMENTS_REQUIRED: False,
                                 }
                             )
+                    image.get_environment_rules().sort(key=lambda env: env.get('pattern', ''))
 
                     # merge signals for user container image
                     signals = image_info.get("StopSignal")
@@ -967,7 +1016,7 @@ def load_policy_from_str(
         container[config.ACI_FIELD_CONTAINERS_SIGNAL_CONTAINER_PROCESSES] = []
 
         if image_properties:
-            exec_processes = []
+            exec_processes = case_insensitive_dict_get(image_properties, config.ACI_FIELD_CONTAINERS_EXEC_PROCESSES) or []
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_READINESS_PROBE)
             extract_probe(exec_processes, image_properties, config.ACI_FIELD_CONTAINERS_LIVENESS_PROBE)
             container[config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE] = image_name
