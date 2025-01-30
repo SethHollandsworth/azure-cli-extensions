@@ -96,12 +96,14 @@ def acipolicygen_confcom(
     fragments_list = []
     # gather information about the fragments being used in the new policy
     if include_fragments:
-        fragments_list = os_util.load_json_from_file(fragments_json or input_path)
-        if isinstance(fragments_list, dict):
-            fragments_list = fragments_list.get("fragments", [])
+        fragments_data = os_util.load_json_from_file(fragments_json or input_path)
+        if isinstance(fragments_data, dict):
+            fragments_list = fragments_data.get("fragments", [])
+            # standalone fragments from external file
+            fragments_list.extend(fragments_data.get("standaloneFragments", []))
 
         # convert to list if it's just a dict. if it's empty, make it an empty list
-        if not fragments_list:
+        if not fragments_data:
             fragments_list = []
         elif not isinstance(fragments_list, list):
             fragments_list = [fragments_list]
