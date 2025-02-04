@@ -7,11 +7,13 @@ import subprocess
 import json
 import platform
 import re
+from tempfile import mkdtemp
+import os
 from typing import List
 from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS, ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED
 from azext_confcom.cose_proxy import CoseSignToolProxy
-from azext_confcom.os_util import delete_silently
+from azext_confcom.os_util import delete_silently, clean_up_temp_folder
 
 host_os = platform.system()
 machine = platform.machine()
@@ -89,12 +91,16 @@ def discover(
     return hashes
 
 
-# pull the policy fragment from the remote repo and return its contents as a string
 def pull(
     artifact: str,
     hash: str = "",
     tag: str = "",
 ) -> str:
+    """
+    pull the policy fragment from the remote repo and return its filepath after downloaded.
+    This file must be cleaned up after use.
+    """
+
     full_path = ""
     if "@sha256:" in artifact:
         artifact, hash = artifact.split("@sha256:")
@@ -105,7 +111,10 @@ def pull(
     else:
         eprint(f"Invalid artifact name: {artifact}")
     logger.info(f"Pulling fragment: {full_path}")
-    arg_list = ["oras", "pull", full_path]
+
+    temp_folder = mkdtemp()
+    arg_list = ["oras", "pull", full_path, "-o", temp_folder]
+
     item = call_oras_cli(arg_list, check=False)
 
     # get the exit code from the subprocess
@@ -127,8 +136,8 @@ def pull(
 
     if filename == "":
         eprint(f"Could not find the filename of the pulled fragment for {full_path}")
-
-    return filename
+    out_filename = os.path.join(temp_folder, filename)
+    return out_filename
 
 
 def pull_all_image_attached_fragments(image):
@@ -142,6 +151,7 @@ def pull_all_image_attached_fragments(image):
         filename = pull(image, hash=fragment_digest)
         text = proxy.extract_payload_from_path(filename)
         feed = proxy.extract_feed_from_path(filename)
+        clean_up_temp_folder(filename)
         # containers = extract_containers_from_text(text, REGO_CONTAINER_START)
         # new_fragments = extract_containers_from_text(text, REGO_FRAGMENT_START)
         # if new_fragments:
@@ -162,6 +172,7 @@ def create_list_of_standalone_imports(fragment_feeds):
     for feed in fragment_feeds:
         filename = pull(artifact=feed)
         standalone_import = proxy.generate_import_from_path(filename, minimum_svn=-1)
+        clean_up_temp_folder(filename)
         standalone_imports.append(standalone_import)
     return standalone_imports
 
@@ -179,6 +190,7 @@ def pull_all_standalone_fragments_from_feeds(fragment_feeds):
 
         filename = pull(artifact=feed)
         text = proxy.extract_payload_from_path(filename)
+        clean_up_temp_folder(filename)
         fragment_contents.append(text)
 
     return fragment_contents
@@ -198,9 +210,9 @@ def pull_all_standalone_fragments(fragment_imports):
             text = proxy.extract_payload_from_path(path)
             fragment_contents.append(text)
         else:
-            # TODO: update this so we can put in a tag name instead of a hash
             filename = pull(artifact=feed)
             text = proxy.extract_payload_from_path(filename)
+            clean_up_temp_folder(filename)
             fragment_contents.append(text)
 
     return fragment_contents, feeds
@@ -250,6 +262,7 @@ def generate_imports_from_image_name(image_name: str, minimum_svn: int) -> List[
         try:
             filename = pull(image_name, hash=fragment_hash)
             import_statement = cose_proxy.generate_import_from_path(filename, minimum_svn)
+            clean_up_temp_folder(filename)
             if import_statement not in import_list:
                 import_list.append(import_statement)
         finally:

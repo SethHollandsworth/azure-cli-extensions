@@ -58,6 +58,7 @@ def get_all_fragment_contents(
     # grab the remaining fragments which should be standalone
     fragments = oras_proxy.pull_all_standalone_fragments_from_feeds(remaining_fragments)
     all_fragments_contents.extend(fragments)
+    # TODO: warning if there are import statements that couldn't be found
 
     cose_proxy = CoseSignToolProxy()
     # get all the local fragments
