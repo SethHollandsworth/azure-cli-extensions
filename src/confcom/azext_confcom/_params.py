@@ -263,7 +263,7 @@ def load_arguments(self, _):
             "fragment_path",
             options_list=("--fragment-path", "-p"),
             required=False,
-            help="Path to a signed policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry",
+            help="Path to a signed policy fragment to be used with --generate-import to make import statements without having access to the fragment's OCI registry. This can either be a local path or a registry address.",
             validator=validate_fragment_path,
         )
         c.argument(

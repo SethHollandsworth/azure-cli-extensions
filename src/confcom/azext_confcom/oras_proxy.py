@@ -14,7 +14,7 @@ from typing import List
 from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS, ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED
 from azext_confcom.cose_proxy import CoseSignToolProxy
-from azext_confcom.os_util import delete_silently, clean_up_temp_folder
+from azext_confcom.os_util import clean_up_temp_folder
 
 host_os = platform.system()
 machine = platform.machine()
@@ -262,12 +262,10 @@ def generate_imports_from_image_name(image_name: str, minimum_svn: int) -> List[
         try:
             filename = pull(image_name, hash=fragment_hash)
             import_statement = cose_proxy.generate_import_from_path(filename, minimum_svn)
-            clean_up_temp_folder(filename)
             if import_statement not in import_list:
                 import_list.append(import_statement)
         finally:
-            # clean up the fragment file
-            delete_silently(filename)
+            clean_up_temp_folder(filename)
 
     return import_list
 

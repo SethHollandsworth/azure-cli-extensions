@@ -250,7 +250,15 @@ def acifragmentgen_confcom(
         import_statements = []
         # images can have multiple fragments attached to them so we need an array to hold the import statements
         if fragment_path:
+            # download and cleanup the fragment form registry if it's not local already
+            downloaded_fragment = False
+            if not os.path.exists(fragment_path):
+                fragment_path = oras_proxy.pull(fragment_path)
+                downloaded_fragment = True
             import_statements = [cose_client.generate_import_from_path(fragment_path, minimum_svn=minimum_svn)]
+            if downloaded_fragment:
+                os_util.clean_up_temp_folder(fragment_path)
+
         elif image_name:
             import_statements = oras_proxy.generate_imports_from_image_name(image_name, minimum_svn=minimum_svn)
 
