@@ -1607,8 +1607,8 @@ class PolicyDiff(unittest.TestCase):
                     "no_new_privileges": [{"tested_value": True, "policy_value": False}]
                 },
                 "env_rules": [
-                    "environment variable with rule 'TEST_REGEXP_ENV=test_regexp_en' does not match strings or regex in policy rules",
                     "environment variable with rule 'ENV_VALUE=input_value' does not match strings or regex in policy rules",
+                    "environment variable with rule 'TEST_REGEXP_ENV=test_regexp_en' does not match strings or regex in policy rules",
                 ],
             }
         }
@@ -3569,41 +3569,52 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
         )
 
     def test_wildcard_env_var(self):
+        # Load the first policy
         normalized_aci_arm_policy = json.loads(
             self.aci_arm_policy.get_serialized_output(
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
 
+        # Assert that "TEST_WILDCARD_ENV=.*" exists in the environment rules
+        env_rules = normalized_aci_arm_policy[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS]
+        matching_rule = next(
+            (rule for rule in env_rules if rule.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE) == "TEST_WILDCARD_ENV=.*"),
+            None,
+        )
+        self.assertIsNotNone(matching_rule, "TEST_WILDCARD_ENV=.* not found in environment rules.")
+
+        # Validate the strategy of the matching rule is "re2"
         self.assertEqual(
-            normalized_aci_arm_policy[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS][1][
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY
-            ],
+            matching_rule[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY],
             "re2",
+            "Expected strategy 're2' for TEST_WILDCARD_ENV=.*"
         )
 
-        self.assertEqual(
-            normalized_aci_arm_policy[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS][1][
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE
-            ],
-            "TEST_WILDCARD_ENV=.*",
-        )
-
+        # Load the second policy
         normalized_aci_arm_policy2 = json.loads(
             self.aci_arm_policy2.get_serialized_output(
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
 
+        # Assert that "WILDCARD2" is not present in the second policy
         self.assertFalse(
-            any([item.get("name") == "WILDCARD2" for item in normalized_aci_arm_policy2[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS]])
+            any(item.get("name") == "WILDCARD2" for item in normalized_aci_arm_policy2[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS]),
+            "Unexpected WILDCARD2 environment variable found."
         )
 
+        # Assert that "TEST_WILDCARD_ENV=.*" exists in the second policy's environment rules
+        env_rules2 = normalized_aci_arm_policy2[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS]
+        matching_rule2 = next(
+            (rule for rule in env_rules2 if rule.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE) == "TEST_WILDCARD_ENV=.*"),
+            None,
+        )
+        self.assertIsNotNone(matching_rule2, "TEST_WILDCARD_ENV=.* not found in second policy's environment rules.")
         self.assertEqual(
-            normalized_aci_arm_policy2[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS][1][
-                config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE
-            ],
-            "TEST_WILDCARD_ENV=.*",
+            matching_rule2[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_STRATEGY],
+            "re2",
+            "Expected strategy 're2' for TEST_WILDCARD_ENV=.* in second policy"
         )
 
     def test_wildcard_env_var_invalid(self):
@@ -3758,17 +3769,34 @@ class PolicyGeneratingEdgeCases(unittest.TestCase):
         cls.aci_arm_policy.populate_policy_content_for_all_images()
 
     def test_arm_template_with_env_var(self):
+        # Deserialize the generated policy JSON
         regular_image_json = json.loads(
             self.aci_arm_policy.get_serialized_output(
                 output_type=OutputType.RAW, rego_boilerplate=False
             )
         )
 
-        env_var = regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS][0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE]
+        # Search for the specific environment variable rule
+        env_rules = regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS]
+        matching_env_var = next(
+            (rule for rule in env_rules if rule.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE) == "PORT=parameters('abc')"),
+            None
+        )
 
-        # see if the remote image and the local one produce the same output
-        self.assertEqual(env_var, "PORT=parameters('abc')")
-        self.assertEqual(regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ID], "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0")
+        # Assert that the expected environment variable exists
+        self.assertIsNotNone(matching_env_var, "Expected environment variable 'PORT=parameters('abc')' not found.")
+        self.assertEqual(
+            matching_env_var[config.POLICY_FIELD_CONTAINERS_ELEMENTS_ENVS_RULE],
+            "PORT=parameters('abc')",
+            "Environment variable rule mismatch."
+        )
+
+        # Assert the container ID is as expected
+        self.assertEqual(
+            regular_image_json[0][config.POLICY_FIELD_CONTAINERS_ID],
+            "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0",
+            "Container ID mismatch."
+        )
 
     def test_arm_template_config_map_sidecar(self):
         regular_image_json = json.loads(

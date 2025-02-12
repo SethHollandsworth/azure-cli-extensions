@@ -24,6 +24,7 @@ from azext_confcom._validators import (
     validate_fragment_json_policy,
     validate_image_target,
     validate_upload_fragment,
+    validate_aci_convert_source
 )
 
 
@@ -330,6 +331,49 @@ def load_arguments(self, _):
             required=False,
             help="Path to JSON file to write fragment import information. This is used with --generate-import. If not specified, the import statement will print to the console",
             validator=validate_fragment_json,
+        )
+
+    with self.argument_context("confcom aciconvert") as c:
+        c.argument(
+            "arm_template",
+            options_list=("--template-file", "-a"),
+            required=False,
+            help="ARM template file",
+            validator=validate_aci_convert_source
+        )
+        c.argument(
+            "arm_template_parameters",
+            options_list=("--parameters", "-p"),
+            required=False,
+            help="ARM template parameters",
+            validator=validate_params_file
+        )
+        c.argument(
+            "virtual_node_yaml_path",
+            options_list=("--virtual-node-yaml"),
+            required=False,
+            help="Virtual node YAML file",
+            validator=validate_aci_convert_source
+        )
+        c.argument(
+            "image_name",
+            options_list=("--image",),
+            required=False,
+            help="Image Name",
+            validator=validate_aci_convert_source
+        )
+        c.argument(
+            "output_filename",
+            options_list=("--output-filename"),
+            required=False,
+            help="Output filename for the generated JSON",
+        )
+        c.argument(
+            "outraw_pretty_print",
+            options_list=("--outraw-pretty-print"),
+            required=False,
+            action="store_true",
+            help="Output policy in clear text and pretty print format",
         )
 
     with self.argument_context("confcom katapolicygen") as c:

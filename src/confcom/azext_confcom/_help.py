@@ -217,6 +217,46 @@ helps[
 """
 
 helps[
+    "confcom aciconvert"
+] = """
+    type: command
+    short-summary: Convert a Virtual Node YAML file or an ARM Template into a raw JSON file for use with acipolicygen.
+
+    parameters:
+        - name: --template-file -a
+          type: string
+          short-summary: 'Input ARM Template file'
+
+        - name: --parameters -p
+          type: string
+          short-summary: 'Input parameters file to optionally accompany an ARM Template'
+
+        - name: --virtual-node-yaml
+          type: string
+          short-summary: 'Input YAML file for Virtual Node policy generation'
+
+        - name: --image
+          type: string
+          short-summary: 'Input image name'
+
+        - name: --output-filename
+          type: string
+          short-summary: 'Save output JSON to given file path'
+
+        - name: --outraw-pretty-print
+          type: boolean
+          short-summary: 'Output JSON in pretty print format'
+
+    examples:
+        - name: Convert an ARM Template file to a JSON file.
+          text: az confcom aciconvert --template-file "./template.json" --output-filename "./output.json"
+        - name: Convert a Virtual Node YAML file to a pretty-printed JSON file.
+          text: az confcom aciconvert --virtual-node-yaml "./pod.yaml" --outraw-pretty-print --output-filename "./output.json"
+        - name: Convert an ARM Template file with a parameters file.
+          text: az confcom aciconvert --template-file "./template.json" --parameters "./parameters.json" --output-filename "./output.json"
+"""
+
+helps[
     "confcom katapolicygen"
 ] = """
     type: command
