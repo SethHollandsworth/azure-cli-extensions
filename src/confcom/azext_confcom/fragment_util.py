@@ -41,7 +41,11 @@ def get_all_fragment_contents(
         case_insensitive_dict_get(fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED)
         for fragment in copied_fragment_imports
     ]
-
+    def remove_from_list_via_feed(fragment_import_list, feed):
+        for fragment_import in fragment_import_list:
+            if fragment_import.get("feed") == feed:
+                fragment_import_list.remove(fragment_import)
+    # TODO: use the full import instead of just the feed so we can check for the version number
     all_fragments_contents = []
     remaining_fragments = fragment_feeds.copy()
     # get all the image attached fragments
@@ -51,48 +55,53 @@ def get_all_fragment_contents(
         fragments, feeds = oras_proxy.pull_all_image_attached_fragments(image)
         for fragment, feed in zip(fragments, feeds):
             if feed in fragment_feeds:
+                remove_from_list_via_feed(copied_fragment_imports, feed)
+                print("copied_fragment_imports: ", copied_fragment_imports)
+
                 remaining_fragments.remove(feed)
                 all_fragments_contents.append(fragment)
             else:
                 logger.warning("Fragment feed %s not in list of feeds to use. Skipping fragment.", feed)
     # grab the remaining fragments which should be standalone
-    fragments = oras_proxy.pull_all_standalone_fragments_from_feeds(remaining_fragments)
+    fragments, _ = oras_proxy.pull_all_standalone_fragments(copied_fragment_imports)
     all_fragments_contents.extend(fragments)
     # TODO: warning if there are import statements that couldn't be found
 
-    cose_proxy = CoseSignToolProxy()
+    # cose_proxy = CoseSignToolProxy()
     # get all the local fragments
-    for fragment in copied_fragment_imports:
-        contents = []
-        # pull locally if there is a path, otherwise pull from the remote registry
-        if (
-            fragment.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH)
-        ):
-            contents = [
-                cose_proxy.extract_payload_from_path(
-                    fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH]
-                )
-            ]
+    # for fragment in copied_fragment_imports:
+    #     contents = []
+    #     # pull locally if there is a path, otherwise pull from the remote registry
+    #     if (
+    #         fragment.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH)
+    #     ):
+    #         contents = [
+    #             cose_proxy.extract_payload_from_path(
+    #                 fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_PATH]
+    #             )
+    #         ]
 
-        # add the new fragments to the list of all fragments if they're not already there
-        # the side effect of adding this way is that if we have a local path to a nested fragment
-        # we will pull then use the local version of the fragment instead of pulling from the registry
-        for content in contents:
-            fragment_text = extract_containers_from_text(
-                content, config.REGO_FRAGMENT_START
-            ).replace("\t", "    ")
+    #     # add the new fragments to the list of all fragments if they're not already there
+    #     # the side effect of adding this way is that if we have a local path to a nested fragment
+    #     # we will pull then use the local version of the fragment instead of pulling from the registry
+    #     for content in contents:
+    #         fragment_text = extract_containers_from_text(
+    #             content, config.REGO_FRAGMENT_START
+    #         ).replace("\t", "    ")
 
-            fragments = yaml.load(
-                fragment_text,
-                Loader=yaml.FullLoader,
-            )
+    #         fragments = yaml.load(
+    #             fragment_text,
+    #             Loader=yaml.FullLoader,
+    #         )
 
-            # this adds new feeds to the list of feeds to pull dynamically
-            # it will end when there are no longer nested fragments to pull
-            for new_fragment in fragments:
-                if new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED] not in fragment_feeds:
-                    copied_fragment_imports.append(new_fragment)
+    #         # this adds new feeds to the list of feeds to pull dynamically
+    #         # it will end when there are no longer nested fragments to pull
+    #         for new_fragment in fragments:
+    #             if new_fragment[config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED] not in fragment_feeds:
+    #                 copied_fragment_imports.append(new_fragment)
 
-            all_fragments_contents.append(content)
+    #         all_fragments_contents.append(content)
+    print("all_fragments_contents: ", all_fragments_contents)
+
 
     return combine_fragments_with_policy(all_fragments_contents)

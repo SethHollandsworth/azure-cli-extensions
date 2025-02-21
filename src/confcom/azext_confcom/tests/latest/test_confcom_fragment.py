@@ -7,6 +7,7 @@ import os
 import unittest
 import json
 import time
+import requests
 import subprocess
 from knack.util import CLIError
 
@@ -30,6 +31,7 @@ from azext_confcom.os_util import (
     load_json_from_str,
     delete_silently,
 )
+from azext_confcom.oras_proxy import push_fragment_to_registry
 from azext_confcom.custom import acifragmentgen_confcom
 from azure.cli.testsdk import ScenarioTest
 
@@ -786,6 +788,259 @@ class FragmentPolicySigning(unittest.TestCase):
             delete_silently(filename2)
             delete_silently(out_path2)
             delete_silently(fragment_json)
+
+
+class FragmentRegistryInteractions(unittest.TestCase):
+    custom_json = """
+{
+    "version": "1.0",
+    "fragments": [
+    ],
+    "containers": [
+        {
+            "name": "my-image",
+            "properties": {
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
+                "execProcesses": [
+                    {
+                        "command": [
+                            "echo",
+                            "Hello World"
+                        ]
+                    }
+                ],
+                "volumeMounts": [
+                    {
+                        "name": "azurefile",
+                        "mountPath": "/mount/azurefile",
+                        "mountType": "azureFile",
+                        "readOnly": true
+                    }
+                ],
+                "environmentVariables": [
+                    {
+                        "name": "PATH",
+                        "value": "/customized/path/value"
+                    },
+                    {
+                        "name": "TEST_REGEXP_ENV",
+                        "value": "test_regexp_env(.*)",
+                        "regex": true
+                    }
+                ]
+            }
+        }
+    ]
+}
+    """
+    custom_json2 = """
+{
+    "version": "1.0",
+    "fragments": [
+    ],
+    "containers": [
+        {
+            "name": "my-image",
+            "properties": {
+                "image": "mcr.microsoft.com/cbl-mariner/busybox:1.35",
+                "execProcesses": [
+                    {
+                        "command": [
+                            "sleep",
+                            "infinity"
+                        ]
+                    }
+                ],
+                "environmentVariables": [
+                    {
+                        "name": "PATH",
+                        "value": "/another/customized/path/value"
+                    },
+                    {
+                        "name": "TEST_REGEXP_ENV2",
+                        "value": "test_regexp_env2(.*)",
+                        "regex": true
+                    }
+                ]
+            }
+        },
+        {
+            "name": "my-image",
+            "properties": {
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
+                "execProcesses": [
+                    {
+                        "command": [
+                            "echo",
+                            "Hello World"
+                        ]
+                    }
+                ],
+                "volumeMounts": [
+                    {
+                        "name": "azurefile",
+                        "mountPath": "/mount/azurefile",
+                        "mountType": "azureFile",
+                        "readOnly": true
+                    }
+                ],
+                "environmentVariables": [
+                    {
+                        "name": "PATH",
+                        "value": "/customized/path/value"
+                    },
+                    {
+                        "name": "TEST_REGEXP_ENV",
+                        "value": "test_regexp_env(.*)",
+                        "regex": true
+                    }
+                ]
+            }
+        }
+    ]
+}
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # start the zot registry
+        cls.zot_image = "ghcr.io/project-zot/zot-linux-amd64:v2.1.2"
+        cls.registry = "http://localhost:5000"
+        subprocess.run(f"docker pull {cls.zot_image}")
+        subprocess.run(f"docker run --name myregistry -d -p 5000:5000 {cls.zot_image}")
+
+        cls.key_dir_parent = os.path.join(TEST_DIR, '..', '..', '..', 'samples', 'certs')
+        cls.key = os.path.join(cls.key_dir_parent, 'intermediateCA', 'private', 'ec_p384_private.pem')
+        cls.chain = os.path.join(cls.key_dir_parent, 'intermediateCA', 'certs', 'www.contoso.com.chain.cert.pem')
+        if not os.path.exists(cls.key) or not os.path.exists(cls.chain):
+            script_path = os.path.join(cls.key_dir_parent, 'create_certchain.sh')
+
+            arg_list = [
+                script_path,
+            ]
+            os.chmod(script_path, 0o755)
+
+            # NOTE: this will raise an exception if it's run on windows and the key/cert files don't exist
+            item = subprocess.run(
+                arg_list,
+                check=False,
+                shell=True,
+                cwd=cls.key_dir_parent,
+                env=os.environ.copy(),
+            )
+
+            if item.returncode != 0:
+                raise Exception("Error creating certificate chain")
+
+        with load_policy_from_config_str(cls.custom_json) as aci_policy:
+            aci_policy.populate_policy_content_for_all_images()
+            cls.aci_policy = aci_policy
+        with load_policy_from_config_str(cls.custom_json2) as aci_policy2:
+            aci_policy2.populate_policy_content_for_all_images()
+            cls.aci_policy2 = aci_policy2
+
+    @classmethod
+    def tearDownClass(cls):
+        # stop and delete the container to clean up
+        subprocess.run(f'docker stop myregistry')
+        subprocess.run(f'docker rm myregistry')
+
+    def test_registry_is_running(self):
+        result = requests.get(f"{self.registry}/v2/_catalog")
+        self.assertTrue("repositories" in result.json())
+
+    # TODO: update to use remote
+    def test_generate_import_from_remote(self):
+        filename = "payload5.rego"
+        feed = f"{self.registry}/test_feed"
+        algo = "ES384"
+        out_path = filename + ".cose"
+
+        fragment_text = self.aci_policy.generate_fragment("payload4", 1, OutputType.RAW)
+        try:
+            write_str_to_file(filename, fragment_text)
+
+            cose_proxy = CoseSignToolProxy()
+            iss = cose_proxy.create_issuer(self.chain)
+            cose_proxy.cose_sign(filename, self.key, self.chain, feed, iss, algo, out_path)
+            push_fragment_to_registry(feed, out_path)
+            temp_filename = "temp.json"
+            # this should download and create the import statement
+            acifragmentgen_confcom(None, None, None, None, None, generate_import=True, fragment_path=feed, fragments_json=temp_filename)
+            import_statement = load_json_from_file(temp_filename)
+            # import_statement = cose_proxy.generate_import_from_path(out_path, 1)
+            self.assertTrue(import_statement)
+            self.assertEqual(
+                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER,""),iss
+            )
+            self.assertEqual(
+                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED,""),feed
+            )
+            self.assertEqual(
+                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN,""),1
+            )
+            self.assertEqual(
+                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES,[]),[config.POLICY_FIELD_CONTAINERS, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS]
+            )
+
+        except Exception as e:
+            raise e
+        finally:
+            delete_silently(filename)
+            delete_silently(out_path)
+
+    # TODO: update using remote
+    def test_remote_fragment_references(self):
+        filename = "payload6.rego"
+        filename2 = "payload7.rego"
+        fragment_json = "fragment.json"
+        feed = f"{self.registry}/test_feed:v1"
+        feed2 = f"{self.registry}/test_feed2:v2"
+        algo = "ES384"
+        out_path = filename + ".cose"
+        out_path2 = filename2 + ".cose"
+
+        fragment_text = self.aci_policy.generate_fragment("payload2", 1, OutputType.RAW)
+
+        try:
+            write_str_to_file(filename, fragment_text)
+            write_str_to_file(fragment_json, self.custom_json2)
+
+            cose_proxy = CoseSignToolProxy()
+            iss = cose_proxy.create_issuer(self.chain)
+            cose_proxy.cose_sign(filename, self.key, self.chain, feed, iss, algo, out_path)
+
+
+            # this will insert the import statement from the first fragment into the second one
+            acifragmentgen_confcom(
+                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=fragment_json, fragment_path=out_path
+            )
+            # put the "path" field into the import statement
+            push_fragment_to_registry(feed, filename)
+            acifragmentgen_confcom(
+                None, fragment_json, None, "payload3", 1, feed2, self.key, self.chain, None, output_filename=filename2
+            )
+
+            # make sure all of our output files exist
+            self.assertTrue(os.path.exists(filename2))
+            self.assertTrue(os.path.exists(out_path2))
+            self.assertTrue(os.path.exists(fragment_json))
+            # check the contents of the unsigned rego file
+            rego_str = load_str_from_file(filename2)
+            # see if the import statement is in the rego file
+            self.assertTrue("test_feed" in rego_str)
+            # make sure the image covered by the first fragment isn't in the second fragment
+            self.assertFalse("mcr.microsoft.com/acc/samples/aci/helloworld:2.8" in rego_str)
+        except Exception as e:
+            raise e
+        finally:
+            delete_silently(filename)
+            delete_silently(out_path)
+            delete_silently(filename2)
+            delete_silently(out_path2)
+            delete_silently(fragment_json)
+
+
 
 class InitialFragmentErrors(ScenarioTest):
     def test_invalid_input(self):

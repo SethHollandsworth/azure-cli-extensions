@@ -14,6 +14,7 @@ from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS, ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED
 from azext_confcom.cose_proxy import CoseSignToolProxy
 from azext_confcom.os_util import clean_up_temp_folder
+from azext_confcom.template_util import extract_containers_and_fragments_from_text
 
 host_os = platform.system()
 machine = platform.machine()
@@ -177,43 +178,28 @@ def create_list_of_standalone_imports(fragment_feeds):
     return standalone_imports
 
 
-def pull_all_standalone_fragments_from_feeds(fragment_feeds):
-    # the output will be a list of dicts that will reflect the same output as pull_all_standalone_fragments
-    proxy = CoseSignToolProxy()
-    fragment_contents = []
-    default_fragment_feeds = [x.get(ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED) for x in DEFAULT_REGO_FRAGMENTS]
-
-    for feed in fragment_feeds:
-        # special case for the infra fragment feed
-        if feed in default_fragment_feeds:
-            continue
-
-        filename = pull(artifact=feed)
-        text = proxy.extract_payload_from_path(filename)
-        clean_up_temp_folder(filename)
-        fragment_contents.append(text)
-
-    return fragment_contents
-
-
 def pull_all_standalone_fragments(fragment_imports):
     fragment_contents = []
     feeds = []
     proxy = CoseSignToolProxy()
 
     for fragment in fragment_imports:
+        if fragment in DEFAULT_REGO_FRAGMENTS:
+            continue
         path = fragment.get("path")
         feed = fragment.get("feed")
         feeds.append(feed)
 
         if path:
             text = proxy.extract_payload_from_path(path)
-            fragment_contents.append(text)
         else:
             filename = pull(artifact=feed)
             text = proxy.extract_payload_from_path(filename)
             clean_up_temp_folder(filename)
-            fragment_contents.append(text)
+        # put new fragments to the end of the list
+        fragment_contents.append(text)
+        _, fragments = extract_containers_and_fragments_from_text(text)
+        fragment_imports.extend(fragments)
 
     return fragment_contents, feeds
 
