@@ -41,7 +41,7 @@ def base64_to_str(data: str) -> str:
 def clean_up_temp_folder(temp_file_path: str) -> None:
     # clean up the folder that the fragment was downloaded to
     folder_name = temp_file_path.rsplit(os.path.sep, 1)[0]
-    logger.info("cleaning up folder with fragment: ", folder_name)
+    logger.info("cleaning up folder with fragment: %s", folder_name)
     shutil.rmtree(folder_name)
 
 
