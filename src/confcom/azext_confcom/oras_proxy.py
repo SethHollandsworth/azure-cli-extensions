@@ -107,7 +107,7 @@ def pull(
         artifact, hash = artifact.split("@sha256:")
         full_path = f"{artifact}@{hash}"
     elif ":" in artifact:
-        artifact, tag = artifact.split(":")
+        artifact, tag = artifact.rsplit(":", maxsplit=1)
         full_path = f"{artifact}:{tag}"
     else:
         eprint(f"Invalid artifact name: {artifact}")

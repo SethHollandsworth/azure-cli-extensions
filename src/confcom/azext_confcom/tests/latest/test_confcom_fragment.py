@@ -533,16 +533,6 @@ class FragmentPolicySigning(unittest.TestCase):
     custom_json = """
 {
     "version": "1.0",
-    "fragments": [
-        {
-            "issuer": "did:x509:0:sha256:I__iuL25oXEVFdTP_aBLx_eT1RPHbCQ_ECBQfYZpt9s::eku:1.3.6.1.4.1.311.76.59.1.3",
-            "feed": "contoso.azurecr.io/infra",
-            "minimum_svn": "1",
-            "includes": [
-                "containers"
-            ]
-        }
-    ],
     "containers": [
         {
             "name": "my-image",
@@ -905,7 +895,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
     def setUpClass(cls):
         # start the zot registry
         cls.zot_image = "ghcr.io/project-zot/zot-linux-amd64:v2.1.2"
-        cls.registry = "http://localhost:5000"
+        cls.registry = "localhost:5000"
         subprocess.run(f"docker pull {cls.zot_image}")
         subprocess.run(f"docker run --name myregistry -d -p 5000:5000 {cls.zot_image}")
 
@@ -946,17 +936,18 @@ class FragmentRegistryInteractions(unittest.TestCase):
         subprocess.run(f'docker rm myregistry')
 
     def test_registry_is_running(self):
-        result = requests.get(f"{self.registry}/v2/_catalog")
+        result = requests.get(f"http://{self.registry}/v2/_catalog")
         self.assertTrue("repositories" in result.json())
 
     # TODO: update to use remote
     def test_generate_import_from_remote(self):
         filename = "payload5.rego"
-        feed = f"{self.registry}/test_feed"
+        feed = f"{self.registry}/test_feed:test_tag"
         algo = "ES384"
         out_path = filename + ".cose"
 
         fragment_text = self.aci_policy.generate_fragment("payload4", 1, OutputType.RAW)
+        temp_filename = "temp.json"
         try:
             write_str_to_file(filename, fragment_text)
 
@@ -964,11 +955,12 @@ class FragmentRegistryInteractions(unittest.TestCase):
             iss = cose_proxy.create_issuer(self.chain)
             cose_proxy.cose_sign(filename, self.key, self.chain, feed, iss, algo, out_path)
             push_fragment_to_registry(feed, out_path)
-            temp_filename = "temp.json"
+
             # this should download and create the import statement
-            acifragmentgen_confcom(None, None, None, None, None, generate_import=True, fragment_path=feed, fragments_json=temp_filename)
-            import_statement = load_json_from_file(temp_filename)
-            # import_statement = cose_proxy.generate_import_from_path(out_path, 1)
+            acifragmentgen_confcom(None, None, None, None, None, None, None, None, 1, generate_import=True, fragment_path=feed, fragments_json=temp_filename)
+            import_file = load_json_from_file(temp_filename)
+            import_statement = import_file.get(config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS)[0]
+
             self.assertTrue(import_statement)
             self.assertEqual(
                 import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER,""),iss
@@ -988,8 +980,8 @@ class FragmentRegistryInteractions(unittest.TestCase):
         finally:
             delete_silently(filename)
             delete_silently(out_path)
+            delete_silently(temp_filename)
 
-    # TODO: update using remote
     def test_remote_fragment_references(self):
         filename = "payload6.rego"
         filename2 = "payload7.rego"
@@ -1016,7 +1008,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
                 None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=fragment_json, fragment_path=out_path
             )
             # put the "path" field into the import statement
-            push_fragment_to_registry(feed, filename)
+            push_fragment_to_registry(feed, out_path)
             acifragmentgen_confcom(
                 None, fragment_json, None, "payload3", 1, feed2, self.key, self.chain, None, output_filename=filename2
             )
