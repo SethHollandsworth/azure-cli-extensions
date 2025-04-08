@@ -896,8 +896,9 @@ class FragmentRegistryInteractions(unittest.TestCase):
         # start the zot registry
         cls.zot_image = "ghcr.io/project-zot/zot-linux-amd64:v2.1.2"
         cls.registry = "localhost:5000"
+        registry_name = "myregistry"
         subprocess.run(f"docker pull {cls.zot_image}")
-        subprocess.run(f"docker run --name myregistry -d -p 5000:5000 {cls.zot_image}")
+        subprocess.run(f"docker run --name {registry_name} -d -p 5000:5000 {cls.zot_image}")
 
         cls.key_dir_parent = os.path.join(TEST_DIR, '..', '..', '..', 'samples', 'certs')
         cls.key = os.path.join(cls.key_dir_parent, 'intermediateCA', 'private', 'ec_p384_private.pem')
@@ -929,6 +930,17 @@ class FragmentRegistryInteractions(unittest.TestCase):
             aci_policy2.populate_policy_content_for_all_images()
             cls.aci_policy2 = aci_policy2
 
+        # stall while we wait for the registry to start running
+        logs = subprocess.run(f"docker logs {registry_name}", capture_output=True)
+        counter = 0
+        while logs.returncode != 0:
+            time.sleep(1)
+            logs = subprocess.run(f"docker logs {registry_name}", capture_output=True)
+            counter += 1
+            if counter == 10:
+                raise Exception("Could not start local registry in time")
+
+
     @classmethod
     def tearDownClass(cls):
         # stop and delete the container to clean up
@@ -939,7 +951,6 @@ class FragmentRegistryInteractions(unittest.TestCase):
         result = requests.get(f"http://{self.registry}/v2/_catalog")
         self.assertTrue("repositories" in result.json())
 
-    # TODO: update to use remote
     def test_generate_import_from_remote(self):
         filename = "payload5.rego"
         feed = f"{self.registry}/test_feed:test_tag"
