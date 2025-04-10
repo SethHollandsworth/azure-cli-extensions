@@ -1127,6 +1127,15 @@ def extract_containers_and_fragments_from_text(text: str) -> Tuple[List[Dict], L
     return (containers, fragments)
 
 
+def extract_svn_from_text(text: str) -> int:
+    # get the end of the line where svn is defined
+    start_index = text.find(config.REGO_SVN_START)
+    ending = text[start_index + len(config.REGO_SVN_START):]
+    svn_str = ending[:ending.index("\n")]
+    # strip the quotes and cast to int
+    return int(svn_str.strip('"'))
+
+
 # making these lambda print functions looks cleaner than having "json.dumps" 6 times
 def print_func(x: dict) -> str:
     return json.dumps(x, separators=(",", ":"), sort_keys=True)

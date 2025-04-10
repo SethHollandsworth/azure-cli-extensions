@@ -788,7 +788,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
     ],
     "containers": [
         {
-            "name": "my-image",
+            "name": "my-image2",
             "properties": {
                 "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
                 "execProcesses": [
@@ -855,7 +855,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
             }
         },
         {
-            "name": "my-image",
+            "name": "my-image2",
             "properties": {
                 "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
                 "execProcesses": [
@@ -889,6 +889,49 @@ class FragmentRegistryInteractions(unittest.TestCase):
         }
     ]
 }
+"""
+
+    custom_json3 = """
+    {
+        "version": "1.0",
+        "fragments": [
+        ],
+        "containers": [
+            {
+                "name": "my-image",
+                "properties": {
+                    "image": "localhost:5000/helloworld:2.8",
+                    "execProcesses": [
+                        {
+                            "command": [
+                                "echo",
+                                "Hello World"
+                            ]
+                        }
+                    ],
+                    "volumeMounts": [
+                        {
+                            "name": "azurefile",
+                            "mountPath": "/mount/azurefile",
+                            "mountType": "azureFile",
+                            "readOnly": true
+                        }
+                    ],
+                    "environmentVariables": [
+                        {
+                            "name": "PATH",
+                            "value": "/customized/path/value"
+                        },
+                        {
+                            "name": "TEST_REGEXP_ENV",
+                            "value": "test_regexp_env(.*)",
+                            "regex": true
+                        }
+                    ]
+                }
+            }
+        ]
+    }
     """
 
     @classmethod
@@ -996,14 +1039,64 @@ class FragmentRegistryInteractions(unittest.TestCase):
     def test_remote_fragment_references(self):
         filename = "payload6.rego"
         filename2 = "payload7.rego"
+        first_fragment = "first_fragment.json"
         fragment_json = "fragment.json"
         feed = f"{self.registry}/test_feed:v1"
         feed2 = f"{self.registry}/test_feed2:v2"
+        out_path = filename + ".cose"
+        out_path2 = filename2 + ".cose"
+
+        # fragment_text = self.aci_policy.generate_fragment("payload6", 1, OutputType.RAW)
+
+        try:
+            write_str_to_file(first_fragment, self.custom_json)
+            write_str_to_file(fragment_json, self.custom_json2)
+            acifragmentgen_confcom(
+                None, first_fragment, None, "payload7", 1, feed, self.key, self.chain, None, output_filename=filename
+            )
+
+            # this will insert the import statement from the first fragment into the second one
+            acifragmentgen_confcom(
+                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=fragment_json, fragment_path=out_path
+            )
+
+            push_fragment_to_registry(feed, out_path)
+
+            acifragmentgen_confcom(
+                None, fragment_json, None, "payload7", 1, feed2, self.key, self.chain, None, output_filename=filename2
+            )
+
+            # make sure all of our output files exist
+            self.assertTrue(os.path.exists(filename2))
+            self.assertTrue(os.path.exists(out_path2))
+            self.assertTrue(os.path.exists(fragment_json))
+            # check the contents of the unsigned rego file
+            rego_str = load_str_from_file(filename2)
+            # see if the import statement is in the rego file
+            self.assertTrue(feed in rego_str)
+            # make sure the image covered by the first fragment isn't in the second fragment
+            self.assertFalse("mcr.microsoft.com/acc/samples/aci/helloworld:2.8" in rego_str)
+        except Exception as e:
+            raise e
+        finally:
+            delete_silently(filename)
+            delete_silently(out_path)
+            delete_silently(filename2)
+            delete_silently(out_path2)
+            delete_silently(fragment_json)
+            delete_silently(first_fragment)
+
+    def test_incorrect_minimum_svn(self):
+        filename = "payload8.rego"
+        filename2 = "payload9.rego"
+        fragment_json = "fragment.json"
+        feed = f"{self.registry}/test_feed:v3"
+        feed2 = f"{self.registry}/test_feed2:v4"
         algo = "ES384"
         out_path = filename + ".cose"
         out_path2 = filename2 + ".cose"
 
-        fragment_text = self.aci_policy.generate_fragment("payload2", 1, OutputType.RAW)
+        fragment_text = self.aci_policy.generate_fragment("payload8", 1, OutputType.RAW)
 
         try:
             write_str_to_file(filename, fragment_text)
@@ -1016,12 +1109,12 @@ class FragmentRegistryInteractions(unittest.TestCase):
 
             # this will insert the import statement from the first fragment into the second one
             acifragmentgen_confcom(
-                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=fragment_json, fragment_path=out_path
+                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=2, fragments_json=fragment_json, fragment_path=out_path
             )
             # put the "path" field into the import statement
             push_fragment_to_registry(feed, out_path)
             acifragmentgen_confcom(
-                None, fragment_json, None, "payload3", 1, feed2, self.key, self.chain, None, output_filename=filename2
+                None, fragment_json, None, "payload9", 1, feed2, self.key, self.chain, None, output_filename=filename2
             )
 
             # make sure all of our output files exist
@@ -1032,8 +1125,8 @@ class FragmentRegistryInteractions(unittest.TestCase):
             rego_str = load_str_from_file(filename2)
             # see if the import statement is in the rego file
             self.assertTrue("test_feed" in rego_str)
-            # make sure the image covered by the first fragment isn't in the second fragment
-            self.assertFalse("mcr.microsoft.com/acc/samples/aci/helloworld:2.8" in rego_str)
+            # make sure the image covered by the first fragment is in the second fragment because the svn prevents usage
+            self.assertTrue("mcr.microsoft.com/acc/samples/aci/helloworld:2.8" in rego_str)
         except Exception as e:
             raise e
         finally:
@@ -1043,7 +1136,55 @@ class FragmentRegistryInteractions(unittest.TestCase):
             delete_silently(out_path2)
             delete_silently(fragment_json)
 
+    def test_image_attached_fragment_coverage(self):
+        subprocess.run("docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.8 localhost:5000/helloworld:2.8")
+        subprocess.run("docker push localhost:5000/helloworld:2.8")
+        filename = "container_image_attached.json"
+        rego_filename = "temp_namespace"
+        try:
+            write_str_to_file(filename, self.custom_json3)
+            acifragmentgen_confcom(
+                None,
+                filename,
+                None,
+                rego_filename,
+                1,
+                "temp_feed",
+                self.key,
+                self.chain,
+                1,
+                "localhost:5000/helloworld:2.8",
+                upload_fragment=True,
+            )
 
+
+            # this will insert the import statement into the original container.json
+            acifragmentgen_confcom(
+                "localhost:5000/helloworld:2.8", None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=filename
+            )
+
+            # try to generate the policy again to make sure there are no containers in the resulting rego
+            with self.assertRaises(SystemExit) as exc_info:
+                acifragmentgen_confcom(
+                    None,
+                    filename,
+                    None,
+                    "temp_namespace2",
+                    1,
+                    "temp_feed2",
+                    None,
+                    None,
+                    1,
+                    "localhost:5000/helloworld:2.8",
+                )
+            self.assertEqual(exc_info.exception.code, 1)
+
+        except Exception as e:
+            raise e
+        finally:
+            delete_silently(filename)
+            delete_silently(f"{rego_filename}.rego")
+            delete_silently(f"{rego_filename}.rego.cose")
 
 class InitialFragmentErrors(ScenarioTest):
     def test_invalid_input(self):
@@ -1053,7 +1194,7 @@ class InitialFragmentErrors(ScenarioTest):
 
         with self.assertRaises(CLIError) as wrapped_exit:
             self.cmd("az confcom acifragmentgen --generate-import --minimum-svn 1")
-        self.assertEqual(wrapped_exit.exception.args[0], "Must provide either a fragment path, an input file, or " +
+        self.assertEqual(wrapped_exit.exception.args[0], "Must provide either a fragment path or " +
             "an image name to generate an import statement")
 
         with self.assertRaises(CLIError) as wrapped_exit:

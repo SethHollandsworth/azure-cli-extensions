@@ -15,7 +15,7 @@ from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS, ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED
 from azext_confcom.cose_proxy import CoseSignToolProxy
 from azext_confcom.os_util import clean_up_temp_folder
-from azext_confcom.template_util import extract_containers_and_fragments_from_text
+from azext_confcom.template_util import extract_containers_and_fragments_from_text, extract_svn_from_text
 
 host_os = platform.system()
 machine = platform.machine()
@@ -41,7 +41,7 @@ def prepend_docker_registry(image_name: str) -> str:
 
     registry = ""
     # Check if the image name contains a registry (e.g., docker.io, custom registry)
-    if "/" not in name or "." not in name.split("/")[0]:
+    if ("/" not in name or "." not in name.split("/")[0]) and not name.startswith("localhost"):
         # If no registry is specified, assume docker.io/library
         if "/" not in name:
             # Add the `library` namespace for official images
@@ -105,6 +105,8 @@ def pull(
     full_path = ""
     if "@sha256:" in artifact:
         artifact, hash = artifact.split("@sha256:")
+        full_path = f"{artifact}@{hash}"
+    elif artifact and hash:
         full_path = f"{artifact}@{hash}"
     elif ":" in artifact:
         artifact, tag = artifact.rsplit(":", maxsplit=1)
@@ -188,6 +190,7 @@ def pull_all_standalone_fragments(fragment_imports):
             continue
         path = fragment.get("path")
         feed = fragment.get("feed")
+        minimum_svn = int(fragment.get("minimum_svn"))
         feeds.append(feed)
 
         if path:
@@ -195,6 +198,15 @@ def pull_all_standalone_fragments(fragment_imports):
         else:
             filename = pull(artifact=feed)
             text = proxy.extract_payload_from_path(filename)
+            svn = extract_svn_from_text(text)
+            if svn < minimum_svn:
+                logger.warning(
+                    "found fragment %s but the svn of %s is lower than the the specified minimum_svn of %s",
+                    feed,
+                    svn,
+                    minimum_svn
+                )
+                continue
             clean_up_temp_folder(filename)
         # put new fragments to the end of the list
         fragment_contents.append(text)
