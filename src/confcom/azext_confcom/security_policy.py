@@ -1032,6 +1032,10 @@ def load_policy_from_virtual_node_yaml_file(
         disable_stdio: bool = False,
         approve_wildcards: bool = False,
         diff_mode: bool = False,
+        rego_imports: list = None,
+        exclude_default_fragments: bool = False,
+        fragment_contents: list = None,
+        infrastructure_svn: str = None,
 ) -> List[AciPolicy]:
     yaml_contents_str = os_util.load_str_from_file(virtual_node_yaml_path)
     return load_policy_from_virtual_node_yaml_str(
@@ -1040,6 +1044,10 @@ def load_policy_from_virtual_node_yaml_file(
         disable_stdio=disable_stdio,
         approve_wildcards=approve_wildcards,
         diff_mode=diff_mode,
+        rego_imports=rego_imports,
+        exclude_default_fragments=exclude_default_fragments,
+        fragment_contents=fragment_contents,
+        infrastructure_svn=infrastructure_svn,
     )
 
 
@@ -1050,6 +1058,10 @@ def load_policy_from_virtual_node_yaml_str(
         disable_stdio: bool = False,
         approve_wildcards: bool = False,
         diff_mode: bool = False,
+        rego_imports: list = None,
+        exclude_default_fragments: bool = False,
+        fragment_contents: Any = None,
+        infrastructure_svn: str = None,
 ) -> List[AciPolicy]:
     """
     Load a virtual node yaml file and generate a policy object
@@ -1110,6 +1122,18 @@ def load_policy_from_virtual_node_yaml_str(
         # but they are treated differently in the pod spec
         # e.g. lifecycle and probes are not supported in initContainers
         init_containers = case_insensitive_dict_get(spec, config.ACI_FIELD_TEMPLATE_INIT_CONTAINERS) or []
+
+        rego_fragments = copy.deepcopy(config.DEFAULT_REGO_FRAGMENTS) if not exclude_default_fragments else []
+        if infrastructure_svn:
+            # assumes the first DEFAULT_REGO_FRAGMENT is always the
+            # infrastructure fragment
+            rego_fragments[0][
+                config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN
+            ] = infrastructure_svn
+        if rego_imports:
+            # error check the rego imports for invalid data types
+            processed_imports = process_fragment_imports(rego_imports)
+            rego_fragments.extend(processed_imports)
 
         for container in containers + init_containers:
             # image and name
@@ -1249,9 +1273,11 @@ def load_policy_from_virtual_node_yaml_str(
                 },
                 debug_mode=debug_mode,
                 disable_stdio=disable_stdio,
-                rego_fragments=copy.deepcopy(config.DEFAULT_REGO_FRAGMENTS),
+                rego_fragments=rego_fragments,
+                # fallback to default fragments if the policy is not present
                 is_vn2=True,
                 existing_rego_fragments=existing_fragments,
+                fragment_contents=fragment_contents,
             )
         )
     return all_policies
