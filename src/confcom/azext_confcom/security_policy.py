@@ -708,12 +708,14 @@ def load_policy_from_arm_template_str(
             container_list.extend(init_container_list)
 
         # this is standalone fragments coming from the ARM template itself
-        # TODO: error check that we're not adding a standalone that was already provided by an external file
         standalone_fragments = extract_standalone_fragments(container_group_properties)
         if standalone_fragments:
             standalone_fragment_imports = create_list_of_standalone_imports(standalone_fragments)
-
-            rego_imports.extend(standalone_fragment_imports)
+            unique_imports = set(rego_imports)
+            for fragment in standalone_fragment_imports:
+                if fragment not in unique_imports:
+                    rego_imports.append(fragment)
+                    unique_imports.add(fragment)
 
         try:
             existing_containers, fragments = extract_confidential_properties(

@@ -1128,10 +1128,18 @@ def extract_containers_and_fragments_from_text(text: str) -> Tuple[List[Dict], L
 def extract_svn_from_text(text: str) -> int:
     # get the end of the line where svn is defined
     start_index = text.find(config.REGO_SVN_START)
+    if start_index == -1:
+        eprint(f"'{config.REGO_SVN_START}' not found in the input text.")
     ending = text[start_index + len(config.REGO_SVN_START):]
-    svn_str = ending[:ending.index("\n")]
-    # strip the quotes and cast to int
-    return int(svn_str.strip('"'))
+    newline_index = ending.find("\n")
+    if newline_index == -1:
+        eprint("No newline character found after the SVN value.")
+    svn_str = ending[:newline_index]
+    try:
+        # strip the quotes and cast to int
+        return int(svn_str.strip('"'))
+    except ValueError:
+        eprint(f"Unable to convert SVN value '{svn_str}' to an integer.")
 
 
 # making these lambda print functions looks cleaner than having "json.dumps" 6 times
