@@ -20,6 +20,7 @@ from azext_confcom.errors import (
 
 logger = get_logger(__name__)
 
+
 def bytes_to_base64(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 

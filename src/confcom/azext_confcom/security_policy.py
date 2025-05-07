@@ -707,7 +707,7 @@ def load_policy_from_arm_template_str(
         if init_container_list:
             container_list.extend(init_container_list)
 
-        # this is standalone fragments coming from the ARM template itself
+        # these are standalone fragments coming from the ARM template itself
         standalone_fragments = extract_standalone_fragments(container_group_properties)
         if standalone_fragments:
             standalone_fragment_imports = create_list_of_standalone_imports(standalone_fragments)

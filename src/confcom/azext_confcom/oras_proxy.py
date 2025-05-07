@@ -12,7 +12,7 @@ from tempfile import mkdtemp
 import os
 from typing import List
 from azext_confcom.errors import eprint
-from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS, ACI_FIELD_CONTAINERS_REGO_FRAGMENTS_FEED
+from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS
 from azext_confcom.cose_proxy import CoseSignToolProxy
 from azext_confcom.os_util import clean_up_temp_folder
 from azext_confcom.template_util import extract_containers_and_fragments_from_text, extract_svn_from_text
@@ -98,7 +98,7 @@ def discover(
 
 def pull(
     artifact: str,
-    hash: str = "",
+    hash_val: str = "",
     tag: str = "",
 ) -> str:
     """
@@ -108,16 +108,16 @@ def pull(
 
     full_path = ""
     if "@sha256:" in artifact:
-        artifact, hash = artifact.split("@sha256:")
-        full_path = f"{artifact}@{hash}"
-    elif artifact and hash:
-        full_path = f"{artifact}@{hash}"
+        artifact, hash_val = artifact.split("@sha256:")
+        full_path = f"{artifact}@{hash_val}"
+    elif artifact and hash_val:
+        full_path = f"{artifact}@{hash_val}"
     elif ":" in artifact:
         artifact, tag = artifact.rsplit(":", maxsplit=1)
         full_path = f"{artifact}:{tag}"
     else:
         eprint(f"Invalid artifact name: {artifact}")
-    logger.info(f"Pulling fragment: {full_path}")
+    logger.info("Pulling fragment: %s", full_path)
 
     temp_folder = mkdtemp()
     arg_list = ["oras", "pull", full_path, "-o", temp_folder]
@@ -154,21 +154,18 @@ def pull_all_image_attached_fragments(image):
     fragment_contents = []
     feeds = []
     if image_exists:
+        fragments = discover(image)
+        fragment_contents = []
+        feeds = []
         proxy = CoseSignToolProxy()
         for fragment_digest in fragments:
-            filename = pull(image, fragment_digest)
+            filename = pull(image, hash_val=fragment_digest)
             text = proxy.extract_payload_from_path(filename)
             feed = proxy.extract_feed_from_path(filename)
-            # containers = extract_containers_from_text(text, REGO_CONTAINER_START)
-            # new_fragments = extract_containers_from_text(text, REGO_FRAGMENT_START)
-            # if new_fragments:
-            #     for new_fragment in new_fragments:
-            #         feed = new_fragment.get("feed")
-            #         # if we don't have the feed in the list of feeds we've already pulled, pull it
-            #         if feed not in fragment_feeds:
-            #             fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
+            clean_up_temp_folder(filename)
             fragment_contents.append(text)
             feeds.append(feed)
+
     return fragment_contents, feeds
 
 

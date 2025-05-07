@@ -9,7 +9,6 @@ from typing import List
 from knack.log import get_logger
 from azext_confcom import config
 from azext_confcom import oras_proxy
-from azext_confcom.cose_proxy import CoseSignToolProxy
 from azext_confcom.template_util import (
     case_insensitive_dict_get,
     extract_containers_from_text,
@@ -51,7 +50,10 @@ def get_all_fragment_contents(
         # This will probably be in the discover function
         image_attached_fragments, feeds = oras_proxy.pull_all_image_attached_fragments(image)
         for fragment, feed in zip(image_attached_fragments, feeds):
-            all_feeds = [case_insensitive_dict_get(fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED) for fragment in remaining_fragments]
+            all_feeds = [
+                case_insensitive_dict_get(fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED)
+                for fragment in remaining_fragments
+            ]
             feed_idx = all_feeds.index(feed) if feed in all_feeds else -1
 
             if feed_idx != -1:
@@ -71,6 +73,5 @@ def get_all_fragment_contents(
     # grab the remaining fragments which should be standalone
     standalone_fragments, _ = oras_proxy.pull_all_standalone_fragments(remaining_fragments)
     all_fragments_contents.extend(standalone_fragments)
-    # TODO: warning if there are import statements that couldn't be found
 
     return combine_fragments_with_policy(all_fragments_contents)
