@@ -705,7 +705,7 @@ def load_policy_from_arm_template_str(
         if init_container_list:
             container_list.extend(init_container_list)
 
-        # this is standalone fragments coming from the ARM template itself
+        # these are standalone fragments coming from the ARM template itself
         standalone_fragments = extract_standalone_fragments(container_group_properties)
         if standalone_fragments:
             standalone_fragment_imports = create_list_of_standalone_imports(standalone_fragments)
@@ -1329,7 +1329,9 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
         config_dict, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
     ) or []
 
-    standalone_rego_fragments = case_insensitive_dict_get(config_dict, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS)
+    standalone_rego_fragments = case_insensitive_dict_get(
+        config_dict, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS
+    )
     if standalone_rego_fragments:
         rego_fragments.extend(standalone_rego_fragments)
 
