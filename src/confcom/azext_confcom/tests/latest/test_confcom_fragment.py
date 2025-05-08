@@ -1206,7 +1206,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
         algo = "ES384"
         out_path = filename + ".cose"
 
-        fragment_text = self.aci_policy.generate_fragment("payload4", 1, OutputType.RAW)
+        fragment_text = self.aci_policy.generate_fragment("payload4", "1", OutputType.RAW)
         temp_filename = "temp.json"
         try:
             write_str_to_file(filename, fragment_text)
@@ -1217,7 +1217,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
             push_fragment_to_registry(feed, out_path)
 
             # this should download and create the import statement
-            acifragmentgen_confcom(None, None, None, None, None, None, None, None, 1, generate_import=True, fragment_path=feed, fragments_json=temp_filename)
+            acifragmentgen_confcom(None, None, None, None, None, None, None, None, "1", generate_import=True, fragment_path=feed, fragments_json=temp_filename)
             import_file = load_json_from_file(temp_filename)
             import_statement = import_file.get(config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS)[0]
 
@@ -1229,7 +1229,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
                 import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED,""),feed
             )
             self.assertEqual(
-                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN,""),1
+                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN,""), "1"
             )
             self.assertEqual(
                 import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES,[]),[config.POLICY_FIELD_CONTAINERS, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS]
@@ -1258,18 +1258,18 @@ class FragmentRegistryInteractions(unittest.TestCase):
             write_str_to_file(first_fragment, self.custom_json)
             write_str_to_file(fragment_json, self.custom_json2)
             acifragmentgen_confcom(
-                None, first_fragment, None, "payload7", 1, feed, self.key, self.chain, None, output_filename=filename
+                None, first_fragment, None, "payload7", "1", feed, self.key, self.chain, None, output_filename=filename
             )
 
             # this will insert the import statement from the first fragment into the second one
             acifragmentgen_confcom(
-                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=fragment_json, fragment_path=out_path
+                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn="1", fragments_json=fragment_json, fragment_path=out_path
             )
 
             push_fragment_to_registry(feed, out_path)
 
             acifragmentgen_confcom(
-                None, fragment_json, None, "payload7", 1, feed2, self.key, self.chain, None, output_filename=filename2
+                None, fragment_json, None, "payload7", "1", feed2, self.key, self.chain, None, output_filename=filename2
             )
 
             # make sure all of our output files exist
@@ -1302,7 +1302,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
         out_path = filename + ".cose"
         out_path2 = filename2 + ".cose"
 
-        fragment_text = self.aci_policy.generate_fragment("payload8", 1, OutputType.RAW)
+        fragment_text = self.aci_policy.generate_fragment("payload8", "1", OutputType.RAW)
 
         try:
             write_str_to_file(filename, fragment_text)
@@ -1320,7 +1320,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
             # put the "path" field into the import statement
             push_fragment_to_registry(feed, out_path)
             acifragmentgen_confcom(
-                None, fragment_json, None, "payload9", 1, feed2, self.key, self.chain, None, output_filename=filename2
+                None, fragment_json, None, "payload9", "1", feed2, self.key, self.chain, None, output_filename=filename2
             )
 
             # make sure all of our output files exist
@@ -1354,11 +1354,11 @@ class FragmentRegistryInteractions(unittest.TestCase):
                 filename,
                 None,
                 rego_filename,
-                1,
+                "1",
                 "temp_feed",
                 self.key,
                 self.chain,
-                1,
+                "1",
                 "localhost:5000/helloworld:2.8",
                 upload_fragment=True,
             )
@@ -1366,7 +1366,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
 
             # this will insert the import statement into the original container.json
             acifragmentgen_confcom(
-                "localhost:5000/helloworld:2.8", None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=filename
+                "localhost:5000/helloworld:2.8", None, None, None, None, None, None, None, generate_import=True, minimum_svn="1", fragments_json=filename
             )
 
             # try to generate the policy again to make sure there are no containers in the resulting rego
@@ -1376,11 +1376,11 @@ class FragmentRegistryInteractions(unittest.TestCase):
                     filename,
                     None,
                     "temp_namespace2",
-                    1,
+                    "1",
                     "temp_feed2",
                     None,
                     None,
-                    1,
+                    "1",
                     "localhost:5000/helloworld:2.8",
                 )
             self.assertEqual(exc_info.exception.code, 1)

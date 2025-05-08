@@ -35,7 +35,7 @@ def get_all_fragment_contents(
     fragment_imports: List[dict],
 ) -> List[str]:
     # was getting errors with pass by reference so we need to copy it
-    copied_fragment_imports = copy.deepcopy(fragment_imports)
+    remaining_fragments = copy.deepcopy(fragment_imports)
 
     def remove_from_list_via_feed(fragment_import_list, feed):
         for i, fragment_import in enumerate(fragment_import_list):
@@ -43,7 +43,6 @@ def get_all_fragment_contents(
                 fragment_import_list.pop(i)
 
     all_fragments_contents = []
-    remaining_fragments = copied_fragment_imports.copy()
     # get all the image attached fragments
     for image in image_names:
         # TODO: make sure this doesn't error out if the images aren't in a registry.
@@ -51,8 +50,8 @@ def get_all_fragment_contents(
         image_attached_fragments, feeds = oras_proxy.pull_all_image_attached_fragments(image)
         for fragment, feed in zip(image_attached_fragments, feeds):
             all_feeds = [
-                case_insensitive_dict_get(fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED)
-                for fragment in remaining_fragments
+                case_insensitive_dict_get(temp_fragment, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED)
+                for temp_fragment in remaining_fragments
             ]
             feed_idx = all_feeds.index(feed) if feed in all_feeds else -1
 
