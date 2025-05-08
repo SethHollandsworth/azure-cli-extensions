@@ -584,10 +584,10 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 config.POLICY_FIELD_CONTAINERS_NAME
             )
             fragment_image_id = fragment_image.get(config.ACI_FIELD_CONTAINERS_ID)
-            if ":" not in fragment_image:
+            if ":" not in fragment_image_id:
                 fragment_image_id = f"{fragment_image_id}:latest"
             if (
-                fragment_image_id == image.base + image.tag or
+                fragment_image_id == f"{image.base}:{image.tag}" or
                 container_name == image.get_name()
             ):
                 image_policy = image.get_policy_json()
@@ -923,11 +923,9 @@ def load_policy_from_str(
         policy_input_json, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
     ) or []
 
-    standalone_rego_fragment = case_insensitive_dict_get(
+    standalone_rego_fragments = case_insensitive_dict_get(
         policy_input_json, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS
     )
-    if standalone_rego_fragment:
-        rego_fragments.extend(standalone_rego_fragment)
 
     if rego_fragments:
         if not isinstance(rego_fragments, list):
@@ -936,6 +934,9 @@ def load_policy_from_str(
                 + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS}"]'
                 + "can only be a list."
             )
+
+        if standalone_rego_fragments:
+            rego_fragments.extend(standalone_rego_fragments)
 
         for fragment in rego_fragments:
             feed = case_insensitive_dict_get(
