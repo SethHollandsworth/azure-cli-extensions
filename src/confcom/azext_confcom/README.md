@@ -766,6 +766,18 @@ az confcom acifragmentgen --chain ./samples/certs/intermediateCA/certs/www.conto
 
 This could be useful in scenarios where an image-attached fragment is required but the fragment's feed is different from the image's location.
 
+Example 5: Create an import statement from a signed fragment in a remote repo:
+
+```bash
+az confcom acifragmentgen --generate-import --fragment-path contoso.azurecr.io/<my-fragment>:v1 --minimum-svn 1
+```
+
+This is assuming there is a standalone fragment present at the specified location of `contoso.azurecr.io/<my-fragment>:v1`. Fragment imports can also be created using local paths to signed fragment files such as:
+
+```bash
+az confcom acifragmentgen --generate-import --fragment-path ./contoso.rego.cose --minimum-svn 1
+```
+
 ## Microsoft Azure CLI 'confcom katapolicygen' Extension Examples
 
 Run `az confcom katapolicygen --help` to see a list of supported arguments along with explanations. The following commands demonstrate the usage of different arguments to generate confidential computing security policies.

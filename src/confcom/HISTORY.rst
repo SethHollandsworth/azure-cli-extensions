@@ -3,6 +3,10 @@
 Release History
 ===============
 
+1.2.4
+++++++
+* adding standalone fragments as an option for generation via acifragmentgen
+
 1.2.3
 ++++++
 * adding fragment support for VN2

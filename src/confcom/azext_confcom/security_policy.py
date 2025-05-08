@@ -14,6 +14,9 @@ from tqdm import tqdm
 from azext_confcom import os_util
 from azext_confcom import config
 from azext_confcom.container import UserContainerImage, ContainerImage
+from azext_confcom.oras_proxy import (
+    create_list_of_standalone_imports,
+)
 
 from azext_confcom.errors import eprint
 from azext_confcom.template_util import (
@@ -42,6 +45,7 @@ from azext_confcom.template_util import (
     process_mounts_from_config,
     process_fragment_imports,
     get_container_diff,
+    extract_standalone_fragments,
 )
 from azext_confcom.rootfs_proxy import SecurityPolicyProxy
 
@@ -580,10 +584,10 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 config.POLICY_FIELD_CONTAINERS_NAME
             )
             fragment_image_id = fragment_image.get(config.ACI_FIELD_CONTAINERS_ID)
-            if ":" not in fragment_image:
+            if ":" not in fragment_image_id:
                 fragment_image_id = f"{fragment_image_id}:latest"
             if (
-                fragment_image_id == image.base + image.tag or
+                fragment_image_id == f"{image.base}:{image.tag}" or
                 container_name == image.get_name()
             ):
                 image_policy = image.get_policy_json()
@@ -700,6 +704,16 @@ def load_policy_from_arm_template_str(
         # in the security policy
         if init_container_list:
             container_list.extend(init_container_list)
+
+        # these are standalone fragments coming from the ARM template itself
+        standalone_fragments = extract_standalone_fragments(container_group_properties)
+        if standalone_fragments:
+            standalone_fragment_imports = create_list_of_standalone_imports(standalone_fragments)
+            unique_imports = set(rego_imports)
+            for fragment in standalone_fragment_imports:
+                if fragment not in unique_imports:
+                    rego_imports.append(fragment)
+                    unique_imports.add(fragment)
 
         try:
             existing_containers, fragments = extract_confidential_properties(
@@ -909,6 +923,10 @@ def load_policy_from_str(
         policy_input_json, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
     ) or []
 
+    standalone_rego_fragments = case_insensitive_dict_get(
+        policy_input_json, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS
+    )
+
     if rego_fragments:
         if not isinstance(rego_fragments, list):
             eprint(
@@ -916,6 +934,9 @@ def load_policy_from_str(
                 + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS}"]'
                 + "can only be a list."
             )
+
+        if standalone_rego_fragments:
+            rego_fragments.extend(standalone_rego_fragments)
 
         for fragment in rego_fragments:
             feed = case_insensitive_dict_get(
@@ -1307,7 +1328,13 @@ def load_policy_from_config_str(config_str, debug_mode: bool = False, disable_st
 
     rego_fragments = case_insensitive_dict_get(
         config_dict, config.ACI_FIELD_CONTAINERS_REGO_FRAGMENTS
+    ) or []
+
+    standalone_rego_fragments = case_insensitive_dict_get(
+        config_dict, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS
     )
+    if standalone_rego_fragments:
+        rego_fragments.extend(standalone_rego_fragments)
 
     container_list = case_insensitive_dict_get(
         config_dict, config.ACI_FIELD_CONTAINERS
