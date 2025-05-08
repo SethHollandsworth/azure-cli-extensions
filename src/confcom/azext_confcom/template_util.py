@@ -574,7 +574,7 @@ def process_fragment_imports(rego_imports) -> None:
     return rego_imports
 
 
-def process_standalone_fragments(standalone_fragments: List[str]) -> Dict[str, str]:
+def process_standalone_fragments(standalone_fragments: List[str]) -> Tuple[List[str], List[str]]:
     fragment_contents = []
     feeds = []
 
@@ -1058,6 +1058,7 @@ def extract_standalone_fragments(
     if confidential_compute_properties is None:
         return []
 
+    # in the ARM template, this is a list of references (strings) to OCI registries
     standalone_fragments = case_insensitive_dict_get(
         confidential_compute_properties, config.ACI_FIELD_TEMPLATE_STANDALONE_REGO_FRAGMENTS
     ) or []
@@ -1126,20 +1127,28 @@ def extract_containers_and_fragments_from_text(text: str) -> Tuple[List[Dict], L
 
 
 def extract_svn_from_text(text: str) -> int:
-    # get the end of the line where svn is defined
-    start_index = text.find(config.REGO_SVN_START)
-    if start_index == -1:
-        eprint(f"'{config.REGO_SVN_START}' not found in the input text.")
-    ending = text[start_index + len(config.REGO_SVN_START):]
-    newline_index = ending.find("\n")
-    if newline_index == -1:
-        eprint("No newline character found after the SVN value.")
-    svn_str = ending[:newline_index]
+    """Extract SVN value from text using regex pattern matching.
+
+    Args:
+        text: The input text containing the SVN definition
+
+    Returns:
+        int: The SVN value
+
+    Raises:
+        CLIError: If SVN cannot be found or parsed
+    """
+    # Pattern matches: svn := "123" or svn := "1"
+    pattern = r'svn\s*:=\s*"(\d+)"'
+    match = re.search(pattern, text)
+
+    if not match:
+        eprint("SVN value not found in the input text.")
+
     try:
-        # strip the quotes and cast to int
-        return int(svn_str.strip('"'))
-    except ValueError:
-        eprint(f"Unable to convert SVN value '{svn_str}' to an integer.")
+        return int(match.group(1))
+    except (AttributeError, ValueError, IndexError):
+        eprint(f"Unable to extract valid SVN value from the text.")
 
 
 # making these lambda print functions looks cleaner than having "json.dumps" 6 times
