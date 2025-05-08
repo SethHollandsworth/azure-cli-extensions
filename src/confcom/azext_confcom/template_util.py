@@ -1134,9 +1134,6 @@ def extract_svn_from_text(text: str) -> int:
 
     Returns:
         int: The SVN value
-
-    Raises:
-        CLIError: If SVN cannot be found or parsed
     """
     # Pattern matches: svn := "123" or svn := "1"
     pattern = r'svn\s*:=\s*"(\d+)"'
