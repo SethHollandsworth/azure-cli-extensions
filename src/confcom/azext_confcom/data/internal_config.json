@@ -18,32 +18,32 @@
     "fabric": {
         "environmentVariables": [
             {
-                "name": "(?i)(FABRIC)_.+",
-                "value": ".+",
+                "name": "^(?i)(FABRIC)_.+",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "HOSTNAME",
-                "value": ".+",
+                "name": "^HOSTNAME",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "T(E)?MP",
-                "value": ".+",
+                "name": "^T(E)?MP",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "FabricPackageFileName",
-                "value": ".+",
+                "name": "^FabricPackageFileName",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "HostedServiceName",
-                "value": ".+",
+                "name": "^HostedServiceName",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             }
@@ -52,50 +52,50 @@
     "default_envs_virtual_node": {
         "environmentVariables": [
             {
-                "name": "[A-Z0-9_]+_SERVICE_HOST",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_SERVICE_HOST",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "[A-Z0-9_]+_SERVICE_PORT",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_SERVICE_PORT",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "[A-Z0-9_]+_SERVICE_PORT_[A-Z0-9_]+",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_SERVICE_PORT_[A-Z0-9_]+",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "[A-Z0-9_]+_PORT",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_PORT",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "[A-Z0-9_]+_PORT_[0-9]+_TCP",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_PORT_[0-9]+_TCP",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "[A-Z0-9_]+_PORT_[0-9]+_TCP_PROTO",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_PORT_[0-9]+_TCP_PROTO",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "[A-Z0-9_]+_PORT_[0-9]+_TCP_PORT",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_PORT_[0-9]+_TCP_PORT",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "[A-Z0-9_]+_PORT_[0-9]+_TCP_ADDR",
-                "value": ".+",
+                "name": "^[A-Z0-9_]+_PORT_[0-9]+_TCP_ADDR",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             }
@@ -104,26 +104,26 @@
     "workload_identity_virtual_node": {
         "environmentVariables": [
             {
-                "name": "AZURE_CLIENT_ID",
-                "value": ".+",
+                "name": "^AZURE_CLIENT_ID",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "AZURE_TENANT_ID",
-                "value": ".+",
+                "name": "^AZURE_TENANT_ID",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "AZURE_FEDERATED_TOKEN_FILE",
-                "value": ".+",
+                "name": "^AZURE_FEDERATED_TOKEN_FILE",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "AZURE_AUTHORITY_HOST",
-                "value": ".+",
+                "name": "^AZURE_AUTHORITY_HOST",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             }
@@ -132,20 +132,20 @@
     "managedIdentity": {
         "environmentVariables": [
             {
-                "name": "IDENTITY_API_VERSION",
-                "value": ".+",
+                "name": "^IDENTITY_API_VERSION",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "IDENTITY_HEADER",
-                "value": ".+",
+                "name": "^IDENTITY_HEADER",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             },
             {
-                "name": "IDENTITY_SERVER_THUMBPRINT",
-                "value": ".+",
+                "name": "^IDENTITY_SERVER_THUMBPRINT",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             }
@@ -154,8 +154,8 @@
     "enableRestart": {
         "environmentVariables": [
             {
-                "name": "azurecontainerinstance_restarted_by",
-                "value": ".+",
+                "name": "^azurecontainerinstance_restarted_by",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             }
@@ -164,8 +164,8 @@
     "debugMode": {
         "environmentVariables": [
             {
-                "name": ".+",
-                "value": ".+",
+                "name": "^.+",
+                "value": ".+$",
                 "strategy": "re2",
                 "required": false
             }
