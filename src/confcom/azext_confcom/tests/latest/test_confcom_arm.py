@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from azext_confcom.security_policy import (
     OutputType,
-    load_policy_from_str,
+    load_policy_from_pure_json,
     load_policy_from_arm_template_str,
 )
 import azext_confcom.config as config
@@ -204,7 +204,7 @@ class PolicyGeneratingArm(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
@@ -3541,7 +3541,7 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 

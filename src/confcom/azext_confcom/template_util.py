@@ -1494,3 +1494,180 @@ def process_seccomp_policy(policy2):
         # put temp_syscalls back into policy
         policy['syscalls'] = temp_syscalls
     return policy
+
+def convert_old_format_to_new_format(old_data):
+    """
+    Convert a JSON structure from the 'old' format to the 'new' format.
+
+    :param old_data: Dictionary in the old format.
+    :return: Dictionary in the new format.
+
+    Expected old_data schema (simplified):
+    {
+        "version": "1.0",
+        "containers": [
+            {
+                "name": "...",
+                "containerImage": "...",
+                "environmentVariables": [
+                    {
+                        "name": "...",
+                        "value": "...",
+                        "strategy": "string" or "regexp" (optional)
+                    }
+                ],
+                "command": [...],
+                "workingDir": "...",
+                "mounts": [
+                    {
+                        "mountType": "...",
+                        "mountPath": "...",
+                        "readonly": bool
+                    }
+                ]
+            },
+            ...
+        ]
+    }
+
+    Returns a structure matching the 'new' format:
+    {
+        "version": "...",
+        "fragments": [],
+        "containers": [
+            {
+                "name": "...",
+                "properties": {
+                    "image": "...",
+                    "workingDir": "...",
+                    "execProcesses": [
+                        {
+                            "command": [...]
+                        }
+                    ],
+                    "volumeMounts": [
+                        {
+                            "name": "...",
+                            "mountPath": "...",
+                            "mountType": "...",
+                            "readOnly": bool
+                        }
+                    ],
+                    "environmentVariables": [
+                        {
+                            "name": "...",
+                            "value": "...",
+                            "regex": bool (only present if we decide so)
+                        }
+                    ]
+                }
+            },
+            ...
+        ]
+    }
+    """
+
+    # Prepare the structure of the new JSON
+    new_data = {
+        "version": old_data.get("version", "1.0"),  # default if missing
+        "fragments": [],  # empty by default in your example
+        "containers": []
+    }
+
+    old_containers = old_data.get("containers", [])
+
+    for old_container in old_containers:
+        # Build the 'environmentVariables' section in the new format
+        new_envs = []
+        for env_var in old_container.get("environmentVariables", []):
+            # Decide if we need 'regex' or not, based on 'strategy' or your custom logic
+            # Here we'll assume "strategy"=="re2" means 'regex' = True
+            # If strategy is missing or 'string', omit 'regex' or set it to False
+            env_entry = {
+                "name": env_var.get("name"),
+                "value": env_var.get("value", "")
+            }
+            strategy = env_var.get("strategy")
+            if strategy == "re2":
+                env_entry["regex"] = True
+
+            new_envs.append(env_entry)
+
+        # Build the 'execProcesses' from the old 'command'
+        exec_processes = []
+        old_command_list = old_container.get("execProcesses", [])
+        if old_command_list:
+            exec_processes.append({"command": old_command_list})
+
+        command = old_container.get("command")
+
+        # Liveness probe => exec process
+        liveness_probe = old_container.get("livenessProbe", {})
+        liveness_exec = liveness_probe.get("exec", {})
+        liveness_command = liveness_exec.get("command", [])
+        if liveness_command:
+            exec_processes.append({
+                "command": liveness_command
+            })
+
+        # Readiness probe => exec process
+        readiness_probe = old_container.get("readinessProbe", {})
+        readiness_exec = readiness_probe.get("exec", {})
+        readiness_command = readiness_exec.get("command", [])
+        if readiness_command:
+            exec_processes.append({
+                "command": readiness_command
+            })
+
+
+        # Build the 'volumeMounts' section
+        volume_mounts = []
+        for mount in old_container.get("mounts", []):
+            # For 'name', we can take the mountType or generate something else:
+            # e.g. if mountType is "azureFile", name "azurefile"
+            mount_name = mount.get("mountType", "defaultName").lower()
+            volume_mount = {
+                "name": mount_name,
+                "mountPath": mount.get("mountPath"),
+                "mountType": mount.get("mountType"),
+                "readOnly": mount.get("readonly", True),
+            }
+            volume_mounts.append(volume_mount)
+
+        # Create the container's "properties" object
+        container_properties = {
+            "image": old_container.get("containerImage"),
+            "execProcesses": exec_processes,
+            "volumeMounts": volume_mounts,
+            "environmentVariables": new_envs,
+            "command": command,
+        }
+
+        if old_container.get("workingDir") is not None:
+            container_properties["workingDir"] = old_container["workingDir"]
+
+        if old_container.get("securityContext") is not None:
+            container_properties["securityContext"] = old_container["securityContext"]
+
+        # Finally, assemble the new container dict
+        new_container = {
+            "name": old_container.get("name"),
+            "properties": container_properties
+        }
+
+        new_data["containers"].append(new_container)
+
+    return new_data
+
+
+def detect_old_format(old_data):
+    old_containers = old_data.get("containers", [])
+    if len(old_containers) > 0 and old_containers[0].get(config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE) is not None:
+        logger.warning(
+            "%s %s %s",
+            "(Deprecation Warning) The input the --save-to-file (-s) flag is deprecated ",
+            "and will be removed in a future release. ",
+            "Please print to the console and redirect to a file instead."
+        )
+        return True
+    return False
