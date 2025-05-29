@@ -252,6 +252,63 @@ Because the ARM Template does not have a value defined for the "placeholderValue
 az deployment group create --template-file "template.json" --parameters "parameters.json"
 ```
 
+Example 13: Another way to add additional flexibility to a security policy is by using a "pure json" approach to the config file.
+This gives the added flexibility of regular expressions for environment variables and including fragments without the need for the `--fragments-json` flag. It uses the same format as `acifragmentgen` such that if there needs to be different deployments with similar configs, very few changes are needed.
+
+```json
+{
+    "fragments": [
+        {
+            "feed": "contoso.azurecr.io/example",
+            "includes": [
+                "containers",
+                "fragments"
+            ],
+            "issuer": "did:x509:0:sha256:mLzv0uyBNQvC6hi4y9qy8hr6NSZuYFv6gfCwAEWBNqc::subject:CN:Contoso",
+            "minimum_svn": "1"
+        }
+    ],
+ "containers": [
+    {
+    "name": "my-image",
+    "properties": {
+            "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
+            "environmentVariables": [
+                {
+                    "name": "PATH",
+                    "value": "/customized/path/value"
+                },
+                {
+                    "name": "TEST_REGEXP_ENV",
+                    "value": "test_regexp_env(.*)",
+                    "regex": true
+                }
+            ],
+            "execProcesses": [
+                {
+                    "command": [
+                        "ls"
+                    ]
+                }
+            ],
+            "volumeMounts": [
+                {
+                    "name": "mymount",
+                    "mountPath": "/mount/mymount",
+                    "mountType": "emptyDir",
+                    "readOnly": false
+                }
+            ],
+            "command": [
+                "python3",
+                "main.py"
+            ]
+        }
+    }
+ ]
+}
+```
+
 ## dmverity Layer Hashing
 
 To ensure the container that is being deployed is the intended container, the `confcom` tooling uses [dmverity hashing](https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/verity.html). This is done by downloading the container locally with the Docker Daemon (or using a pre-downloaded tar file of the OCI image) and performing the dmverity hashing using the [dmverity-vhd tool](https://github.com/microsoft/hcsshim/tree/main/cmd/dmverity-vhd). These layer hashes are placed into the Rego security policy in the "layers" field of their respective container. Note that these dmverity layer hashes are different than the layer hashes reported by `docker image inspect`.
@@ -765,6 +822,29 @@ az confcom acifragmentgen --chain ./samples/certs/intermediateCA/certs/www.conto
 ```
 
 This could be useful in scenarios where an image-attached fragment is required but the fragment's feed is different from the image's location.
+
+Example 5: This format can also be used to generate fragments used for VN2. Adding the `scenario` key with the value `vn2` tells confcom which default values need to be added. Save this file as `fragment_config.json`:
+
+```json
+{
+    "version": "1.0",
+    "scenario": "vn2",
+    "containers": [
+        {
+            "name": "my-image",
+            "properties": {
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8"
+            }
+        }
+    ]
+}
+```
+
+Using the same command, the default mounts and environment variables used by VN2 will be added to the policy fragment.
+
+```bash
+az confcom acifragmentgen --input ./fragment_config.json --svn 1 --namespace contoso
+```
 
 ## Microsoft Azure CLI 'confcom katapolicygen' Extension Examples
 
