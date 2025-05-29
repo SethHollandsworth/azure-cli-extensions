@@ -253,7 +253,8 @@ az deployment group create --template-file "template.json" --parameters "paramet
 ```
 
 Example 13: Another way to add additional flexibility to a security policy is by using a "pure json" approach to the config file.
-This gives the added flexibility of regular expressions for environment variables and including fragments without the need for the `--fragments-json` flag. It uses the same format as `acifragmentgen` such that if there needs to be different deployments with similar configs, very few changes are needed.
+This gives the added flexibility of regular expressions for environment variables and including fragments without the need for the `--fragments-json` flag.
+It uses the same format as `acifragmentgen` such that if there needs to be different deployments with similar configs, very few changes are needed.
 
 ```json
 {
@@ -268,10 +269,10 @@ This gives the added flexibility of regular expressions for environment variable
             "minimum_svn": "1"
         }
     ],
- "containers": [
-    {
-    "name": "my-image",
-    "properties": {
+    "containers": [
+        {
+            "name": "my-image",
+            "properties": {
             "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
             "environmentVariables": [
                 {
@@ -755,29 +756,29 @@ The config file is a JSON file that contains the following information:
 
 ```json
 {
- "containers": [
-  {
-   "name": "my-image",
-   "properties": {
-    "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
-    "environmentVariables": [
-     {
-      "name": "PATH",
-      "value": "/customized/path/value"
-     },
-     {
-      "name": "TEST_REGEXP_ENV",
-      "value": "test_regexp_env(.*)",
-      "regex": true
-     }
-    ],
-    "command": [
-     "python3",
-     "main.py"
+    "containers": [
+        {
+            "name": "my-image",
+            "properties": {
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
+                "environmentVariables": [
+                    {
+                        "name": "PATH",
+                        "value": "/customized/path/value"
+                    },
+                    {
+                        "name": "TEST_REGEXP_ENV",
+                        "value": "test_regexp_env(.*)",
+                        "regex": true
+                    }
+                ],
+                "command": [
+                    "python3",
+                    "main.py"
+                ]
+            }
+        }
     ]
-   }
-  }
- ]
 }
 ```
 
@@ -889,11 +890,11 @@ The `--print-policy` argument is included to display the policy on the command l
 Example 2: This command injects a security policy into the pod spec based on input from a config map so that there is no need to change the pod spec to pass variables into the security policy:
 
 ```bash
-az confcom katapolicygen -y .\\pod.yaml -c .\\config-map.yaml
+az confcom katapolicygen -y ./pod.yaml -c ./config-map.yaml
 ```
 
 Example 3: This command caches the layer hashes and stores them locally on your computer to make future computations faster if the same images are used:
 
 ```bash
-az confcom katapolicygen -y .\\pod.yaml -u
+az confcom katapolicygen -y ./pod.yaml -u
 ```

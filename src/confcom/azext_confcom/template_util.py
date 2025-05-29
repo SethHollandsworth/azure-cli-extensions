@@ -1674,9 +1674,9 @@ def detect_old_format(old_data):
         # TODO: update warning message to be about new format for pure json and link to docs
         logger.warning(
             "%s %s %s",
-            "(Deprecation Warning) The input the --save-to-file (-s) flag is deprecated ",
-            "and will be removed in a future release. ",
-            "Please print to the console and redirect to a file instead."
+            "(Deprecation Warning) The input format used is deprecated.",
+            "To view the current format, please look at the examples in: ",
+            "https://github.com/Azure/azure-cli-extensions/blob/main/src/confcom/azext_confcom/README.md"
         )
         return True
     return False
