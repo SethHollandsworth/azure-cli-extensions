@@ -1671,7 +1671,6 @@ def convert_old_format_to_new_format(old_data):
 def detect_old_format(old_data):
     old_containers = old_data.get("containers", [])
     if len(old_containers) > 0 and old_containers[0].get(config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE) is not None:
-        # TODO: update warning message to be about new format for pure json and link to docs
         logger.warning(
             "%s %s %s",
             "(Deprecation Warning) The input format used is deprecated.",
