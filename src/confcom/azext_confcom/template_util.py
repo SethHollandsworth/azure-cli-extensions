@@ -1654,6 +1654,9 @@ def convert_old_format_to_new_format(old_data):
                 container_properties["securityContext"] = {}
             container_properties["securityContext"]["privileged"] = old_container.get("allow_elevated")
 
+        if old_container.get("workingDir") is not None:
+            container_properties["workingDir"] = old_container.get("workingDir")
+
         # Finally, assemble the new container dict
         new_container = {
             "name": old_container.get("name"),

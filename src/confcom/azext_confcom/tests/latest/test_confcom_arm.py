@@ -1423,7 +1423,7 @@ class PolicyDiff(unittest.TestCase):
     "contentVersion": "1.0.0.0",
     "variables": {
         "container1name": "aci-test",
-        "container1image": "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0"
+        "container1image": "mcr.microsoft.com/azurelinux/base/python:3.12"
     },
     "resources": [
         {
@@ -1623,6 +1623,9 @@ class PolicyDiff(unittest.TestCase):
                 ],
             }
         }
+
+        print("diff: ", diff)
+        print("expected_diff: ", expected_diff)
 
         self.assertEqual(diff, expected_diff)
 
