@@ -228,7 +228,7 @@ def acifragmentgen_confcom(
     feed: str,
     key: str,
     chain: str,
-    minimum_svn: int,
+    minimum_svn: str,
     image_target: str = "",
     algo: str = "ES384",
     fragment_path: str = None,

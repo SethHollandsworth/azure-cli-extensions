@@ -1502,7 +1502,7 @@ class PolicyDiff(unittest.TestCase):
     "contentVersion": "1.0.0.0",
     "variables": {
         "container1name": "aci-test",
-        "container1image": "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0"
+        "container1image": "mcr.microsoft.com/azurelinux/base/python:3.12"
     },
     "resources": [
         {
@@ -1827,6 +1827,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                                     "memoryInGb": 1.5
                                 }
                             },
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "ports": [
                                 {
                                     "port": 80
@@ -1887,6 +1892,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "[variables('container2name')]",
                         "properties": {
                             "image": "[variables('container2image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,
@@ -1944,6 +1954,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "aci-test-1",
                         "properties": {
                             "image": "[variables('container1image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,
@@ -1962,6 +1977,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "aci-test-2",
                         "properties": {
                             "image": "[variables('container1image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,
@@ -1980,6 +2000,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "aci-test-3",
                         "properties": {
                             "image": "[variables('container1image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,

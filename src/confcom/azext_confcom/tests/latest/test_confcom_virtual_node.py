@@ -11,7 +11,7 @@ import azext_confcom.config as config
 import azext_confcom.os_util as os_util
 from azext_confcom.template_util import extract_containers_from_text
 from azext_confcom.security_policy import (
-    load_policy_from_str,
+    load_policy_from_pure_json,
     load_policy_from_virtual_node_yaml_str,
     OutputType,
     decompose_confidential_properties
@@ -365,7 +365,7 @@ spec:
                 raise Exception("Error creating certificate chain")
 
     def test_compare_policy_sources(self):
-        custom_policy = load_policy_from_str(self.custom_json)
+        custom_policy = load_policy_from_pure_json(self.custom_json)
         custom_policy.populate_policy_content_for_all_images()
         virtual_node_policy = load_policy_from_virtual_node_yaml_str(self.custom_yaml)[0]
         virtual_node_policy.populate_policy_content_for_all_images()
@@ -383,17 +383,18 @@ spec:
 
 
     def test_virtual_node_policy_fragments(self):
+        fragment_filename = "policy_file.json"
+        yaml_filename = "policy_file.yaml"
+        rego_filename = "example_file"
+        import_filename = "my_fragments.json"
+        signed_file_path = f"{rego_filename}.rego.cose"
         try:
-          fragment_filename = "policy_file.json"
-          yaml_filename = "policy_file.yaml"
+
           os_util.write_str_to_file(fragment_filename, self.custom_json2)
           os_util.write_str_to_file(yaml_filename, self.custom_yaml)
-          rego_filename = "example_file"
           acifragmentgen_confcom(None, fragment_filename, None, rego_filename, "1", "test_feed_file", self.key, self.chain, None)
 
           # create import file
-          import_filename = "my_fragments.json"
-          signed_file_path = f"{rego_filename}.rego.cose"
           acifragmentgen_confcom(None, None, None, None, None, None, None, None, "1", fragment_path=signed_file_path, generate_import=True, fragments_json=import_filename)
           # add path into the fragment import
           import_data = os_util.load_json_from_file(import_filename)

@@ -505,7 +505,7 @@ def process_env_vars_from_config(container) -> List[Dict[str, str]]:
         name = case_insensitive_dict_get(env_var, "name")
         secure_value = case_insensitive_dict_get(env_var, "secureValue")
         is_secure = bool(secure_value)
-        value = case_insensitive_dict_get(env_var, "value") or secure_value
+        value = case_insensitive_dict_get(env_var, "value") or secure_value or ""
 
         if not name and not is_secure:
             eprint(
@@ -515,7 +515,7 @@ def process_env_vars_from_config(container) -> List[Dict[str, str]]:
             eprint(
                 "Environment variable with secure value is missing a name"
             )
-        elif not value:
+        elif value == None:
             eprint(f'Environment variable {name} does not have a value. Please check the template file.')
 
         env_vars.append({
@@ -1579,7 +1579,7 @@ def convert_old_format_to_new_format(old_data):
     for old_container in old_containers:
         # Build the 'environmentVariables' section in the new format
         new_envs = []
-        for env_var in old_container.get("environmentVariables", []):
+        for env_var in old_container.get("environmentVariables") or []:
             # Decide if we need 'regex' or not, based on 'strategy' or your custom logic
             # Here we'll assume "strategy"=="re2" means 'regex' = True
             # If strategy is missing or 'string', omit 'regex' or set it to False
@@ -1622,7 +1622,7 @@ def convert_old_format_to_new_format(old_data):
 
         # Build the 'volumeMounts' section
         volume_mounts = []
-        for mount in old_container.get("mounts", []):
+        for mount in old_container.get("mounts") or []:
             # For 'name', we can take the mountType or generate something else:
             # e.g. if mountType is "azureFile", name "azurefile"
             mount_name = mount.get("mountType", "defaultName").lower()
@@ -1649,6 +1649,11 @@ def convert_old_format_to_new_format(old_data):
         if old_container.get("securityContext") is not None:
             container_properties["securityContext"] = old_container["securityContext"]
 
+        if old_container.get("allow_elevated") is not None:
+            if "securityContext" not in container_properties:
+                container_properties["securityContext"] = {}
+            container_properties["securityContext"]["privileged"] = old_container.get("allow_elevated")
+
         # Finally, assemble the new container dict
         new_container = {
             "name": old_container.get("name"),
@@ -1663,6 +1668,7 @@ def convert_old_format_to_new_format(old_data):
 def detect_old_format(old_data):
     old_containers = old_data.get("containers", [])
     if len(old_containers) > 0 and old_containers[0].get(config.ACI_FIELD_CONTAINERS_CONTAINERIMAGE) is not None:
+        # TODO: update warning message to be about new format for pure json and link to docs
         logger.warning(
             "%s %s %s",
             "(Deprecation Warning) The input the --save-to-file (-s) flag is deprecated ",
