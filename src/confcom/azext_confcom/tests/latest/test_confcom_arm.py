@@ -1624,9 +1624,6 @@ class PolicyDiff(unittest.TestCase):
             }
         }
 
-        print("diff: ", diff)
-        print("expected_diff: ", expected_diff)
-
         self.assertEqual(diff, expected_diff)
 
 

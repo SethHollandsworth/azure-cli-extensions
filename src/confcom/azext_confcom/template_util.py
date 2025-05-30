@@ -1643,9 +1643,6 @@ def convert_old_format_to_new_format(old_data):
             "command": command,
         }
 
-        if old_container.get("workingDir") is not None:
-            container_properties["workingDir"] = old_container["workingDir"]
-
         if old_container.get("securityContext") is not None:
             container_properties["securityContext"] = old_container["securityContext"]
 
