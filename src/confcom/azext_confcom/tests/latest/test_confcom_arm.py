@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from azext_confcom.security_policy import (
     OutputType,
-    load_policy_from_str,
+    load_policy_from_pure_json,
     load_policy_from_arm_template_str,
 )
 import azext_confcom.config as config
@@ -204,7 +204,7 @@ class PolicyGeneratingArm(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
@@ -1423,7 +1423,7 @@ class PolicyDiff(unittest.TestCase):
     "contentVersion": "1.0.0.0",
     "variables": {
         "container1name": "aci-test",
-        "container1image": "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0"
+        "container1image": "mcr.microsoft.com/azurelinux/base/python:3.12"
     },
     "resources": [
         {
@@ -1502,7 +1502,7 @@ class PolicyDiff(unittest.TestCase):
     "contentVersion": "1.0.0.0",
     "variables": {
         "container1name": "aci-test",
-        "container1image": "mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0"
+        "container1image": "mcr.microsoft.com/azurelinux/base/python:3.12"
     },
     "resources": [
         {
@@ -1827,6 +1827,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                                     "memoryInGb": 1.5
                                 }
                             },
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "ports": [
                                 {
                                     "port": 80
@@ -1887,6 +1892,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "[variables('container2name')]",
                         "properties": {
                             "image": "[variables('container2image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,
@@ -1944,6 +1954,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "aci-test-1",
                         "properties": {
                             "image": "[variables('container1image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,
@@ -1962,6 +1977,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "aci-test-2",
                         "properties": {
                             "image": "[variables('container1image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,
@@ -1980,6 +2000,11 @@ class MultiplePolicyTemplate(unittest.TestCase):
                         "name": "aci-test-3",
                         "properties": {
                             "image": "[variables('container1image')]",
+                            "command": [
+                            "/bin/sh",
+                            "-c",
+                            "ls"
+                            ],
                             "resources": {
                                 "requests": {
                                     "cpu": 1,
@@ -3541,7 +3566,7 @@ class PolicyGeneratingArmWildcardEnvs(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 

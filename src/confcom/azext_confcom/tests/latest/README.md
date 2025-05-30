@@ -81,7 +81,7 @@ test_infrastructure_svn | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 |
 test_stdio_access_default | mcr.microsoft.com/cbl-mariner/distroless/python:3.9-nonroot | Checking the default value for std I/O access
 test_stdio_access_updated | mcr.microsoft.com/cbl-mariner/distroless/python:3.9-nonroot | Checking the value for std I/O when it's set
 test_omit_id | mcr.microsoft.com/cbl-mariner/distroless/python:3.9-nonroot | Check that the id field is omitted from the policy
-test_environment_variables_parsing | mcr.microsoft.com/azuredocs/aci-dataprocessing-cc:v1 | Make sure env vars are output in the right format
+test_environment_variables_parsing | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Make sure env vars are output in the right format
 test_get_layers_from_not_exists_image | notexists:1.0.0 | Fail out grabbing layers if image doesn't exist
 test_incorrect_allow_elevated_data_type | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Making allow_elevated fail out if it's not a boolean
 test_incorrect_workingdir_path | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Fail if working dir isn't an absolute path string
@@ -89,8 +89,8 @@ test_incorrect_workingdir_data_type | mcr.microsoft.com/cbl-mariner/distroless/m
 test_incorrect_command_data_type | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Fail if command is not array of strings
 test_json_missing_containers | N/A | Fail if containers are not specified
 test_json_missing_containerImage | N/A | Fail if container doesn't have an image specified
-test_json_missing_environmentVariables | mcr.microsoft.com/azuredocs/aci-dataprocessing-cc:v1 | Fail if there are no env vars defined
-test_json_missing_command | mcr.microsoft.com/azuredocs/aci-dataprocessing-cc:v1 | Fail if there is no command specified
+test_json_missing_environmentVariables | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Fail if there are no env vars defined
+test_json_missing_command | mcr.microsoft.com/cbl-mariner/distroless/minimal:2.0 | Fail if there is no command specified
 
 ## Image [test file](test_confcom_image.py)
 

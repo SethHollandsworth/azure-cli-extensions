@@ -12,7 +12,7 @@ from knack.util import CLIError
 from azext_confcom.security_policy import (
     UserContainerImage,
     OutputType,
-    load_policy_from_config_str
+    load_policy_from_pure_json
 )
 
 from azext_confcom.cose_proxy import CoseSignToolProxy
@@ -118,7 +118,7 @@ class FragmentMountEnforcement(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_config_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
@@ -350,7 +350,7 @@ class FragmentGenerating(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_config_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
@@ -487,7 +487,7 @@ class FragmentPolicyGeneratingDebugMode(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_config_str(cls.custom_json, debug_mode=True) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json, debug_mode=True) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
 
@@ -563,10 +563,10 @@ class FragmentSidecarValidation(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with load_policy_from_config_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
-        with load_policy_from_config_str(cls.custom_json2) as aci_policy2:
+        with load_policy_from_pure_json(cls.custom_json2) as aci_policy2:
             aci_policy2.populate_policy_content_for_all_images()
             cls.aci_policy2 = aci_policy2
 
@@ -745,10 +745,10 @@ class FragmentPolicySigning(unittest.TestCase):
             if item.returncode != 0:
                 raise Exception("Error creating certificate chain")
 
-        with load_policy_from_config_str(cls.custom_json) as aci_policy:
+        with load_policy_from_pure_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
-        with load_policy_from_config_str(cls.custom_json2) as aci_policy2:
+        with load_policy_from_pure_json(cls.custom_json2) as aci_policy2:
             aci_policy2.populate_policy_content_for_all_images()
             cls.aci_policy2 = aci_policy2
 
@@ -780,7 +780,7 @@ class FragmentPolicySigning(unittest.TestCase):
         algo = "ES384"
         out_path = filename + ".cose"
 
-        fragment_text = self.aci_policy.generate_fragment("payload4", 1, OutputType.RAW)
+        fragment_text = self.aci_policy.generate_fragment("payload4", "1", OutputType.RAW)
         try:
             write_str_to_file(filename, fragment_text)
 
@@ -788,7 +788,7 @@ class FragmentPolicySigning(unittest.TestCase):
             iss = cose_proxy.create_issuer(self.chain)
             cose_proxy.cose_sign(filename, self.key, self.chain, feed, iss, algo, out_path)
 
-            import_statement = cose_proxy.generate_import_from_path(out_path, 1)
+            import_statement = cose_proxy.generate_import_from_path(out_path, "1")
             self.assertTrue(import_statement)
             self.assertEqual(
                 import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER,""),iss
@@ -797,7 +797,7 @@ class FragmentPolicySigning(unittest.TestCase):
                 import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED,""),feed
             )
             self.assertEqual(
-                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN,""),1
+                import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN,""), "1"
             )
             self.assertEqual(
                 import_statement.get(config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES,[]),[config.POLICY_FIELD_CONTAINERS, config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS]
@@ -819,7 +819,7 @@ class FragmentPolicySigning(unittest.TestCase):
         out_path = filename + ".cose"
         out_path2 = filename2 + ".cose"
 
-        fragment_text = self.aci_policy.generate_fragment("payload2", 1, OutputType.RAW)
+        fragment_text = self.aci_policy.generate_fragment("payload2", "1", OutputType.RAW)
 
         try:
             write_str_to_file(filename, fragment_text)
@@ -831,7 +831,7 @@ class FragmentPolicySigning(unittest.TestCase):
 
             # this will insert the import statement from the first fragment into the second one
             acifragmentgen_confcom(
-                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=1, fragments_json=fragment_json, fragment_path=out_path
+                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn="1", fragments_json=fragment_json, fragment_path=out_path
             )
             # put the "path" field into the import statement
             temp_json = load_json_from_file(fragment_json)
@@ -840,7 +840,7 @@ class FragmentPolicySigning(unittest.TestCase):
             write_str_to_file(fragment_json, json.dumps(temp_json))
 
             acifragmentgen_confcom(
-                None, fragment_json, None, "payload3", 1, feed2, self.key, self.chain, None, output_filename=filename2
+                None, fragment_json, None, "payload3", "1", feed2, self.key, self.chain, None, output_filename=filename2
             )
 
             # make sure all of our output files exist
