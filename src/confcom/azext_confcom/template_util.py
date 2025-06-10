@@ -558,7 +558,7 @@ def process_fragment_imports(rego_imports) -> None:
             eprint(
                 f'Field ["{config.ACI_FIELD_CONTAINERS}"]'
                 + f'["{config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN}"] '
-                + "can only be an integer value."
+                + "can only be a string with an integer value."
             )
 
         includes = case_insensitive_dict_get(

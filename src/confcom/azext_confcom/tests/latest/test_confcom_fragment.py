@@ -944,6 +944,10 @@ class FragmentVirtualNode(unittest.TestCase):
                 "securityContext": {
                     "privileged": true
                 }
+            }
+        }
+    ]
+}
 """
     aci_policy = None
 
@@ -1146,14 +1150,14 @@ class FragmentRegistryInteractions(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         # start the zot registry
-        cls.zot_image = "ghcr.io/project-zot/zot-linux-amd64:v2.1.2"
+        cls.zot_image = "ghcr.io/project-zot/zot-linux-amd64:latest"
         cls.registry = "localhost:5000"
         registry_name = "myregistry"
-        subprocess.run(f"docker pull {cls.zot_image}")
-        output = subprocess.run("docker ps -a", capture_output=True)
+        subprocess.run(f"docker pull {cls.zot_image}", shell=True)
+        output = subprocess.run("docker ps -a", capture_output=True, shell=True)
 
         if registry_name not in output.stdout.decode():
-            subprocess.run(f"docker run --name {registry_name} -d -p 5000:5000 {cls.zot_image}")
+            subprocess.run(f"docker run --name {registry_name} -d -p 5000:5000 {cls.zot_image}", shell=True)
 
         cls.key_dir_parent = os.path.join(TEST_DIR, '..', '..', '..', 'samples', 'certs')
         cls.key = os.path.join(cls.key_dir_parent, 'intermediateCA', 'private', 'ec_p384_private.pem')
@@ -1178,19 +1182,19 @@ class FragmentRegistryInteractions(unittest.TestCase):
             if item.returncode != 0:
                 raise Exception("Error creating certificate chain")
 
-        with load_policy_from_config_str(cls.custom_json) as aci_policy:
+        with load_policy_from_json(cls.custom_json) as aci_policy:
             aci_policy.populate_policy_content_for_all_images()
             cls.aci_policy = aci_policy
-        with load_policy_from_config_str(cls.custom_json2) as aci_policy2:
+        with load_policy_from_json(cls.custom_json2) as aci_policy2:
             aci_policy2.populate_policy_content_for_all_images()
             cls.aci_policy2 = aci_policy2
 
         # stall while we wait for the registry to start running
-        logs = subprocess.run(f"docker logs {registry_name}", capture_output=True)
+        logs = subprocess.run(f"docker logs {registry_name}", capture_output=True, shell=True)
         counter = 0
         while logs.returncode != 0:
             time.sleep(1)
-            logs = subprocess.run(f"docker logs {registry_name}", capture_output=True)
+            logs = subprocess.run(f"docker logs {registry_name}", capture_output=True, shell=True)
             counter += 1
             if counter == 10:
                 raise Exception("Could not start local registry in time")
@@ -1315,7 +1319,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
 
             # this will insert the import statement from the first fragment into the second one
             acifragmentgen_confcom(
-                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn=2, fragments_json=fragment_json, fragment_path=out_path
+                None, None, None, None, None, None, None, None, generate_import=True, minimum_svn="2", fragments_json=fragment_json, fragment_path=out_path
             )
             # put the "path" field into the import statement
             push_fragment_to_registry(feed, out_path)
@@ -1343,8 +1347,8 @@ class FragmentRegistryInteractions(unittest.TestCase):
             delete_silently(fragment_json)
 
     def test_image_attached_fragment_coverage(self):
-        subprocess.run("docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.9 localhost:5000/helloworld:2.8")
-        subprocess.run("docker push localhost:5000/helloworld:2.8", timeout=30)
+        subprocess.run("docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.9 localhost:5000/helloworld:2.8", shell=True)
+        subprocess.run("docker push localhost:5000/helloworld:2.8", timeout=30, shell=True)
         filename = "container_image_attached.json"
         rego_filename = "temp_namespace"
         try:
