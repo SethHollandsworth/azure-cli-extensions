@@ -1145,7 +1145,7 @@ def extract_svn_from_text(text: str) -> int:
     try:
         return int(match.group(1))
     except (AttributeError, ValueError, IndexError):
-        eprint(f"Unable to extract valid SVN value from the text.")
+        eprint("Unable to extract valid SVN value from the text.")
 
 
 # making these lambda print functions looks cleaner than having "json.dumps" 6 times
