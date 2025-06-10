@@ -165,20 +165,14 @@ test_debug_processes | mcr.microsoft.com/azurelinux/distroless/base:3.0 | Enable
 test_fragment_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See if sidecar fragments can be created by a given policy.json
 test_fragment_sidecar_stdio_access_default | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Check that sidecar containers have std I/O access by default
 test_fragment_incorrect_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | See what output format for failing sidecar validation would be
-<<<<<<< HEAD
 test_signing | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Sign a fragment with a key and chain file
 test_generate_import | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Generate an import statement for the signed fragment file
 test_local_fragment_references | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Make sure the fragment references are correct when the fragment is local
-=======
-test_signing | mcr.microsoft.com/acc/samples/aci/helloworld:2.8 | Sign a fragment with a key and chain file
-test_generate_import | mcr.microsoft.com/acc/samples/aci/helloworld:2.8 | Generate an import statement for the signed fragment file
-test_local_fragment_references | mcr.microsoft.com/acc/samples/aci/helloworld:2.8 | Make sure the fragment references are correct when the fragment is local
 test_registry_is_running | N/A | See if the local registry is running
-test_generate_import_from_remote | mcr.microsoft.com/acc/samples/aci/helloworld:2.8 | Test generating an import statement from the feed of a signed standalone fragment
-test_remote_fragment_references | mcr.microsoft.com/acc/samples/aci/helloworld:2.8 & mcr.microsoft.com/cbl-mariner/busybox:1.35 | Test standard standalone fragment usage
-test_incorrect_minimum_svn | mcr.microsoft.com/acc/samples/aci/helloworld:2.8 | Make sure that fragments with too low of an svn are not included when using fragments
-test_image_attached_fragment_coverage | mcr.microsoft.com/acc/samples/aci/helloworld:2.8 | Test nested standalone fragment generation
->>>>>>> 2163b0509 (allow for pulling of standalone fragments)
+test_generate_import_from_remote | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Test generating an import statement from the feed of a signed standalone fragment
+test_remote_fragment_references | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 & mcr.microsoft.com/cbl-mariner/busybox:1.35 | Test standard standalone fragment usage
+test_incorrect_minimum_svn | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Make sure that fragments with too low of an svn are not included when using fragments
+test_image_attached_fragment_coverage | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Test nested standalone fragment generation
 test_invalid_input | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Fail out under various invalid input circumstances
 
 ## Policy Conversion File [test file](test_confcom_policy_conversion.py)

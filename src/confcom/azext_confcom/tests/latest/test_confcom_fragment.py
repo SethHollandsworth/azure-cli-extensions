@@ -997,7 +997,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
         {
             "name": "my-image2",
             "properties": {
-                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.9",
                 "execProcesses": [
                     {
                         "command": [
@@ -1066,7 +1066,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
         {
             "name": "my-image2",
             "properties": {
-                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.8",
+                "image": "mcr.microsoft.com/acc/samples/aci/helloworld:2.9",
                 "execProcesses": [
                     {
                         "command": [
@@ -1281,7 +1281,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
             # see if the import statement is in the rego file
             self.assertTrue(feed in rego_str)
             # make sure the image covered by the first fragment isn't in the second fragment
-            self.assertFalse("mcr.microsoft.com/acc/samples/aci/helloworld:2.8" in rego_str)
+            self.assertFalse("mcr.microsoft.com/acc/samples/aci/helloworld:2.9" in rego_str)
         except Exception as e:
             raise e
         finally:
@@ -1332,7 +1332,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
             # see if the import statement is in the rego file
             self.assertTrue("test_feed" in rego_str)
             # make sure the image covered by the first fragment is in the second fragment because the svn prevents usage
-            self.assertTrue("mcr.microsoft.com/acc/samples/aci/helloworld:2.8" in rego_str)
+            self.assertTrue("mcr.microsoft.com/acc/samples/aci/helloworld:2.9" in rego_str)
         except Exception as e:
             raise e
         finally:
@@ -1343,7 +1343,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
             delete_silently(fragment_json)
 
     def test_image_attached_fragment_coverage(self):
-        subprocess.run("docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.8 localhost:5000/helloworld:2.8")
+        subprocess.run("docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.9 localhost:5000/helloworld:2.8")
         subprocess.run("docker push localhost:5000/helloworld:2.8", timeout=30)
         filename = "container_image_attached.json"
         rego_filename = "temp_namespace"
