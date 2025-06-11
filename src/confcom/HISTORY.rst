@@ -6,6 +6,7 @@ Release History
 1.2.7
 ++++++
 * bugfix making it so that oras discover function doesn't error when no fragments are found in the remote repository
+* splitting out documentation into command-specific files and adding info about --input flag
 
 1.2.6
 ++++++
