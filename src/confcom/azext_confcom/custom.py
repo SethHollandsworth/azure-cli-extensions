@@ -32,7 +32,7 @@ from azext_confcom.security_policy import OutputType
 from azext_confcom.kata_proxy import KataPolicyGenProxy
 from azext_confcom.cose_proxy import CoseSignToolProxy
 from azext_confcom import oras_proxy
-
+from azext_confcom.errors import eprint
 
 logger = get_logger(__name__)
 
