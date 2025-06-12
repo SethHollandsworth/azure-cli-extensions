@@ -253,7 +253,7 @@ def acifragmentgen_confcom(
         import_statements = []
         # images can have multiple fragments attached to them so we need an array to hold the import statements
         if fragment_path:
-            # download and cleanup the fragment form registry if it's not local already
+            # download and cleanup the fragment from registry if it's not local already
             downloaded_fragment = False
             if not os.path.exists(fragment_path):
                 fragment_path = oras_proxy.pull(fragment_path)
