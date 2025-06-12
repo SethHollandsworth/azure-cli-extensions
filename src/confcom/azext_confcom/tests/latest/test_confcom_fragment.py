@@ -715,7 +715,7 @@ class FragmentPolicySigning(unittest.TestCase):
         {
             "name": "my-image",
             "properties": {
-                "image": "mcr.microsoft.com/cbl-mariner/busybox:1.35",
+                "image": "mcr.microsoft.com/azurelinux/busybox:1.36",
                 "execProcesses": [
                     {
                         "command": [
@@ -1045,7 +1045,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
         {
             "name": "my-image",
             "properties": {
-                "image": "mcr.microsoft.com/cbl-mariner/busybox:1.35",
+                "image": "mcr.microsoft.com/azurelinux/busybox:1.36",
                 "execProcesses": [
                     {
                         "command": [
