@@ -27,10 +27,13 @@
 
 ## Security Policy Rules Documentation
 
+This document describes every enforcement point that a security policy must implement and the input each rule receives.
+All rules live in the policy's namespace and must return an object with at least the member allowed (boolean) that states whether the requested action is permitted.
+
 Below is an example rego policy:
 
 ```rego
-package policy
+package mypolicy
 
 import future.keywords.every
 import future.keywords.in
@@ -72,9 +75,7 @@ scratch_unmount := data.framework.scratch_unmount
 reason := {"errors": data.framework.errors}
 ```
 
-Every valid policy contain rules with the following names in the policy namespace.
-Each rule must return a Rego object with a member named allowed, which indicates whether the action is allowed by policy.
-We document each rule as follow:
+We document each rule as follows:
 
 ## mount_device
 
@@ -130,7 +131,7 @@ Receives an input object with the following members:
 
 ## create_container
 
-Indicates whether the UVM is allowed to create a specific container with the exact parameters provided to the method.
+Indicates whether the UVM (Utility-VM) is allowed to create a specific container with the exact parameters provided to the method.
 Provided in the following input object, the framework rule checks the exact parameters such as (command, environment variables, mounts etc.)
 
 ```json
@@ -167,7 +168,7 @@ Provided in the following input object, the framework rule checks the exact para
 
 ## exec_in_container
 
-Determines if a process should be executed in a container.
+Determines if a process should be executed in a container based on its command, arguments, environment variables, and working directory.
 Receives an input object with the following elements:
 
 ```json
@@ -189,7 +190,7 @@ Receives an input object with the following elements:
 
 ## exec_external
 
-Determines if a process should be executed in the UVM.
+Determines whether a process may run directly inside the UVM, outside of the container sandbox.
 Receives an input object with the following elements:
 
 ```json
