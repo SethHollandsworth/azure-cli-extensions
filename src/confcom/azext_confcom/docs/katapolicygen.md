@@ -4,7 +4,8 @@
 
 ## Microsoft Azure CLI 'confcom katapolicygen' Extension Examples
 
-Run `az confcom katapolicygen --help` to see a list of supported arguments along with explanations. The following commands demonstrate the usage of different arguments to generate confidential computing security policies.
+Run `az confcom katapolicygen --help` to see a list of supported arguments along with explanations.
+The following commands demonstrate the usage of different arguments to generate confidential computing security policies.
 
 **Prerequisites:**
 Install the Azure CLI and Confidential Computing extension.
@@ -29,7 +30,9 @@ Run this to update to the latest version if an older version is already installe
 az extension update --name confcom
 ```
 
-The `katapolicygen` command generates confidential computing security policies using a kubernetes pod spec. You can control the format of the generated policies using arguments. Note: It is recommended to use images with specific tags instead of the `latest` tag, as the `latest` tag can change at any time and images with different configurations may also have the latest tag.
+The `katapolicygen` command generates confidential computing security policies using a kubernetes pod spec.
+You can control the format of the generated policies using arguments.
+Note: It is recommended to use images with specific tags instead of the `latest` tag, as the `latest` tag can change at any time and images with different configurations may also have the latest tag.
 
 **Examples:**
 

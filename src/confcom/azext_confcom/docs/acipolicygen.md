@@ -1,12 +1,12 @@
 # acipolicygen
 
 - [Microsoft Azure CLI 'confcom acipolicygen' Extension Examples](#microsoft-azure-cli-confcom-acipolicygen-extension-examples)
-- [dmverity Layer Hashing](#dmverity-layer-hashing)
-- [AKS Virtual Node](#aks-virtual-node)
+- [AKS Virtual Node (VN2)](#aks-virtual-node)
 
 ## Microsoft Azure CLI 'confcom acipolicygen' Extension Examples
 
-Run `az confcom acipolicygen --help` to see a list of supported arguments along with explanations. The following commands demonstrate the usage of different arguments to generate confidential computing security policies.
+Run `az confcom acipolicygen --help` to see a list of supported arguments along with explanations.
+The following commands demonstrate the usage of different arguments to generate confidential computing security policies.
 
 **Prerequisites:**
 Install the Azure CLI and Confidential Computing extension.
@@ -31,7 +31,9 @@ Run this to update to the latest version if an older version is already installe
 az extension update --name confcom
 ```
 
-The `acipolicygen` command generates confidential computing security policies using an image, an input JSON file, or an ARM template. You can control the format of the generated policies using arguments. Note: It is recommended to use images with specific tags instead of the `latest` tag, as the `latest` tag can change at any time and images with different configurations may also have the latest tag.
+The `acipolicygen` command generates confidential computing security policies using an image, an input JSON file, or an ARM template.
+You can control the format of the generated policies using arguments.
+Note: It is recommended to use images with specific tags instead of the `latest` tag, as the `latest` tag can change at any time and images with different configurations may also have the latest tag.
 
 **Examples:**
 
@@ -50,10 +52,13 @@ Example 2: This command injects a CCE policy into [ARM-template](arm.template.md
 az confcom acipolicygen -a .\arm-template.json -p .\template.parameters.json
 ```
 
-This is mainly for decoupling purposes so that an ARM template can remain the same and evolving variables can go into a different file. When a security policy gets injected into the ARM Template, the corresponding sha256 hash of the decoded security policy gets printed to the command line. This sha256 hash can be used for verifying the hostdata field of the SEV-SNP Attestation Report and/or used for key release policies using MAA (Microsoft Azure Attestation) or mHSM (managed Hardware Security Module)
+This is mainly for decoupling purposes so that an ARM template can remain the same and evolving variables can go into a different file.
+When a security policy gets injected into the ARM Template, the corresponding sha256 hash of the decoded security policy gets printed to the command line.
+This sha256 hash can be used for verifying the hostdata field of the SEV-SNP Attestation Report and/or used for key release policies using MAA (Microsoft Azure Attestation) or mHSM (managed Hardware Security Module)
 
 Example 3: This command takes the input of an ARM template to create a human-readable CCE policy in pretty print JSON format and output the result to the console.
-NOTE: Generating JSON policy is for use by the customer only, and is not used by ACI In most cases. The default REGO format security policy is required.
+NOTE: Generating JSON policy is for use by the customer only, and is not used by ACI In most cases.
+The default REGO format security policy is required.
 
 ```bash
 az confcom acipolicygen -a ".\arm_template" --outraw-pretty-print
@@ -76,7 +81,8 @@ Example 5: Input an ARM template to create a human-readable CCE policy in pretty
 az confcom acipolicygen -a ".\arm-template" --outraw-pretty-print --save-to-file ".\output-file.rego"
 ```
 
-Example 6: Validate the policy present in the ARM template under "ccepolicy" and the containers within the ARM template are compatible. If they are incompatible, a list of reasons is given and the exit status code will be 2:
+Example 6: Validate the policy present in the ARM template under "ccepolicy" and the containers within the ARM template are compatible.
+If they are incompatible, a list of reasons is given and the exit status code will be 2:
 
 ```bash
 az confcom acipolicygen -a ".\arm-template.json" --diff
@@ -106,22 +112,22 @@ In the above example, The `--debug-mode` modifies the following to allow users t
 
 1. Adds the following to container rule so that users can access bash process.
 
-    ```json
-    "exec_processes": [
-        {
-            "command": [
-            "/bin/sh"
-            ],
-            "signals": []
-        },
-        {
-            "command": [
-            "/bin/bash"
-            ],
-            "signals": []
-        }
-    ]
-    ```
+```json
+"exec_processes": [
+    {
+        "command": [
+        "/bin/sh"
+        ],
+        "signals": []
+    },
+    {
+        "command": [
+        "/bin/bash"
+        ],
+        "signals": []
+    }
+]
+```
 
 2. Changes the values of these three rules to true on the policy.
 This is also for the purpose of allowing users to access logging, container properties and dump stack,  all of which are part of loggings as well.
@@ -131,7 +137,8 @@ See [A Sample Policy that Uses Framework](#a-sample-policy-that-uses-framework) 
     - allow_dump_stacks
     - allow_runtime_logging
 
-Example 10: The confidential computing extension CLI is designed in such a way that generating policy does not necessarily have to depend on network calls as long as users have the layers of the images they want to generate policies for saved in a tar file locally. See the following example:
+Example 10: The confidential computing extension CLI is designed in such a way that generating policy does not necessarily have to depend on network calls as long as users have the layers of the images they want to generate policies for saved in a tar file locally.
+See the following example:
 
 ```bash
 docker save ImageTag -o file.tar
@@ -151,7 +158,8 @@ Users just need to make a tar file by using the `docker save` command above, inc
 When generating security policy without using `--tar` argument, the confcom extension CLI tool attemps to fetch the image remotely if it is not locally available.
 However, the CLI tool does not attempt to fetch remotely if `--tar` argument is used.
 
-Example 11: If it is necessary to put images in their own tarballs, an external file can be used that maps images to their respective tarball paths. See the following example:
+Example 11: If it is necessary to put images in their own tarballs, an external file can be used that maps images to their respective tarball paths.
+See the following example:
 
 ```bash
 docker save image:tag1 -o file1.tar
@@ -176,7 +184,8 @@ Use the following command to generate CCE policy for the image.
 az confcom acipolicygen -a .\sample-template-input.json --tar .\tar_mappings.json
 ```
 
-Example 12: Some use cases necessitate the use of regular expressions to allow for environment variables where either their values are secret, or unknown at policy-generation time. For these cases, the workflow below can be used:
+Example 12: Some use cases necessitate the use of regular expressions to allow for environment variables where either their values are secret, or unknown at policy-generation time.
+For these cases, the workflow below can be used:
 
 Create parameters in the ARM Template for each environment variable that has an unknown or secret value such as:
 
@@ -193,7 +202,8 @@ Create parameters in the ARM Template for each environment variable that has an 
 }
 ```
 
-Note that this parameter declaration does not have a "defaultValue". Once these parameters are defined, they may be used later in the ARM Template such as:
+Note that this parameter declaration does not have a "defaultValue".
+Once these parameters are defined, they may be used later in the ARM Template such as:
 
 ```json
 {
@@ -216,7 +226,9 @@ The policy can then be generated with:
 az confcom acipolicygen -a template.json
 ```
 
-Because the ARM Template does not have a value defined for the "placeholderValue", the regular expression ".*" is used in the Rego policy. This allows for any value to be used. If the value is contained in a parameters file, that can be used when deploying such as:
+Because the ARM Template does not have a value defined for the "placeholderValue", the regular expression ".*" is used in the Rego policy.
+This allows for any value to be used.
+If the value is contained in a parameters file, that can be used when deploying such as:
 
 ```bash
 az deployment group create --template-file "template.json" --parameters "parameters.json"
@@ -285,32 +297,43 @@ Note that a name for each container is required.
 az confcom acipolicygen -i config.json
 ```
 
-## dmverity Layer Hashing
-
-To ensure the container that is being deployed is the intended container, the `confcom` tooling uses [dmverity hashing](https://www.kernel.org/doc/html/latest/admin-guide/device-mapper/verity.html). This is done by downloading the container locally with the Docker Daemon (or using a pre-downloaded tar file of the OCI image) and performing the dmverity hashing using the [dmverity-vhd tool](https://github.com/microsoft/hcsshim/tree/main/cmd/dmverity-vhd). These layer hashes are placed into the Rego security policy in the "layers" field of their respective container. Note that these dmverity layer hashes are different than the layer hashes reported by `docker image inspect`.
-
-### Mixed-mode Policy Generation
-
-An OCI image can be made available for policy generation in three ways:
-
-1. The image is in the local Docker Daemon and can be found either with its image and tag names or its sha256 hash.
-2. The image is in an accessible remote repository. Usually this is either Docker Hub or Azure Container Registry. Note that if the registry is private, you must log in prior to policy generation.
-3. The image is locally saved as a tar file in the form specified by `docker save`.
-
-Mixed-mode policy generation is available in the `confcom` tooling, meaning images within the same security policy can be in any of these three locations with no issues.
-
 ## AKS Virtual Node
 
 Azure Kubernetes Service (AKS) allows pods to be scheduled on Azure Container Instances (ACI)
-using the [AKS Virtual Node](https://learn.microsoft.com/en-us/azure/aks/virtual-nodes) feature. The `confcom` tooling can generate security policies for these ACI-based pods in the same way as for standalone ACI container groups. The key difference is that the `confcom` tooling will ingest an AKS pod specification (`pod.yaml`) instead of an ARM Template.
+using the [AKS Virtual Node](https://learn.microsoft.com/en-us/azure/aks/virtual-nodes) feature.
+The `confcom` tooling can generate security policies for these ACI-based pods in the same way as for standalone ACI container groups.
+The key difference is that the `confcom` tooling will ingest an AKS pod specification (`pod.yaml`) instead of an ARM Template.
+When the AKS pod specification is deployed, it must have an annotation `microsoft.containerinstance.virtualnode.ccepolicy` denoting its security policy.
+This annotation is automatically added to the yaml file when the policy is created.
 
-Use the following command to generate and print a security policy for an AKS pod running on ACI:
+Example 1: Use the following command to generate and print a security policy for an AKS pod running on ACI:
 
 ```bash
 az confcom acipolicygen --virtual-node-yaml ./pod.yaml --print-policy
 ```
 
-To generate a security policy using a policy config file for Virtual Node, the `scenario` field must be equal to `"vn2"`. This looks like:
+Where `pod.yaml` is a Kubernetes Pod resource:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+    name: sample-mcr-pod
+spec:
+    containers:
+        - name: helloworld
+        image: mcr.microsoft.com/acc/samples/aci/helloworld:2.9
+        ports:
+            - containerPort: 80
+```
+
+The input can be other Kubernetes resource types like Deployments, Cronjobs, and StatefulSets.
+If ConfigMaps or Secrets are used, they should be included in the same file as the Pod-creating resource.
+If the ConfigMap or Secret is not included, a prompt will appear asking if the environment variable should be wildcarded.
+To automate this process, the `-y` flag may be used.
+
+Example 2: To generate a security policy using a policy config file for Virtual Node, the `scenario` field must be equal to `"vn2"`.
+This looks like:
 
 ```json
 {
@@ -327,11 +350,20 @@ To generate a security policy using a policy config file for Virtual Node, the `
 }
 ```
 
-This `scenario` field adds the necessary environment variables and mount values to containers in the config file. Currently `vn2` and `aci` are the only supported values for `scenario`, but others may be added in the future as more products onboard to the `confcom` extension. `aci` is the default value.
+And the policy is created with:
+
+```bash
+az confcom acipolicygen -i input.json
+```
+
+This `scenario` field adds the necessary environment variables and mount values to containers in the config file.
+Currently `vn2` and `aci` are the only supported values for `scenario`, but others may be added in the future as more products onboard to the `confcom` extension.
+`aci` is the default value.
 
 ### Workload Identity
 
-To use workload identities with VN2, the associated label [described here](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=dotnet#pod-labels) must be present. Having this will add the requisite environment variables and mounts to each container's policy.
+To use workload identities with VN2, the associated label [described here](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=dotnet#pod-labels) must be present.
+Having this will add the requisite environment variables and mounts to each container's policy.
 To generate a policy with workload identity capabilities for VN2 using the JSON format, the following `labels` key and nested values must be present:
 
 ```json
@@ -348,4 +380,5 @@ To generate a policy with workload identity capabilities for VN2 using the JSON 
 ```
 
 > [!NOTE]
-> The `acipolicygen` command is specific to generating policies for ACI-based containers. For generating security policies for the [Confidential Containers on AKS](https://learn.microsoft.com/en-us/azure/aks/confidential-containers-overview) feature, use the `katapolicygen` command.
+> The `acipolicygen` command is specific to generating policies for ACI-based containers.
+For generating security policies for the [Confidential Containers on AKS](https://learn.microsoft.com/en-us/azure/aks/confidential-containers-overview) feature, use the `katapolicygen` command.

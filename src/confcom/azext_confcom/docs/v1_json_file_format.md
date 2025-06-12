@@ -1,6 +1,7 @@
 # v1 `--input`, `-i` json file format
 
-This document provides a comprehensive reference for the JSON configuration format used by the `confcom` extension's `--input`, `-i` flag. This schema allows you to define container properties and fragment specifications to be used with `acipolicygen` and `acifragmentgen` including usage with `VN2`.
+This document provides a comprehensive reference for the JSON configuration format used by the `confcom` extension's `--input`, `-i` flag.
+This schema allows you to define container properties and fragment specifications to be used with `acipolicygen` and `acifragmentgen` including usage with `VN2`.
 
 ## Schema Overview
 
@@ -29,7 +30,9 @@ The configuration file uses a structured JSON format with the following main sec
 
 - **Type**: String
 - **Required**: No
-- **Description**: Adds appropriate mounts and environment variables for different deployment scenarios. If deploying to `vn2`, this field is required. The default value is `aci`
+- **Description**: Adds appropriate mounts and environment variables for different deployment scenarios.
+If deploying to `vn2`, this field is required.
+The default value is `aci`
 - **Allowed Values**: "vn2", "aci"
 - **Example**: `"scenario": "vn2"`
 
