@@ -111,9 +111,9 @@ def pull(
         artifact, temp_hash_val = artifact.split("@sha256:")
         if temp_hash_val != hash_val:
             eprint(f"Input '{hash_val}' does not match what is present in registry '{temp_hash_val}'")
-        full_path = f"{artifact}@{hash_val}"
+        full_path = f"{artifact}@sha256:{hash_val}"
     elif artifact and hash_val:
-        full_path = f"{artifact}@{hash_val}"
+        full_path = f"{artifact}@sha256:{hash_val}"
     elif ":" in artifact:
         artifact, tag = artifact.rsplit(":", maxsplit=1)
         full_path = f"{artifact}:{tag}"

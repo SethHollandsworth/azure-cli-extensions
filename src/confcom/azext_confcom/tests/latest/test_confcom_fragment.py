@@ -38,7 +38,7 @@ from azext_confcom.os_util import (
     force_delete_silently,
     str_to_base64,
 )
-from azext_confcom.oras_proxy import push_fragment_to_registry
+from azext_confcom.oras_proxy import push_fragment_to_registry, pull
 from azext_confcom.custom import acifragmentgen_confcom
 from azure.cli.testsdk import ScenarioTest
 
@@ -991,7 +991,7 @@ class FragmentVirtualNode(unittest.TestCase):
         default_mounts = [i.get('mountPath') for i in config.DEFAULT_MOUNTS_WORKLOAD_IDENTITY_VIRTUAL_NODE]
         for default_mount in default_mounts:
             self.assertIn(default_mount, mount_destinations)
-class FragmentRegistryInteractions(unittest.TestCase):
+class FragmentRegistryInteractions(ScenarioTest):
     custom_json = """
 {
     "version": "1.0",
@@ -1113,7 +1113,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
             {
                 "name": "my-image",
                 "properties": {
-                    "image": "localhost:5000/helloworld:2.8",
+                    "image": "localhost:5000/helloworld:2.9",
                     "execProcesses": [
                         {
                             "command": [
@@ -1347,8 +1347,8 @@ class FragmentRegistryInteractions(unittest.TestCase):
             delete_silently(fragment_json)
 
     def test_image_attached_fragment_coverage(self):
-        subprocess.run("docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.9 localhost:5000/helloworld:2.8", shell=True)
-        subprocess.run("docker push localhost:5000/helloworld:2.8", timeout=30, shell=True)
+        subprocess.run(f"docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.9 {self.registry}/helloworld:2.9", shell=True)
+        subprocess.run(f"docker push {self.registry}/helloworld:2.9", timeout=30, shell=True)
         filename = "container_image_attached.json"
         rego_filename = "temp_namespace"
         try:
@@ -1363,14 +1363,14 @@ class FragmentRegistryInteractions(unittest.TestCase):
                 self.key,
                 self.chain,
                 "1",
-                "localhost:5000/helloworld:2.8",
+                f"{self.registry}/helloworld:2.9",
                 upload_fragment=True,
             )
 
 
             # this will insert the import statement into the original container.json
             acifragmentgen_confcom(
-                "localhost:5000/helloworld:2.8", None, None, None, None, None, None, None, generate_import=True, minimum_svn="1", fragments_json=filename
+                f"{self.registry}/helloworld:2.9", None, None, None, None, None, None, None, generate_import=True, minimum_svn="1", fragments_json=filename
             )
 
             # try to generate the policy again to make sure there are no containers in the resulting rego
@@ -1385,7 +1385,7 @@ class FragmentRegistryInteractions(unittest.TestCase):
                     None,
                     None,
                     "1",
-                    "localhost:5000/helloworld:2.8",
+                    f"{self.registry}/helloworld:2.9",
                 )
             self.assertEqual(exc_info.exception.code, 1)
 
@@ -1395,6 +1395,41 @@ class FragmentRegistryInteractions(unittest.TestCase):
             delete_silently(filename)
             delete_silently(f"{rego_filename}.rego")
             delete_silently(f"{rego_filename}.rego.cose")
+
+    def test_incorrect_pull_location(self):
+        with self.assertRaises(SystemExit) as exc_info:
+            _ = pull(f"{self.registry}/fake_artifact")
+            self.fail("Should not reach here")
+        self.assertEqual(exc_info.exception.code, 1)
+
+    def test_reserved_namespace(self):
+        filename = "container_image_attached2.json"
+        rego_filename = "policy"
+        with self.assertRaises(CLIError) as exc_info:
+            try:
+                write_str_to_file(filename, self.custom_json)
+                self.cmd(f"confcom acifragmentgen -i {filename} --namespace policy --svn 1")
+                self.fail("Should not reach here")
+            except Exception as e:
+                raise e
+            finally:
+                delete_silently(filename)
+                delete_silently(f"{rego_filename}.rego")
+
+    def test_invalid_svn(self):
+        filename = "container_image_attached3.json"
+        rego_filename = "myfile"
+        with self.assertRaises(CLIError) as exc_info:
+            try:
+                write_str_to_file(filename, self.custom_json)
+                self.cmd(f"confcom acifragmentgen -i {filename} --namespace policy --svn 0")
+                self.fail("Should not reach here")
+            except Exception as e:
+                raise e
+            finally:
+                delete_silently(filename)
+                delete_silently(f"{rego_filename}.rego")
+
 
 class InitialFragmentErrors(ScenarioTest):
     def test_invalid_input(self):
