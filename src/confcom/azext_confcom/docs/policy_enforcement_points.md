@@ -243,10 +243,9 @@ Receives an input object with the following elements:
 
 ## plan9_mount
 
-Controls what directories on the host are allowed to be mounted into the UVM so that they can later be used as mounts within containers.
-Azure confidential computing evaluated the mount channel from host machine to guest machine and eventually to containers.
-A serious attack consists of overwriting attested directories on the UVM and then subsequently gets loaded into containers.
-This rule contains a target that designates destination mount so that the mentioned attack does not happen.
+Controls which host directories may be mounted via the 9P (Plan 9) protocol into the UVM, so that the UVM can bind‑mount those directories into containers later.
+Azure Confidential Computing evaluates this host → UVM → container path because an attacker could overwrite an attested directory on the UVM and have malicious data flow into containers.
+The target field therefore designates exactly where the mount is created, allowing the policy to block dangerous destinations.
 It receives an input with the following elements:
 
 ```json
@@ -298,9 +297,9 @@ See [policy fragments](#policy-fragments) for detailed explanation.
 
 ## policy fragments
 
-What is a policy fragment?
+Why do we need policy fragments?
 
-Confidential Container provides the core primitives for allowing customers to build container based application solutions that leave Microsoft and Microsoft operators outside of TCB(Trusted Computing Base).
+Confidential Containers provide the core primitives for allowing customers to build container based application solutions that leave Microsoft and Microsoft operators outside of TCB (Trusted Computing Base).
 In order to achieve this, our environment has to implement enforcement policies that not only dictates which containers are allowed to run, but also the explicit versions of each container that are allowed to run.
 The implication of this is that in the case of Confidential ACI, if the customer is allowing ACI provided sidecars into their TCB, the customer environment won't be able to be start if ACI updates any of their sidecars for regular maintenance.
 Given that some customers will want to allow ACI sidecars into their trusted environment, we need to provide a way for customers to indicate a level of trust in ACI so that sidecars that ACI has indicated are theirs and that the customer has agreed to accept can be run.
