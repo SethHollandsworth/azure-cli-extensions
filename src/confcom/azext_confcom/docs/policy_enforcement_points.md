@@ -302,7 +302,9 @@ Why do we need policy fragments?
 Confidential Containers provide the core primitives for allowing customers to build container based application solutions that leave Microsoft and Microsoft operators outside of TCB (Trusted Computing Base).
 In order to achieve this, our environment has to implement enforcement policies that not only dictates which containers are allowed to run, but also the explicit versions of each container that are allowed to run.
 The implication of this is that in the case of Confidential ACI, if the customer is allowing ACI provided sidecars into their TCB, the customer environment won't be able to be start if ACI updates any of their sidecars for regular maintenance.
+
 Given that some customers will want to allow ACI sidecars into their trusted environment, we need to provide a way for customers to indicate a level of trust in ACI so that sidecars that ACI has indicated are theirs and that the customer has agreed to accept can be run.
+
 In order to achieve this, We will allow additional constraints to be provided to a container environment.
 And we call these additionally defined constraints "policy fragments".
 Policy fragments can serve a number of use-cases.
