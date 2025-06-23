@@ -167,6 +167,11 @@ test_fragment_incorrect_sidecar | mcr.microsoft.com/aci/msi-atlas-adapter:master
 test_signing | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Sign a fragment with a key and chain file
 test_generate_import | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Generate an import statement for the signed fragment file
 test_local_fragment_references | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Make sure the fragment references are correct when the fragment is local
+test_registry_is_running | N/A | See if the local registry is running
+test_generate_import_from_remote | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Test generating an import statement from the feed of a signed standalone fragment
+test_remote_fragment_references | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 & mcr.microsoft.com/azurelinux/busybox:1.36 | Test standard standalone fragment usage
+test_incorrect_minimum_svn | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Make sure that fragments with too low of an svn are not included when using fragments
+test_image_attached_fragment_coverage | mcr.microsoft.com/acc/samples/aci/helloworld:2.9 | Test nested standalone fragment generation
 test_invalid_input | mcr.microsoft.com/aci/msi-atlas-adapter:master_20201210.1 | Fail out under various invalid input circumstances
 
 ## Policy Conversion File [test file](test_confcom_policy_conversion.py)
