@@ -113,7 +113,8 @@ def pull(
             eprint(f"Input '{hash_val}' does not match what is present in registry '{temp_hash_val}'")
         full_path = f"{artifact}@sha256:{hash_val}"
     elif artifact and hash_val:
-        full_path = f"{artifact}@sha256:{hash_val}"
+        # response from discover function includes "sha256:" but not "@"
+        full_path = f"{artifact}@{hash_val}"
     elif ":" in artifact:
         artifact, tag = artifact.rsplit(":", maxsplit=1)
         full_path = f"{artifact}:{tag}"
