@@ -4,6 +4,8 @@
 # --------------------------------------------------------------------------------------------
 
 import os
+from tarfile import TarFile
+import tempfile
 import unittest
 import json
 import subprocess
@@ -14,9 +16,10 @@ from azext_confcom.security_policy import (
     OutputType,
     load_policy_from_json
 )
-
+from azext_confcom.errors import (
+    AccContainerError,
+)
 from azext_confcom.cose_proxy import CoseSignToolProxy
-
 import azext_confcom.config as config
 from azext_confcom.template_util import (
     case_insensitive_dict_get,
@@ -35,6 +38,8 @@ from azext_confcom.os_util import (
 )
 from azext_confcom.custom import acifragmentgen_confcom
 from azure.cli.testsdk import ScenarioTest
+
+from azext_confcom.tests.latest.test_confcom_tar import create_tar_file
 
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 
@@ -463,6 +468,61 @@ class FragmentGenerating(unittest.TestCase):
 
         expected_workingdir = "/root/"
         self.assertEqual(image._workingDir, expected_workingdir)
+
+
+class FragmentPolicyGeneratingTarfile(unittest.TestCase):
+    custom_json= """
+    {
+        "version" : "1.0",
+        "containers": [
+            {
+                "name": "simple-container",
+                "properties": {
+                    "image": "mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64",
+                    "environmentVariables": [
+                    {
+                        "name": "PORT",
+                        "value": "8080"
+                    }
+                ],
+                "command": ["/bin/bash","-c","while sleep 5; do cat /mnt/input/access.log; done"],
+                "mounts": null
+                }
+            }
+        ]
+    }
+    """
+    aci_policy = None
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        path = os.path.dirname(__file__)
+        cls.path = path
+
+    def test_tar_file_fragment(self):
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                filename = os.path.join(folder, "oci.tar")
+                filename2 = os.path.join(self.path, "oci2.tar")
+
+                tar_mapping_file = {"mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64": filename2}
+                create_tar_file(filename)
+                with TarFile(filename, "r") as tar:
+                    tar.extractall(path=folder)
+
+                with TarFile.open(filename2, mode="w") as out_tar:
+                    out_tar.add(os.path.join(folder, "index.json"), "index.json")
+                    out_tar.add(os.path.join(folder, "blobs"), "blobs", recursive=True)
+
+                with load_policy_from_json(self.custom_json) as aci_policy:
+                    aci_policy.populate_policy_content_for_all_images(
+                        tar_mapping=tar_mapping_file
+                    )
+
+                    clean_room_fragment_text = aci_policy.generate_fragment("payload", "1", OutputType.RAW)
+                    self.assertIsNotNone(clean_room_fragment_text)
+        except Exception as e:
+            raise AccContainerError("Could not get image from tar file") from e
 
 
 class FragmentPolicyGeneratingDebugMode(unittest.TestCase):

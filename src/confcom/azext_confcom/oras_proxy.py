@@ -57,7 +57,8 @@ def call_oras_cli(args, check=False):
 # return their digests in a list if there are some
 def discover(
     image: str,
-) -> List[str]:
+) -> tuple[bool, List[str]]:
+    image_exists = True
     # normalize the name in case the docker registry is implied
     image = prepend_docker_registry(image)
 
@@ -74,13 +75,22 @@ def discover(
                 hashes.append(manifest["digest"])
     # get the exit code from the subprocess
     else:
-        if "401: Unauthorized" in item.stderr.decode("utf-8"):
+        err_str = item.stderr.decode("utf-8")
+        if "401: Unauthorized" in err_str:
             eprint(
                 f"Error pulling the policy fragment from {image}.\n\n"
                 + "Please log into the registry and try again.\n\n"
             )
-        eprint(f"Error retrieving fragments from remote repo: {item.stderr.decode('utf-8')}", exit_code=item.returncode)
-    return hashes
+        # this happens when the image isn't found in the remote repo or there is no access to the remote repo
+        elif f"{image}: not found" in err_str:
+            logger.warning("No policy fragments found for image %s", image)
+            image_exists = False
+        elif "dial tcp: lookup" in err_str:
+            logger.warning(f"Could not access registry for {image}")
+            image_exists = False
+        else:
+            eprint(f"Error retrieving fragments from remote repo: {err_str}", exit_code=item.returncode)
+    return image_exists, hashes
 
 
 # pull the policy fragment from the remote repo and return its contents as a string
@@ -120,24 +130,25 @@ def pull(
 def pull_all_image_attached_fragments(image):
     # TODO: be smart about if we're pulling a fragment directly or trying to discover them from an image tag
     # TODO: this will be for standalone fragments
-    fragments = discover(image)
+    image_exists, fragments = discover(image)
     fragment_contents = []
     feeds = []
-    proxy = CoseSignToolProxy()
-    for fragment_digest in fragments:
-        filename = pull(image, fragment_digest)
-        text = proxy.extract_payload_from_path(filename)
-        feed = proxy.extract_feed_from_path(filename)
-        # containers = extract_containers_from_text(text, REGO_CONTAINER_START)
-        # new_fragments = extract_containers_from_text(text, REGO_FRAGMENT_START)
-        # if new_fragments:
-        #     for new_fragment in new_fragments:
-        #         feed = new_fragment.get("feed")
-        #         # if we don't have the feed in the list of feeds we've already pulled, pull it
-        #         if feed not in fragment_feeds:
-        #             fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
-        fragment_contents.append(text)
-        feeds.append(feed)
+    if image_exists:
+        proxy = CoseSignToolProxy()
+        for fragment_digest in fragments:
+            filename = pull(image, fragment_digest)
+            text = proxy.extract_payload_from_path(filename)
+            feed = proxy.extract_feed_from_path(filename)
+            # containers = extract_containers_from_text(text, REGO_CONTAINER_START)
+            # new_fragments = extract_containers_from_text(text, REGO_FRAGMENT_START)
+            # if new_fragments:
+            #     for new_fragment in new_fragments:
+            #         feed = new_fragment.get("feed")
+            #         # if we don't have the feed in the list of feeds we've already pulled, pull it
+            #         if feed not in fragment_feeds:
+            #             fragment_contents.extend(pull_all_image_attached_fragments(feed, fragment_feeds=fragment_feeds))
+            fragment_contents.append(text)
+            feeds.append(feed)
     return fragment_contents, feeds
 
 
@@ -177,18 +188,19 @@ def attach_fragment_to_image(image_name: str, filename: str):
 
 def generate_imports_from_image_name(image_name: str, minimum_svn: str) -> List[dict]:
     cose_proxy = CoseSignToolProxy()
-    fragment_hashes = discover(image_name)
+    image_exists, fragment_hashes = discover(image_name)
     import_list = []
 
-    for fragment_hash in fragment_hashes:
-        filename = ""
-        try:
-            filename = pull(image_name, fragment_hash)
-            import_statement = cose_proxy.generate_import_from_path(filename, minimum_svn)
-            if import_statement not in import_list:
-                import_list.append(import_statement)
-        finally:
-            # clean up the fragment file
-            delete_silently(filename)
+    if image_exists:
+        for fragment_hash in fragment_hashes:
+            filename = ""
+            try:
+                filename = pull(image_name, fragment_hash)
+                import_statement = cose_proxy.generate_import_from_path(filename, minimum_svn)
+                if import_statement not in import_list:
+                    import_list.append(import_statement)
+            finally:
+                # clean up the fragment file
+                delete_silently(filename)
 
     return import_list

@@ -21,7 +21,7 @@ from azext_confcom.errors import (
 )
 import azext_confcom.config as config
 from azext_confcom.template_util import DockerClient
-from azext_confcom.os_util import write_json_to_file
+from azext_confcom.os_util import delete_silently
 
 
 def create_tar_file(image_path: str) -> None:
@@ -32,11 +32,6 @@ def create_tar_file(image_path: str) -> None:
             for chunk in image.save(named=True):
                 f.write(chunk)
             f.close()
-
-
-def remove_tar_file(image_path: str) -> None:
-    if os.path.isfile(image_path):
-        os.remove(image_path)
 
 
 class PolicyGeneratingArmParametersCleanRoomOCITarFile(unittest.TestCase):
@@ -183,16 +178,14 @@ class PolicyGeneratingArmParametersCleanRoomOCITarFile(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as folder:
                 filename = os.path.join(folder, "oci.tar")
+                filename2 = os.path.join(self.path, "oci2.tar")
 
-                tar_mapping_file = {"mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64": os.path.join(self.path, "oci2.tar")}
+                tar_mapping_file = {"mcr.microsoft.com/aks/e2e/library-busybox:master.220314.1-linux-amd64": filename2}
                 create_tar_file(filename)
-                with TarFile(f"{folder}/oci.tar", "r") as tar:
+                with TarFile(filename, "r") as tar:
                     tar.extractall(path=folder)
 
-                os.remove(os.path.join(folder, "manifest.json"))
-                os.remove(os.path.join(folder, "oci.tar"))
-
-                with TarFile.open(os.path.join(self.path, "oci2.tar"), mode="w") as out_tar:
+                with TarFile.open(filename2, mode="w") as out_tar:
                     out_tar.add(os.path.join(folder, "index.json"), "index.json")
                     out_tar.add(os.path.join(folder, "blobs"), "blobs", recursive=True)
 
@@ -200,11 +193,7 @@ class PolicyGeneratingArmParametersCleanRoomOCITarFile(unittest.TestCase):
                     tar_mapping=tar_mapping_file
                 )
         except Exception as e:
-            print(e)
-            raise AccContainerError("Could not get image from tar file")
-        finally:
-            remove_tar_file(filename)
-            remove_tar_file(os.path.join(self.path, "oci2.tar"))
+            raise AccContainerError("Could not get image from tar file") from e
 
         regular_image_json = json.loads(
             regular_image.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
@@ -372,10 +361,9 @@ class PolicyGeneratingArmParametersCleanRoomTarFile(unittest.TestCase):
                 tar_mapping=tar_mapping_file
             )
         except Exception as e:
-            print(e)
-            raise AccContainerError("Could not get image from tar file")
+            raise AccContainerError("Could not get image from tar file") from e
         finally:
-            remove_tar_file(filename)
+            delete_silently(filename)
 
         regular_image_json = json.loads(
             regular_image.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
@@ -585,7 +573,7 @@ class PolicyGeneratingArmParametersCleanRoomTarFile(unittest.TestCase):
             tar_mapping=image_mapping
         )
 
-        remove_tar_file(filename)
+        delete_silently(filename)
         regular_image_json = json.loads(
             regular_image.get_serialized_output(output_type=OutputType.RAW, rego_boilerplate=False)
         )
@@ -744,7 +732,7 @@ class PolicyGeneratingArmParametersCleanRoomTarFile(unittest.TestCase):
         except:
             pass
         finally:
-            remove_tar_file(filename)
+            delete_silently(filename)
 
     def test_clean_room_fake_tar_invalid(self):
         custom_arm_json_default_value = """
