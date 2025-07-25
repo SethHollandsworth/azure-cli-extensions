@@ -11,6 +11,7 @@ import json
 import requests
 import time
 import subprocess
+import docker
 from knack.util import CLIError
 
 from azext_confcom.security_policy import (
@@ -27,6 +28,7 @@ from azext_confcom.template_util import (
     case_insensitive_dict_get,
     extract_containers_and_fragments_from_text,
     decompose_confidential_properties,
+    DockerClient
 )
 from azext_confcom.os_util import (
     write_str_to_file,
@@ -1153,11 +1155,42 @@ class FragmentRegistryInteractions(ScenarioTest):
         cls.zot_image = "ghcr.io/project-zot/zot-linux-amd64:latest"
         cls.registry = "localhost:5000"
         registry_name = "myregistry"
-        subprocess.run(f"docker pull {cls.zot_image}", shell=True)
-        output = subprocess.run("docker ps -a", capture_output=True, shell=True)
 
-        if registry_name not in output.stdout.decode():
-            subprocess.run(f"docker run --name {registry_name} -d -p 5000:5000 {cls.zot_image}", shell=True)
+        # Initialize Docker client
+        try:
+            with DockerClient() as client:
+                client.images.pull(cls.zot_image)
+
+                # Replace output = subprocess.run("docker ps -a", capture_output=True, shell=True)
+                # Check if container already exists
+                existing_containers = client.containers.list(all=True, filters={"name": registry_name})
+
+                # Replace subprocess.run(f"docker run --name {registry_name} -d -p 5000:5000 {cls.zot_image}", shell=True)
+                if not existing_containers:
+                    try:
+                        client.containers.run(
+                            cls.zot_image,
+                            name=registry_name,
+                            ports={'5000/tcp': 5000},
+                            detach=True
+                        )
+                    except docker.errors.APIError as e:
+                        raise Exception(f"Error starting registry container: {e}")
+                else:
+                    # Start the container if it exists but is not running
+                    container = existing_containers[0]
+                    if container.status != 'running':
+                        container.start()
+        except docker.errors.DockerException as e:
+            raise Exception(f"Docker is not available: {e}")
+
+        # Replace subprocess.run(f"docker pull {cls.zot_image}", shell=True)
+        except docker.errors.ImageNotFound:
+            raise Exception(f"Could not pull image {cls.zot_image}")
+        except docker.errors.APIError as e:
+            raise Exception(f"Error pulling image {cls.zot_image}: {e}")
+
+
 
         cls.key_dir_parent = os.path.join(TEST_DIR, '..', '..', '..', 'samples', 'certs')
         cls.key = os.path.join(cls.key_dir_parent, 'intermediateCA', 'private', 'ec_p384_private.pem')
@@ -1190,19 +1223,15 @@ class FragmentRegistryInteractions(ScenarioTest):
             cls.aci_policy2 = aci_policy2
 
         # stall while we wait for the registry to start running
-        logs = subprocess.run(f"docker logs {registry_name}", capture_output=True, shell=True)
+        result = requests.get(f"http://{cls.registry}/v2/_catalog")
         counter = 0
-        while logs.returncode != 0:
+        while result.status_code != 200:
             time.sleep(1)
-            logs = subprocess.run(f"docker logs {registry_name}", capture_output=True, shell=True)
+            result = requests.get(f"http://{cls.registry}/v2/_catalog")
             counter += 1
             if counter == 10:
                 raise Exception("Could not start local registry in time")
 
-
-    def test_registry_is_running(self):
-        result = requests.get(f"http://{self.registry}/v2/_catalog")
-        self.assertTrue("repositories" in result.json())
 
     def test_generate_import_from_remote(self):
         filename = "payload5.rego"
@@ -1347,8 +1376,37 @@ class FragmentRegistryInteractions(ScenarioTest):
             delete_silently(fragment_json)
 
     def test_image_attached_fragment_coverage(self):
-        subprocess.run(f"docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.9 {self.registry}/helloworld:2.9", shell=True)
-        subprocess.run(f"docker push {self.registry}/helloworld:2.9", timeout=30, shell=True)
+        # Initialize Docker client
+        try:
+            with DockerClient() as client:
+                 # Replace subprocess.run(f"docker tag mcr.microsoft.com/acc/samples/aci/helloworld:2.9 {self.registry}/helloworld:2.9", shell=True)
+                try:
+                    source_image = client.images.get("mcr.microsoft.com/acc/samples/aci/helloworld:2.9")
+                    source_image.tag(f"{self.registry}/helloworld:2.9")
+                except docker.errors.ImageNotFound:
+                    # Try to pull the image first
+                    try:
+                        client.images.pull("mcr.microsoft.com/acc/samples/aci/helloworld:2.9")
+                        source_image = client.images.get("mcr.microsoft.com/acc/samples/aci/helloworld:2.9")
+                        source_image.tag(f"{self.registry}/helloworld:2.9")
+                    except docker.errors.APIError as e:
+                        raise Exception(f"Could not pull or tag image: {e}")
+                except docker.errors.APIError as e:
+                    raise Exception(f"Error tagging image: {e}")
+
+                 # Replace subprocess.run(f"docker push {self.registry}/helloworld:2.9", timeout=30, shell=True)
+                try:
+                    # Note: Docker SDK push returns a generator of status updates
+                    push_logs = client.images.push(f"{self.registry}/helloworld:2.9", stream=True, decode=True)
+                    # Consume the generator to ensure push completes
+                    for log in push_logs:
+                        if 'error' in log:
+                            raise Exception(f"Push failed: {log['error']}")
+                except docker.errors.APIError as e:
+                    raise Exception(f"Error pushing image: {e}")
+        except docker.errors.DockerException as e:
+            raise Exception(f"Docker is not available: {e}")
+
         filename = "container_image_attached.json"
         rego_filename = "temp_namespace"
         try:
@@ -1392,9 +1450,9 @@ class FragmentRegistryInteractions(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            delete_silently(filename)
-            delete_silently(f"{rego_filename}.rego")
-            delete_silently(f"{rego_filename}.rego.cose")
+            force_delete_silently(filename)
+            force_delete_silently(f"{rego_filename}.rego")
+            force_delete_silently(f"{rego_filename}.rego.cose")
 
     def test_incorrect_pull_location(self):
         with self.assertRaises(SystemExit) as exc_info:
@@ -1413,8 +1471,8 @@ class FragmentRegistryInteractions(ScenarioTest):
             except Exception as e:
                 raise e
             finally:
-                delete_silently(filename)
-                delete_silently(f"{rego_filename}.rego")
+                force_delete_silently(filename)
+                force_delete_silently(f"{rego_filename}.rego")
 
     def test_invalid_svn(self):
         filename = "container_image_attached3.json"
@@ -1427,8 +1485,8 @@ class FragmentRegistryInteractions(ScenarioTest):
             except Exception as e:
                 raise e
             finally:
-                delete_silently(filename)
-                delete_silently(f"{rego_filename}.rego")
+                force_delete_silently(filename)
+                force_delete_silently(f"{rego_filename}.rego")
 
 
 class InitialFragmentErrors(ScenarioTest):
