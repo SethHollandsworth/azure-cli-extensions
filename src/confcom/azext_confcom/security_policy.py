@@ -586,7 +586,7 @@ class AciPolicy:  # pylint: disable=too-many-instance-attributes
                 config.POLICY_FIELD_CONTAINERS_NAME
             )
             fragment_image_id = fragment_image.get(config.ACI_FIELD_CONTAINERS_ID)
-            if ":" not in fragment_image_id:
+            if isinstance(fragment_image_id, str) and ":" not in fragment_image_id:
                 fragment_image_id = f"{fragment_image_id}:latest"
             if (
                 fragment_image_id == f"{image.base}:{image.tag}" or

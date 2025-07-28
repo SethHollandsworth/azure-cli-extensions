@@ -4,7 +4,7 @@
 # --------------------------------------------------------------------------------------------
 
 import base64
-from typing import List
+from typing import List, Union
 import yaml
 import yaml.scanner
 import binascii
@@ -289,25 +289,31 @@ def map_image_from_tar(image_name: str, tar: TarFile, tar_location: str):
 
 
 # sometimes image tarfiles have readonly members. this will try to change their permissions and delete them
-def force_delete_silently(filename: str) -> None:
-    try:
-        os.chmod(filename, stat.S_IWRITE)
-    except FileNotFoundError:
-        pass
-    except PermissionError:
-        eprint(f"Permission denied to edit file: {filename}")
-    except OSError as e:
-        eprint(f"Error editing file: {filename}, {e}")
-    delete_silently(filename)
+def force_delete_silently(filename: Union[str, list[str]]) -> None:
+    if isinstance(filename, str):
+        filename = [filename]
+    for f in filename:
+        try:
+            os.chmod(f, stat.S_IWRITE)
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            eprint(f"Permission denied to edit file: {f}")
+        except OSError as e:
+            eprint(f"Error editing file: {f}, {e}")
+        delete_silently(f)
 
 
 # helper function to delete a file that may or may not exist
-def delete_silently(filename: str) -> None:
-    try:
-        os.remove(filename)
-    except FileNotFoundError:
-        pass
-    except PermissionError:
-        eprint(f"Permission denied to delete file: {filename}")
-    except OSError as e:
-        eprint(f"Error deleting file: {filename}, {e}")
+def delete_silently(filename: Union[str, list[str]]) -> None:
+    if isinstance(filename, str):
+        filename = [filename]
+    for f in filename:
+        try:
+            os.remove(f)
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            eprint(f"Permission denied to delete file: {f}")
+        except OSError as e:
+            eprint(f"Error deleting file: {f}, {e}")

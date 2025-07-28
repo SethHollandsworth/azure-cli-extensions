@@ -47,6 +47,7 @@ from azure.cli.testsdk import ScenarioTest
 from azext_confcom.tests.latest.test_confcom_tar import create_tar_file
 
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
+SAMPLES_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "..", '..', '..', '..', 'samples'))
 
 class FragmentMountEnforcement(unittest.TestCase):
     custom_json = """
@@ -241,9 +242,7 @@ class FragmentMountEnforcement(unittest.TestCase):
             if vn2_mount_count != len(vn2_mounts):
                 self.fail("policy does not contain default vn2 mounts")
         finally:
-            force_delete_silently(fragment_filename)
-            force_delete_silently(f"{rego_filename}.rego")
-
+            force_delete_silently([fragment_filename, f"{rego_filename}.rego"])
 
 class FragmentGenerating(unittest.TestCase):
     custom_json = """
@@ -777,7 +776,7 @@ class FragmentPolicySigning(unittest.TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        cls.key_dir_parent = os.path.join(TEST_DIR, '..', '..', '..', 'samples', 'certs')
+        cls.key_dir_parent = os.path.join(SAMPLES_DIR, 'certs')
         cls.key = os.path.join(cls.key_dir_parent, 'intermediateCA', 'private', 'ec_p384_private.pem')
         cls.chain = os.path.join(cls.key_dir_parent, 'intermediateCA', 'certs', 'www.contoso.com.chain.cert.pem')
         if not os.path.exists(cls.key) or not os.path.exists(cls.chain):
@@ -826,8 +825,7 @@ class FragmentPolicySigning(unittest.TestCase):
         except Exception as e:
             raise e
         finally:
-            delete_silently(filename)
-            delete_silently(out_path)
+            delete_silently([filename, out_path])
 
     def test_generate_import(self):
         filename = "payload4.rego"
@@ -861,8 +859,7 @@ class FragmentPolicySigning(unittest.TestCase):
         except Exception as e:
             raise e
         finally:
-            delete_silently(filename)
-            delete_silently(out_path)
+            delete_silently([filename, out_path])
 
     def test_local_fragment_references(self):
         filename = "payload2.rego"
@@ -911,11 +908,7 @@ class FragmentPolicySigning(unittest.TestCase):
         except Exception as e:
             raise e
         finally:
-            delete_silently(filename)
-            delete_silently(out_path)
-            delete_silently(filename2)
-            delete_silently(out_path2)
-            delete_silently(fragment_json)
+            delete_silently([filename, out_path, filename2, out_path2, fragment_json])
 
 
 class FragmentVirtualNode(unittest.TestCase):
@@ -1190,9 +1183,7 @@ class FragmentRegistryInteractions(ScenarioTest):
         except docker.errors.APIError as e:
             raise Exception(f"Error pulling image {cls.zot_image}: {e}")
 
-
-
-        cls.key_dir_parent = os.path.join(TEST_DIR, '..', '..', '..', 'samples', 'certs')
+        cls.key_dir_parent = os.path.join(SAMPLES_DIR, 'certs')
         cls.key = os.path.join(cls.key_dir_parent, 'intermediateCA', 'private', 'ec_p384_private.pem')
         cls.chain = os.path.join(cls.key_dir_parent, 'intermediateCA', 'certs', 'www.contoso.com.chain.cert.pem')
         if not os.path.exists(cls.key) or not os.path.exists(cls.chain):
@@ -1225,11 +1216,12 @@ class FragmentRegistryInteractions(ScenarioTest):
         # stall while we wait for the registry to start running
         result = requests.get(f"http://{cls.registry}/v2/_catalog")
         counter = 0
+        retry_limit = 10
         while result.status_code != 200:
             time.sleep(1)
             result = requests.get(f"http://{cls.registry}/v2/_catalog")
             counter += 1
-            if counter == 10:
+            if counter == retry_limit:
                 raise Exception("Could not start local registry in time")
 
 
@@ -1271,9 +1263,7 @@ class FragmentRegistryInteractions(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            delete_silently(filename)
-            delete_silently(out_path)
-            delete_silently(temp_filename)
+            delete_silently([filename, out_path, temp_filename])
 
     def test_remote_fragment_references(self):
         filename = "payload6.rego"
@@ -1318,12 +1308,7 @@ class FragmentRegistryInteractions(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            delete_silently(filename)
-            delete_silently(out_path)
-            delete_silently(filename2)
-            delete_silently(out_path2)
-            delete_silently(fragment_json)
-            delete_silently(first_fragment)
+            delete_silently([filename, out_path, filename2, out_path2, fragment_json, first_fragment])
 
     def test_incorrect_minimum_svn(self):
         filename = "payload8.rego"
@@ -1369,11 +1354,7 @@ class FragmentRegistryInteractions(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            delete_silently(filename)
-            delete_silently(out_path)
-            delete_silently(filename2)
-            delete_silently(out_path2)
-            delete_silently(fragment_json)
+            delete_silently([filename, out_path, filename2, out_path2, fragment_json])
 
     def test_image_attached_fragment_coverage(self):
         # Initialize Docker client
@@ -1450,14 +1431,11 @@ class FragmentRegistryInteractions(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(filename)
-            force_delete_silently(f"{rego_filename}.rego")
-            force_delete_silently(f"{rego_filename}.rego.cose")
+            force_delete_silently([filename, f"{rego_filename}.rego", f"{rego_filename}.rego.cose"])
 
     def test_incorrect_pull_location(self):
         with self.assertRaises(SystemExit) as exc_info:
             _ = pull(f"{self.registry}/fake_artifact")
-            self.fail("Should not reach here")
         self.assertEqual(exc_info.exception.code, 1)
 
     def test_reserved_namespace(self):
@@ -1467,12 +1445,10 @@ class FragmentRegistryInteractions(ScenarioTest):
             try:
                 write_str_to_file(filename, self.custom_json)
                 self.cmd(f"confcom acifragmentgen -i {filename} --namespace policy --svn 1")
-                self.fail("Should not reach here")
             except Exception as e:
                 raise e
             finally:
-                force_delete_silently(filename)
-                force_delete_silently(f"{rego_filename}.rego")
+                force_delete_silently([filename, f"{rego_filename}.rego"])
 
     def test_invalid_svn(self):
         filename = "container_image_attached3.json"
@@ -1481,13 +1457,10 @@ class FragmentRegistryInteractions(ScenarioTest):
             try:
                 write_str_to_file(filename, self.custom_json)
                 self.cmd(f"confcom acifragmentgen -i {filename} --namespace policy --svn 0")
-                self.fail("Should not reach here")
             except Exception as e:
                 raise e
             finally:
-                force_delete_silently(filename)
-                force_delete_silently(f"{rego_filename}.rego")
-
+                force_delete_silently([filename, f"{rego_filename}.rego"])
 
 class ExtendedFragmentTests(ScenarioTest):
     """Extended test cases for fragment operations following the requested scenarios."""
@@ -1564,7 +1537,7 @@ class ExtendedFragmentTests(ScenarioTest):
     @classmethod
     def setUpClass(cls):
         cls.registry = "localhost:5000"
-        cls.key_dir_parent = os.path.join(TEST_DIR, '..', '..', '..', 'samples', 'certs')
+        cls.key_dir_parent = os.path.join(SAMPLES_DIR, 'certs')
         cls.key = os.path.join(cls.key_dir_parent, 'intermediateCA', 'private', 'ec_p384_private.pem')
         cls.chain = os.path.join(cls.key_dir_parent, 'intermediateCA', 'certs', 'www.contoso.com.chain.cert.pem')
 
@@ -1598,8 +1571,7 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(filename)
-            force_delete_silently(out_path)
+            force_delete_silently([filename, out_path])
 
     def test_attach_fragment_to_different_image(self):
         """Test attaching a fragment to a different image than the one it was created for."""
@@ -1630,15 +1602,12 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(filename)
-            force_delete_silently(f"{rego_filename}.rego")
-            force_delete_silently(f"{rego_filename}.rego.cose")
+            force_delete_silently([filename, f"{rego_filename}.rego", f"{rego_filename}.rego.cose"])
 
     def test_remote_pull_failure_path(self):
         """Test failure path when trying to pull from non-existent registry location."""
         with self.assertRaises(SystemExit) as exc_info:
             _ = pull(f"{self.registry}/nonexistent_fragment:v1")
-            self.fail("Should not reach here")
         self.assertEqual(exc_info.exception.code, 1)
 
     def test_mixed_fragments_and_standalone_fragments_import(self):
@@ -1739,8 +1708,7 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(filename)
-            force_delete_silently(f"{rego_filename}.rego")
+            force_delete_silently([filename, f"{rego_filename}.rego"])
 
     def test_tar_input_processing(self):
         """Test processing tar and tar-mapping inputs."""
@@ -1782,8 +1750,7 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(tar_filename)
-            force_delete_silently(mapping_filename)
+            force_delete_silently([tar_filename, mapping_filename])
 
     def test_fragment_target_image_consistency(self):
         """Test that fragment always lands on the intended image with and without --image-target."""
@@ -1832,9 +1799,7 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(filename)
-            force_delete_silently(f"{rego_filename}.rego")
-            force_delete_silently(f"{rego_filename}_no_target.rego")
+            force_delete_silently([filename, f"{rego_filename}.rego", f"{rego_filename}_no_target.rego"])
 
     def test_two_imports_same_feed_different_namespaces(self):
         """Test two imports that reference the same feed but expect different namespaces."""
@@ -1922,10 +1887,7 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(container_file)
-            force_delete_silently(fragment_file)
-            force_delete_silently(fragment_file + ".cose")
-            force_delete_silently(import_file)
+            force_delete_silently([container_file, fragment_file, fragment_file + ".cose", import_file])
 
     def test_two_imports_same_feed_and_namespace(self):
         """Test two imports that share both feed and namespace."""
@@ -2011,10 +1973,7 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(container_file)
-            force_delete_silently(fragment_file)
-            force_delete_silently(fragment_file + ".cose")
-            force_delete_silently(import_file)
+            force_delete_silently([container_file, fragment_file, fragment_file + ".cose", import_file])
 
     def test_two_imports_same_namespace_different_feeds(self):
         """Test two imports that share namespace but have different feeds."""
@@ -2119,12 +2078,7 @@ class ExtendedFragmentTests(ScenarioTest):
         except Exception as e:
             raise e
         finally:
-            force_delete_silently(container_file)
-            force_delete_silently(fragment1_file)
-            force_delete_silently(fragment1_file + ".cose")
-            force_delete_silently(fragment2_file)
-            force_delete_silently(fragment2_file + ".cose")
-            force_delete_silently(import_file)
+            force_delete_silently([container_file, fragment1_file, fragment1_file + ".cose", fragment2_file, fragment2_file + ".cose", import_file])
 
     def test_mixed_case_feed_namespace_strings(self):
         """Test handling of mixed case feed and namespace strings."""

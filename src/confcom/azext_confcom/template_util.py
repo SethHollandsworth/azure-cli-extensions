@@ -26,7 +26,8 @@ logger = get_logger(__name__)
 # make this global so it can be used in multiple functions
 PARAMETER_AND_VARIABLE_REGEX = r"\[(?:parameters|variables)\(\s*'([^\.\/]+?)'\s*\)\]"
 WHOLE_PARAMETER_AND_VARIABLE = r"(\s*\[\s*(parameters|variables))(\(\s*'([^\.\/]+?)'\s*\)\])"
-
+SVN_PATTERN = r'svn\s*:=\s*"(\d+)"'
+NAMESPACE_PATTERN = r'package\s+([a-zA-Z_][a-zA-Z0-9_]*)'
 
 class DockerClient:
     _client = None
@@ -1136,8 +1137,7 @@ def extract_svn_from_text(text: str) -> int:
         int: The SVN value
     """
     # Pattern matches: svn := "123" or svn := "1"
-    pattern = r'svn\s*:=\s*"(\d+)"'
-    match = re.search(pattern, text)
+    match = re.search(SVN_PATTERN, text)
 
     if not match:
         eprint("SVN value not found in the input text.")
@@ -1158,14 +1158,13 @@ def extract_namespace_from_text(text: str) -> str:
         str: The namespace value
     """
     # Pattern matches: package <namespace> or package namespace
-    pattern = r'package\s+([a-zA-Z_][a-zA-Z0-9_]*)'
-    match = re.search(pattern, text)
+    has_match = re.search(NAMESPACE_PATTERN, text)
 
-    if not match:
+    if not has_match:
         eprint("Namespace value not found in the input text.")
 
     try:
-        return match.group(1)
+        return has_match.group(1)
     except (AttributeError, IndexError):
         eprint("Unable to extract valid namespace value from the text.")
 

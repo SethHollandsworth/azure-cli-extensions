@@ -19,6 +19,7 @@ from azext_confcom.template_util import extract_containers_and_fragments_from_te
 
 host_os = platform.system()
 machine = platform.machine()
+SHA256_PREFIX = "@sha256:"
 
 logger = get_logger(__name__)
 
@@ -107,11 +108,11 @@ def pull(
     """
 
     full_path = ""
-    if "@sha256:" in artifact:
-        artifact, temp_hash_val = artifact.split("@sha256:")
+    if SHA256_PREFIX in artifact:
+        artifact, temp_hash_val = artifact.split(SHA256_PREFIX)
         if temp_hash_val != hash_val:
             eprint(f"Input '{hash_val}' does not match what is present in registry '{temp_hash_val}'")
-        full_path = f"{artifact}@sha256:{hash_val}"
+        full_path = f"{artifact}{SHA256_PREFIX}{hash_val}"
     elif artifact and hash_val:
         # response from discover function includes "sha256:" but not "@"
         full_path = f"{artifact}@{hash_val}"
