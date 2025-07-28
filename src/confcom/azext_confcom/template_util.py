@@ -1148,6 +1148,28 @@ def extract_svn_from_text(text: str) -> int:
         eprint("Unable to extract valid SVN value from the text.")
 
 
+def extract_namespace_from_text(text: str) -> str:
+    """Extract namespace value from text using regex pattern matching.
+
+    Args:
+        text: The input text containing the namespace definition
+
+    Returns:
+        str: The namespace value
+    """
+    # Pattern matches: package <namespace> or package namespace
+    pattern = r'package\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    match = re.search(pattern, text)
+
+    if not match:
+        eprint("Namespace value not found in the input text.")
+
+    try:
+        return match.group(1)
+    except (AttributeError, IndexError):
+        eprint("Unable to extract valid namespace value from the text.")
+
+
 # making these lambda print functions looks cleaner than having "json.dumps" 6 times
 def print_func(x: dict) -> str:
     return json.dumps(x, separators=(",", ":"), sort_keys=True)

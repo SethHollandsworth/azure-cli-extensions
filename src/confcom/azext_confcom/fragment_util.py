@@ -13,7 +13,9 @@ from azext_confcom.template_util import (
     case_insensitive_dict_get,
     extract_containers_from_text,
     extract_svn_from_text,
+    extract_namespace_from_text,
 )
+from azext_confcom.errors import eprint
 
 logger = get_logger(__name__)
 
@@ -72,5 +74,13 @@ def get_all_fragment_contents(
     # grab the remaining fragments which should be standalone
     standalone_fragments, _ = oras_proxy.pull_all_standalone_fragments(remaining_fragments)
     all_fragments_contents.extend(standalone_fragments)
+
+    # make sure there aren't conflicts in the namespaces
+    namespaces = set()
+    for fragment in all_fragments_contents:
+        namespace = extract_namespace_from_text(fragment)
+        if namespace in namespaces:
+            eprint("Duplicate namespace found: %s. This may cause issues.", namespace)
+        namespaces.add(namespace)
 
     return combine_fragments_with_policy(all_fragments_contents)

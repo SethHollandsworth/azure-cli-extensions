@@ -909,6 +909,8 @@ def load_policy_from_json(
     output_containers = []
     # 1) Parse incoming string as JSON
     policy_input_json = os_util.load_json_from_str(data)
+    if not isinstance(policy_input_json, dict):
+        eprint("Input JSON is not a valid dictionary")
 
     is_old_format = detect_old_format(policy_input_json)
     if is_old_format:
