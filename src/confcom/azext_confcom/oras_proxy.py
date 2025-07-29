@@ -14,7 +14,7 @@ from typing import List
 from azext_confcom.errors import eprint
 from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS
 from azext_confcom.cose_proxy import CoseSignToolProxy
-from azext_confcom.os_util import clean_up_temp_folder
+from azext_confcom.os_util import clean_up_temp_folder, delete_silently
 from azext_confcom.template_util import extract_containers_and_fragments_from_text, extract_svn_from_text
 
 host_os = platform.system()
@@ -158,9 +158,6 @@ def pull_all_image_attached_fragments(image):
     fragment_contents = []
     feeds = []
     if image_exists:
-        fragments = discover(image)
-        fragment_contents = []
-        feeds = []
         proxy = CoseSignToolProxy()
         for fragment_digest in fragments:
             filename = pull(image, hash_val=fragment_digest)

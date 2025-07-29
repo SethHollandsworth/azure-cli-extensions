@@ -144,3 +144,27 @@ Using the same command, the default mounts and environment variables used by VN2
 ```bash
 az confcom acifragmentgen --input ./fragment_config.json --svn 1 --namespace contoso
 ```
+
+#### Example 6
+
+Create an import statement from a signed fragment in a remote repo:
+
+```bash
+az confcom acifragmentgen --generate-import --fragment-path contoso.azurecr.io/<my-fragment>:v1 --minimum-svn 1
+```
+
+This is assuming there is a standalone fragment present at the specified location of `contoso.azurecr.io/<my-fragment>:v1`. Fragment imports can also be created using local paths to signed fragment files such as:
+
+```bash
+az confcom acifragmentgen --generate-import --fragment-path ./contoso.rego.cose --minimum-svn 1
+```
+
+#### Example 7
+
+Create an import statement from a signed image-attached fragment in a remote repo:
+
+```bash
+az confcom acifragmentgen --generate-import --image contoso.azurecr.io/<my-image>:<my-tag> --minimum-svn 1
+```
+
+Note that since the fragment is image-attached, the `--image` argument is used instead of `--fragment-path` and the image cannot be a local image in the docker daemon.
