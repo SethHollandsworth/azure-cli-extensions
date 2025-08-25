@@ -926,6 +926,7 @@ def load_policy_from_json(
     )
 
     if not version:
+        version = "1.0"
         policy_input_json[config.ACI_FIELD_VERSION] = "1.0"
 
     rego_fragments = case_insensitive_dict_get(
