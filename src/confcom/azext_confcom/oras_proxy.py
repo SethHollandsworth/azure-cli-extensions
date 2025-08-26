@@ -3,19 +3,21 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-import subprocess
 import json
+import os
 import platform
 import re
-from knack.log import get_logger
+import subprocess
 from tempfile import mkdtemp
-import os
 from typing import List
-from azext_confcom.errors import eprint
+
 from azext_confcom.config import ARTIFACT_TYPE, DEFAULT_REGO_FRAGMENTS
 from azext_confcom.cose_proxy import CoseSignToolProxy
+from azext_confcom.errors import eprint
 from azext_confcom.os_util import clean_up_temp_folder, delete_silently
-from azext_confcom.template_util import extract_containers_and_fragments_from_text, extract_svn_from_text
+from azext_confcom.template_util import (
+    extract_containers_and_fragments_from_text, extract_svn_from_text)
+from knack.log import get_logger
 
 host_os = platform.system()
 machine = platform.machine()
@@ -81,10 +83,12 @@ def discover(
     else:
         err_str = item.stderr.decode("utf-8")
         if "401: Unauthorized" in err_str:
-            eprint(
-                f"Error pulling the policy fragment from {image}.\n\n"
-                + "Please log into the registry and try again.\n\n"
+            logger.warning(
+                "Error pulling the policy fragment from %s.\n\n"
+                + "Please log into the registry and try again.\n\n",
+                image
             )
+            image_exists = False
         # this happens when the image isn't found in the remote repo or there is no access to the remote repo
         elif f"{image}: not found" in err_str:
             logger.warning("No policy fragments found for image %s", image)

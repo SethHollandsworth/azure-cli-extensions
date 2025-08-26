@@ -6,33 +6,22 @@
 import os
 import sys
 
-from pkg_resources import parse_version
-from knack.log import get_logger
+from azext_confcom import oras_proxy, os_util, security_policy
 from azext_confcom.config import (
-    DEFAULT_REGO_FRAGMENTS,
-    POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS,
-    REGO_IMPORT_FILE_STRUCTURE,
-)
-
-from azext_confcom import os_util
-from azext_confcom.template_util import (
-    pretty_print_func,
-    print_func,
-    str_to_sha256,
-    inject_policy_into_template,
-    inject_policy_into_yaml,
-    print_existing_policy_from_arm_template,
-    print_existing_policy_from_yaml,
-    get_image_name,
-)
+    DEFAULT_REGO_FRAGMENTS, POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS,
+    REGO_IMPORT_FILE_STRUCTURE)
+from azext_confcom.cose_proxy import CoseSignToolProxy
+from azext_confcom.errors import eprint
 from azext_confcom.fragment_util import get_all_fragment_contents
 from azext_confcom.init_checks import run_initial_docker_checks
-from azext_confcom import security_policy
-from azext_confcom.security_policy import OutputType
 from azext_confcom.kata_proxy import KataPolicyGenProxy
-from azext_confcom.cose_proxy import CoseSignToolProxy
-from azext_confcom import oras_proxy
-from azext_confcom.errors import eprint
+from azext_confcom.security_policy import OutputType
+from azext_confcom.template_util import (
+    get_image_name, inject_policy_into_template, inject_policy_into_yaml,
+    pretty_print_func, print_existing_policy_from_arm_template,
+    print_existing_policy_from_yaml, print_func, str_to_sha256)
+from knack.log import get_logger
+from pkg_resources import parse_version
 
 logger = get_logger(__name__)
 

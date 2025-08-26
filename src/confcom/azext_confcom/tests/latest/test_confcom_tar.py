@@ -3,25 +3,21 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-import os
-import unittest
-import deepdiff
 import json
+import os
 import shutil
 import tempfile
+import unittest
 from tarfile import TarFile
 
-from azext_confcom.security_policy import (
-    OutputType,
-    load_policy_from_arm_template_str,
-)
-from azext_confcom.rootfs_proxy import SecurityPolicyProxy
-from azext_confcom.errors import (
-    AccContainerError,
-)
 import azext_confcom.config as config
-from azext_confcom.template_util import DockerClient
+import deepdiff
+from azext_confcom.errors import AccContainerError
 from azext_confcom.os_util import delete_silently
+from azext_confcom.rootfs_proxy import SecurityPolicyProxy
+from azext_confcom.security_policy import (OutputType,
+                                           load_policy_from_arm_template_str)
+from azext_confcom.template_util import DockerClient
 
 
 def create_tar_file(image_path: str) -> None:

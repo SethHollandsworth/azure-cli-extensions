@@ -3,48 +3,33 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-import os
-from tarfile import TarFile
-import tempfile
-import unittest
 import json
-import requests
-import time
+import os
 import subprocess
-import docker
-from knack.util import CLIError
+import tempfile
+import time
+import unittest
+from tarfile import TarFile
 
-from azext_confcom.security_policy import (
-    UserContainerImage,
-    OutputType,
-    load_policy_from_json
-)
-from azext_confcom.errors import (
-    AccContainerError,
-)
-from azext_confcom.cose_proxy import CoseSignToolProxy
 import azext_confcom.config as config
-from azext_confcom.template_util import (
-    case_insensitive_dict_get,
-    extract_containers_and_fragments_from_text,
-    decompose_confidential_properties,
-    DockerClient
-)
-from azext_confcom.os_util import (
-    write_str_to_file,
-    load_json_from_file,
-    load_str_from_file,
-    load_json_from_str,
-    delete_silently,
-    write_str_to_file,
-    force_delete_silently,
-    str_to_base64,
-)
-from azext_confcom.oras_proxy import push_fragment_to_registry, pull
+import docker
+import requests
+from azext_confcom.cose_proxy import CoseSignToolProxy
 from azext_confcom.custom import acifragmentgen_confcom, acipolicygen_confcom
-from azure.cli.testsdk import ScenarioTest
-
+from azext_confcom.errors import AccContainerError
+from azext_confcom.oras_proxy import pull, push_fragment_to_registry
+from azext_confcom.os_util import (delete_silently, force_delete_silently,
+                                   load_json_from_file, load_json_from_str,
+                                   load_str_from_file, str_to_base64,
+                                   write_str_to_file)
+from azext_confcom.security_policy import (OutputType, UserContainerImage,
+                                           load_policy_from_json)
+from azext_confcom.template_util import (
+    DockerClient, case_insensitive_dict_get, decompose_confidential_properties,
+    extract_containers_and_fragments_from_text)
 from azext_confcom.tests.latest.test_confcom_tar import create_tar_file
+from azure.cli.testsdk import ScenarioTest
+from knack.util import CLIError
 
 TEST_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 SAMPLES_DIR = os.path.abspath(os.path.join(os.path.abspath(__file__), "..", '..', '..', '..', 'samples'))
@@ -903,6 +888,7 @@ class FragmentPolicySigning(unittest.TestCase):
             rego_str = load_str_from_file(filename2)
             # see if the import statement is in the rego file
             self.assertTrue("test_feed" in rego_str)
+            self.assertTrue(out_path not in rego_str)
             # make sure the image covered by the first fragment isn't in the second fragment
             self.assertFalse("mcr.microsoft.com/acc/samples/aci/helloworld:2.9" in rego_str)
         except Exception as e:

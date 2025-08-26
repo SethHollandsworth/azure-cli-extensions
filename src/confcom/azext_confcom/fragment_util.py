@@ -3,21 +3,34 @@
 # Licensed under the MIT License. See License.txt in the project root for license information.
 # --------------------------------------------------------------------------------------------
 
-import yaml
 import copy
 from typing import List
-from knack.log import get_logger
-from azext_confcom import config
-from azext_confcom import oras_proxy
-from azext_confcom.template_util import (
-    case_insensitive_dict_get,
-    extract_containers_from_text,
-    extract_svn_from_text,
-    extract_namespace_from_text,
-)
+
+import yaml
+from azext_confcom import config, oras_proxy
 from azext_confcom.errors import eprint
+from azext_confcom.template_util import (case_insensitive_dict_get,
+                                         extract_containers_from_text,
+                                         extract_namespace_from_text,
+                                         extract_svn_from_text)
+from knack.log import get_logger
 
 logger = get_logger(__name__)
+
+
+def sanitize_fragment_fields(fragments_list: List[dict]) -> List[dict]:
+    fields_to_keep = [
+        config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_FEED,
+        config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_MINIMUM_SVN,
+        config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_INCLUDES,
+        config.POLICY_FIELD_CONTAINERS_ELEMENTS_REGO_FRAGMENTS_ISSUER
+    ]
+    out_list = copy.deepcopy(fragments_list)
+    for fragment in out_list:
+        keys_to_remove = [key for key in fragment.keys() if key not in fields_to_keep]
+        for key in keys_to_remove:
+            fragment.pop(key, None)
+    return out_list
 
 
 # input is the full rego file as a string
